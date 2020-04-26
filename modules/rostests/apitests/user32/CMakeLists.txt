@@ -8,7 +8,9 @@ list(APPEND SOURCE
     CreateWindowEx.c
     DeferWindowPos.c
     DestroyCursorIcon.c
+    DM_REPOSITION.c
     DrawIconEx.c
+    DrawText.c
     desktop.c
     EmptyClipboard.c
     EnumDisplaySettings.c
@@ -23,6 +25,7 @@ list(APPEND SOURCE
     InitializeLpkHooks.c
     LoadImage.c
     LookupIconIdFromDirectoryEx.c
+    MessageStateAnalyzer.c
     NextDlgItem.c
     PrivateExtractIcons.c
     RealGetWindowClass.c

@@ -41,6 +41,7 @@ WINE_DEFAULT_DEBUG_CHANNEL(user32);
 #define SETDLGINFO(hwnd, info) SetWindowLongPtrW((hwnd), DWLP_ROS_DIALOGINFO, (LONG_PTR)(info))
 #define GET_WORD(ptr)  (*(WORD *)(ptr))
 #define GET_DWORD(ptr) (*(DWORD *)(ptr))
+#define GET_LONG(ptr) (*(const LONG *)(ptr))
 #define DLG_ISANSI 2
 
 /* INTERNAL STRUCTS **********************************************************/
@@ -196,8 +197,8 @@ static const WORD *DIALOG_GetControl32( const WORD *p, DLG_CONTROL_INFO *info,
 
     if (dialogEx)
     {
-        /* id is a DWORD for DIALOGEX */
-        info->id = GET_DWORD(p);
+        /* id is 4 bytes for DIALOGEX */
+        info->id = GET_LONG(p);
         p += 2;
     }
     else
@@ -935,8 +936,14 @@ static HWND DIALOG_CreateIndirect( HINSTANCE hInst, LPCVOID dlgTemplate,
 
            if (IsWindowEnabled( owner ))
            {
+               HWND captured = NULL;
                disabled_owner = owner;
                EnableWindow( disabled_owner, FALSE );
+
+               captured = GetCapture();
+
+               if (captured)
+                   SendMessageW(captured, WM_CANCELMODE, 0, 0);
            }
         }
         *modal_owner = owner;
@@ -1035,6 +1042,11 @@ static HWND DIALOG_CreateIndirect( HINSTANCE hInst, LPCVOID dlgTemplate,
                     if (SendMessageW( focus, WM_GETDLGCODE, 0, 0 ) & DLGC_HASSETSEL)
                         SendMessageW( focus, EM_SETSEL, 0, MAXLONG );
                     SetFocus( focus );
+                }
+                else
+                {
+                    if (!(template.style & WS_CHILD))
+                        SetFocus( hwnd );
                 }
             }
 //// ReactOS see 43396, Fixes setting focus on Open and Close dialogs to the FileName edit control in OpenOffice.
@@ -1173,7 +1185,53 @@ static BOOL DEFDLG_SetDefButton( HWND hwndDlg, DIALOGINFO *dlgInfo, HWND hwndNew
     return TRUE;
 }
 
+#ifdef __REACTOS__
+static void DEFDLG_Reposition(HWND hwnd)
+{
+    HMONITOR hMon;
+    MONITORINFO mi = { sizeof(mi) };
+    RECT rc;
+    LONG cx, cy;
 
+    if (GetWindowLongW(hwnd, GWL_STYLE) & WS_CHILD)
+        return;
+
+    if (IsIconic(hwnd))
+        return;
+
+    hMon = MonitorFromWindow(hwnd, MONITOR_DEFAULTTONEAREST);
+
+    if (!GetMonitorInfoW(hMon, &mi) || !GetWindowRect(hwnd, &rc))
+        return;
+
+    cx = rc.right - rc.left;
+    cy = rc.bottom - rc.top;
+
+    if (rc.right > mi.rcWork.right)
+    {
+        rc.right = mi.rcWork.right;
+        rc.left = rc.right - cx;
+    }
+    if (rc.bottom > mi.rcWork.bottom - 4)
+    {
+        rc.bottom = mi.rcWork.bottom - 4;
+        rc.top = rc.bottom - cy;
+    }
+
+    if (rc.left < mi.rcWork.left)
+    {
+        rc.left = mi.rcWork.left;
+    }
+    if (rc.top < mi.rcWork.top)
+    {
+        rc.top = mi.rcWork.top;
+    }
+
+    SetWindowPos(hwnd, NULL, rc.left, rc.top, 0, 0,
+                 SWP_NOACTIVATE | SWP_NOOWNERZORDER | SWP_NOSIZE |
+                 SWP_NOZORDER);
+}
+#endif
 /***********************************************************************
  *           DEFDLG_Proc
  *
@@ -1247,6 +1305,11 @@ static LRESULT DEFDLG_Proc( HWND hwnd, UINT msg, WPARAM wParam,
             }
             return 0;
 
+#ifdef __REACTOS__
+        case DM_REPOSITION:
+            DEFDLG_Reposition(hwnd);
+            return 0;
+#endif
         case WM_NEXTDLGCTL:
             if (dlgInfo)
             {
@@ -1379,6 +1442,7 @@ static INT DIALOG_DlgDirListW( HWND hDlg, LPWSTR spec, INT idLBox,
     HWND hwnd;
     LPWSTR orig_spec = spec;
     WCHAR any[] = {'*','.','*',0};
+    WCHAR star[] = {'*',0};
 
 #define SENDMSG(msg,wparam,lparam) \
     ((attrib & DDL_POSTMSGS) ? PostMessageW( hwnd, msg, wparam, lparam ) \
@@ -1387,10 +1451,16 @@ static INT DIALOG_DlgDirListW( HWND hDlg, LPWSTR spec, INT idLBox,
     TRACE("%p %s %d %d %04x\n", hDlg, debugstr_w(spec), idLBox, idStatic, attrib );
 
     /* If the path exists and is a directory, chdir to it */
-    if (!spec || !spec[0] || SetCurrentDirectoryW( spec )) spec = any;
+    if (!spec || !spec[0] || SetCurrentDirectoryW( spec )) spec = star;
     else
     {
         WCHAR *p, *p2;
+
+        if (!strchrW(spec, '*') && !strchrW(spec, '?'))
+        {
+            SetLastError(ERROR_NO_WILDCARD_CHARACTERS);
+            return FALSE;
+        }
         p = spec;
         if ((p2 = strchrW( p, ':' ))) p = p2 + 1;
         if ((p2 = strrchrW( p, '\\' ))) p = p2;
@@ -1679,6 +1749,9 @@ DefDlgProcA(
             case WM_SETFOCUS:
             case DM_SETDEFID:
             case DM_GETDEFID:
+#ifdef __REACTOS__
+            case DM_REPOSITION:
+#endif
             case WM_NEXTDLGCTL:
             case WM_GETFONT:
             case WM_CLOSE:
@@ -1739,6 +1812,9 @@ DefDlgProcW(
             case WM_SETFOCUS:
             case DM_SETDEFID:
             case DM_GETDEFID:
+#ifdef __REACTOS__
+            case DM_REPOSITION:
+#endif
             case WM_NEXTDLGCTL:
             case WM_GETFONT:
             case WM_CLOSE:
@@ -2254,9 +2330,9 @@ GetNextDlgGroupItem(
      */
     retvalue = hCtl;
     hwnd = hCtl;
-    while (hwndNext = GetWindow (hwnd, GW_HWNDNEXT),
-           1)
+    while (1)
     {
+        hwndNext = GetWindow (hwnd, GW_HWNDNEXT);
         while (!hwndNext)
         {
             /* Climb out until there is a next sibling of the ancestor or we
@@ -2556,8 +2632,16 @@ IsDialogMessageW(
              if (!(dlgCode & DLGC_WANTARROWS))
              {
                  BOOL fPrevious = (lpMsg->wParam == VK_LEFT || lpMsg->wParam == VK_UP);
-                 HWND hwndNext = GetNextDlgGroupItem (hDlg, GetFocus(), fPrevious );
-                 SendMessageW( hDlg, WM_NEXTDLGCTL, (WPARAM)hwndNext, 1 );
+                 HWND hwndNext = GetNextDlgGroupItem( hDlg, lpMsg->hwnd, fPrevious );
+                 if (hwndNext && SendMessageW( hwndNext, WM_GETDLGCODE, lpMsg->wParam, (LPARAM)lpMsg ) == (DLGC_BUTTON | DLGC_RADIOBUTTON))
+                 {
+                     SetFocus( hwndNext );
+                     if ((GetWindowLongW( hwndNext, GWL_STYLE ) & BS_TYPEMASK) == BS_AUTORADIOBUTTON &&
+                         SendMessageW( hwndNext, BM_GETCHECK, 0, 0 ) != BST_CHECKED)
+                         SendMessageW( hwndNext, BM_CLICK, 1, 0 );
+                 }
+                 else
+                     SendMessageW( hDlg, WM_NEXTDLGCTL, (WPARAM)hwndNext, 1 );
                  return TRUE;
              }
              break;
@@ -2571,10 +2655,11 @@ IsDialogMessageW(
          case VK_RETURN:
               {
                  DWORD dw;
-                 if ((GetFocus() == lpMsg->hwnd) &&
-                     (SendMessageW (lpMsg->hwnd, WM_GETDLGCODE, 0, 0) & DLGC_DEFPUSHBUTTON))
+                 HWND hwndFocus = GetFocus();
+                 if (IsChild( hDlg, hwndFocus ) &&
+                     (SendMessageW (hwndFocus, WM_GETDLGCODE, 0, 0) & DLGC_DEFPUSHBUTTON))
                  {
-                     SendMessageW (hDlg, WM_COMMAND, MAKEWPARAM (GetDlgCtrlID(lpMsg->hwnd),BN_CLICKED), (LPARAM)lpMsg->hwnd);
+                     SendMessageW( hDlg, WM_COMMAND, MAKEWPARAM( GetDlgCtrlID( hwndFocus ), BN_CLICKED ), (LPARAM)hwndFocus );
                  }
                  else if (DC_HASDEFID == HIWORD(dw = SendMessageW (hDlg, DM_GETDEFID, 0, 0)))
                  {
@@ -2585,7 +2670,6 @@ IsDialogMessageW(
                  else
                  {
                      SendMessageW( hDlg, WM_COMMAND, IDOK, (LPARAM)GetDlgItem( hDlg, IDOK ) );
-
                  }
              }
              return TRUE;

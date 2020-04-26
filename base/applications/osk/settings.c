@@ -1,91 +1,81 @@
 ﻿/*
  * PROJECT:         ReactOS On-Screen Keyboard
  * LICENSE:         GPL-2.0+ (https://spdx.org/licenses/GPL-2.0+)
- * PURPOSE:         Settings file for warning dialog on startup
- * COPYRIGHT:       Copyright 2018 Bișoc George (fraizeraust99 at gmail dot com)
+ * PURPOSE:         Configuration settings of the application
+ * COPYRIGHT:       Copyright 2018-2019 Bișoc George (fraizeraust99 at gmail dot com)
  */
 
 /* INCLUDES *******************************************************************/
 
-#include "osk.h"
-#include "settings.h"
+#include "precomp.h"
 
 /* FUNCTIONS *******************************************************************/
 
-BOOL LoadDataFromRegistry()
+LONG LoadDataFromRegistry(IN LPCWSTR lpValueDataName,
+                          OUT PDWORD pdwValueData)
 {
     HKEY hKey;
     LONG lResult;
-    DWORD dwShowWarningData, dwLayout;
-    DWORD cbData = sizeof(DWORD);
+    DWORD dwValue;
+    DWORD cbData = sizeof(dwValue);
 
-    /* Set the structure members to TRUE */
-    Globals.bShowWarning = TRUE;
-    Globals.bIsEnhancedKeyboard = TRUE;
+    /* Initialize the pointer parameter to default */
+    *pdwValueData = 0;
 
-    /* Open the key, so that we can query it */
+    /* Open our application's key in order to load its configuration data */
     lResult = RegOpenKeyExW(HKEY_CURRENT_USER,
-                            L"Software\\Microsoft\\osk",
+                            L"Software\\Microsoft\\Osk",
                             0,
                             KEY_READ,
                             &hKey);
 
     if (lResult != ERROR_SUCCESS)
     {
-        /* Bail out and return FALSE if we fail */
-        return FALSE;
+        /* Bail out */
+        DPRINT("LoadDataFromRegistry(): Failed to open the application's key! (Error - %li)\n", lResult);
+        return lResult;
     }
 
-    /* Query the key */
+    /* Load the specific value based on the parameter caller, lpValueDataName */
     lResult = RegQueryValueExW(hKey,
-                               L"ShowWarning",
+                               lpValueDataName,
                                0,
                                0,
-                               (BYTE *)&dwShowWarningData,
+                               (BYTE *)&dwValue,
                                &cbData);
 
     if (lResult != ERROR_SUCCESS)
     {
-        /* Bail out and return FALSE if we fail */
+
+        /* Bail out */
+        DPRINT("LoadDataFromRegistry(): Failed to load the following value - \"%S\". (Error - %li)\n", lpValueDataName, lResult);
         RegCloseKey(hKey);
-        return FALSE;
+        return lResult;
     }
 
-    /* Load the data value (it can be either FALSE or TRUE depending on the data itself) */
-    Globals.bShowWarning = (dwShowWarningData != 0);
-
-    /* Query the key */
-    lResult = RegQueryValueExW(hKey,
-                               L"IsEnhancedKeyboard",
-                               0,
-                               0,
-                               (BYTE *)&dwLayout,
-                               &cbData);
-
-    if (lResult != ERROR_SUCCESS)
+    /* Is the buffer's size too small to query the required data? */
+    if (cbData != sizeof(dwValue))
     {
-        /* Bail out and return FALSE if we fail */
+        /* It is therefore bail out */
+        DPRINT("LoadDataFromRegistry(): The buffer is too small to hold the data!\n");
         RegCloseKey(hKey);
-        return FALSE;
+        return ERROR_MORE_DATA;
     }
 
-    /* Load the dialog layout value */
-    Globals.bIsEnhancedKeyboard = (dwLayout != 0);
-    
-    /* If we're here then we succeed, close the key and return TRUE */
+    *pdwValueData = dwValue;
     RegCloseKey(hKey);
-    return TRUE;
+    return lResult;
 }
 
-BOOL SaveDataToRegistry()
+LONG SaveDataToRegistry(IN LPCWSTR lpValueDataName,
+                        IN DWORD dwValueData)
 {
     HKEY hKey;
     LONG lResult;
-    DWORD dwShowWarningData, dwLayout;
 
-    /* If no key has been made, create one */
+    /* Set up the application's key in case it has not been made yet */
     lResult = RegCreateKeyExW(HKEY_CURRENT_USER,
-                              L"Software\\Microsoft\\osk",
+                              L"Software\\Microsoft\\Osk",
                               0,
                               NULL,
                               0,
@@ -96,45 +86,100 @@ BOOL SaveDataToRegistry()
 
     if (lResult != ERROR_SUCCESS)
     {
-        /* Bail out and return FALSE if we fail */
-        return FALSE;
+        /* Bail out */
+        DPRINT("SaveDataToRegistry(): Failed to create the application's key! (Error - %li)\n", lResult);
+        return lResult;
     }
 
-    /* The data value of the subkey will be appended to the warning dialog switch */
-    dwShowWarningData = Globals.bShowWarning;
-
+    /* Save the data into the registry value */
     lResult = RegSetValueExW(hKey,
-                             L"ShowWarning",
+                             lpValueDataName,
                              0,
                              REG_DWORD,
-                             (BYTE *)&dwShowWarningData,
-                             sizeof(dwShowWarningData));
+                             (BYTE *)&dwValueData,
+                             sizeof(dwValueData));
 
     if (lResult != ERROR_SUCCESS)
     {
-        /* Bail out and return FALSE if we fail */
+        /* Bail out */
+        DPRINT("SaveDataToRegistry(): Failed to save the following value - \"%S\". (Error - %li)\n", lpValueDataName, lResult);
         RegCloseKey(hKey);
-        return FALSE;
+        return lResult;
     }
 
-    /* The value will be appended to the layout dialog */
-    dwLayout = Globals.bIsEnhancedKeyboard;
-
-    lResult = RegSetValueExW(hKey,
-                             L"IsEnhancedKeyboard",
-                             0,
-                             REG_DWORD,
-                             (BYTE *)&dwLayout,
-                             sizeof(dwLayout));
-
-    if (lResult != ERROR_SUCCESS)
-    {
-        /* Bail out and return FALSE if we fail */
-        RegCloseKey(hKey);
-        return FALSE;
-    }
-
-    /* If we're here then we succeed, close the key and return TRUE */
     RegCloseKey(hKey);
-    return TRUE;
+    return lResult;
+}
+
+VOID LoadSettings(VOID)
+{
+    DWORD dwValue;
+    LONG lResult;
+
+    /* Initialize the registry application settings */
+    Globals.bShowWarning = TRUE;
+    Globals.bIsEnhancedKeyboard = TRUE;
+    Globals.bAlwaysOnTop = TRUE;
+    Globals.bSoundClick = FALSE;
+
+    /* Set the coordinate values to default */
+    Globals.PosX = CW_USEDEFAULT;
+    Globals.PosY = CW_USEDEFAULT;
+
+    /* Warning dialog registry setting */
+    lResult = LoadDataFromRegistry(L"ShowWarning", &dwValue);
+    if (lResult == NO_ERROR)
+        Globals.bShowWarning = (dwValue != 0);
+
+    /* Enhanced keyboard switch dialog registry setting */
+    lResult = LoadDataFromRegistry(L"IsEnhancedKeyboard", &dwValue);
+    if (lResult == NO_ERROR)
+        Globals.bIsEnhancedKeyboard = (dwValue != 0);
+
+    /* Sound on click event registry setting */
+    lResult = LoadDataFromRegistry(L"ClickSound", &dwValue);
+    if (lResult == NO_ERROR)
+        Globals.bSoundClick = (dwValue != 0);
+
+    /* X coordinate dialog placement registry setting */
+    lResult = LoadDataFromRegistry(L"WindowLeft", &dwValue);
+    if (lResult == NO_ERROR)
+        Globals.PosX = dwValue;
+
+    /* Y coordinate dialog placement registry setting */
+    lResult = LoadDataFromRegistry(L"WindowTop", &dwValue);
+    if (lResult == NO_ERROR)
+        Globals.PosY = dwValue;
+
+    /* Top window state registry setting */
+    lResult = LoadDataFromRegistry(L"AlwaysOnTop", &dwValue);
+    if (lResult == NO_ERROR)
+        Globals.bAlwaysOnTop = (dwValue != 0);
+}
+
+VOID SaveSettings(VOID)
+{
+    WINDOWPLACEMENT wp;
+
+    /* Initialize the window placement structure */
+    wp.length = sizeof(WINDOWPLACEMENT);
+    GetWindowPlacement(Globals.hMainWnd, &wp);
+
+    /* Warning dialog registry setting */
+    SaveDataToRegistry(L"ShowWarning", Globals.bShowWarning);
+
+    /* Enhanced keyboard switch dialog registry setting */
+    SaveDataToRegistry(L"IsEnhancedKeyboard", Globals.bIsEnhancedKeyboard);
+
+    /* Sound on click event registry setting */
+    SaveDataToRegistry(L"ClickSound", Globals.bSoundClick);
+
+    /* X coordinate dialog placement registry setting */
+    SaveDataToRegistry(L"WindowLeft", wp.rcNormalPosition.left);
+
+    /* Y coordinate dialog placement registry setting */
+    SaveDataToRegistry(L"WindowTop", wp.rcNormalPosition.top);
+
+    /* Top window state registry setting */
+    SaveDataToRegistry(L"AlwaysOnTop", Globals.bAlwaysOnTop);
 }

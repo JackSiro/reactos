@@ -51,6 +51,35 @@ WINE_DEFAULT_DEBUG_CHANNEL(imagelist);
 
 #define MAX_OVERLAYIMAGE 15
 
+#ifdef __REACTOS__
+//The big bad reactos image list hack!
+BOOL is_valid2(HIMAGELIST himl);
+INT WINAPI Internal_ReplaceIcon (HIMAGELIST himl, INT nIndex, HICON hIcon);
+BOOL WINAPI Internal_DrawIndirect (IMAGELISTDRAWPARAMS *pimldp);
+COLORREF WINAPI Internal_SetBkColor (HIMAGELIST himl, COLORREF clrBk);
+BOOL WINAPI Internal_SetOverlayImage (HIMAGELIST himl, INT iImage, INT iOverlay);
+
+#define ImageList_Add Internal_Add
+#define ImageList_ReplaceIcon Internal_ReplaceIcon
+#define ImageList_SetOverlayImage Internal_SetOverlayImage
+#define ImageList_Replace Internal_Replace
+#define ImageList_AddMasked Internal_AddMasked
+#define ImageList_Remove Internal_Remove
+#define ImageList_GetIcon Internal_GetIcon
+#define ImageList_GetImageInfo Internal_GetImageInfo
+#define ImageList_Copy Internal_Copy
+#define ImageList_Merge Internal_Merge
+#define ImageList_Duplicate Internal_Duplicate
+#define ImageList_GetIconSize Internal_GetIconSize
+#define ImageList_SetIconSize Internal_SetIconSize
+#define ImageList_GetImageCount Internal_GetImageCount
+#define ImageList_SetImageCount Internal_SetImageCount
+#define ImageList_SetBkColor Internal_SetBkColor
+#define ImageList_GetBkColor Internal_GetBkColor
+#define ImageList_BeginDrag Internal_BeginDrag
+#define ImageList_DrawIndirect Internal_DrawIndirect
+#endif
+
 struct _IMAGELIST
 {
     IImageList2 IImageList2_iface;         /* 00: IImageList vtable */
@@ -72,6 +101,9 @@ struct _IMAGELIST
     INT         nOvlIdx[MAX_OVERLAYIMAGE]; /* 38: overlay images index */
 
     /* not yet found out */
+    #ifdef __REACTOS__
+    ULONG   usMagic;
+    #endif
     HBRUSH  hbrBlend25;
     HBRUSH  hbrBlend50;
     INT     cInitial;
@@ -83,6 +115,9 @@ struct _IMAGELIST
 };
 
 #define IMAGELIST_MAGIC 0x53414D58
+#ifdef __REACTOS__
+#define IMAGELIST_MAGIC_DESTROYED 0x44454144
+#endif
 
 /* Header used by ImageList_Read() and ImageList_Write() */
 #include "pshpack2.h"
@@ -1249,7 +1284,7 @@ ImageList_DrawEx (HIMAGELIST himl, INT i, HDC hdc, INT x, INT y,
 }
 
 #ifdef __REACTOS__
-static BOOL alpha_blend_image( HIMAGELIST himl, HDC srce_dc, HDC dest_dc, int dest_x, int dest_y,
+static BOOL alpha_blend_image( HIMAGELIST himl, HDC srce_dc, HDC srce_dcMask, HDC dest_dc, int dest_x, int dest_y,
 #else
 static BOOL alpha_blend_image( HIMAGELIST himl, HDC dest_dc, int dest_x, int dest_y,
 #endif
@@ -1284,7 +1319,11 @@ static BOOL alpha_blend_image( HIMAGELIST himl, HDC dest_dc, int dest_x, int des
 #endif
     SelectObject( hdc, bmp );
 #ifdef __REACTOS__
-    BitBlt( hdc, 0, 0, cx, cy, srce_dc, src_x, src_y, SRCCOPY );
+    if (!BitBlt(hdc, 0, 0, cx, cy, srce_dc, src_x, src_y, SRCCOPY))
+    {
+        TRACE("BitBlt failed\n");
+        goto done;
+    }
 #else
     BitBlt( hdc, 0, 0, cx, cy, himl->hdcImage, src_x, src_y, SRCCOPY );
 #endif
@@ -1339,11 +1378,28 @@ static BOOL alpha_blend_image( HIMAGELIST himl, HDC dest_dc, int dest_x, int des
         info->bmiColors[1].rgbGreen    = 0xff;
         info->bmiColors[1].rgbBlue     = 0xff;
         info->bmiColors[1].rgbReserved = 0;
-        if (!(mask = CreateDIBSection( himl->hdcMask, info, DIB_RGB_COLORS, &mask_bits, 0, 0 )))
+        if (!(mask = CreateDIBSection( srce_dcMask, info, DIB_RGB_COLORS, &mask_bits, 0, 0)))
+        {
+            TRACE("CreateDIBSection failed %i\n", GetLastError());
             goto done;
-        SelectObject( hdc, mask );
-        BitBlt( hdc, 0, 0, cx, cy, himl->hdcMask, src_x, src_y, SRCCOPY );
-        SelectObject( hdc, bmp );
+        }
+        if (SelectObject(hdc, mask) == NULL)
+        {
+            TRACE("SelectObject failed %i\n", GetLastError());
+            SelectObject(hdc, bmp);
+            goto done;
+        }
+        if (!BitBlt( hdc, 0, 0, cx, cy, srce_dcMask, src_x, src_y, SRCCOPY))
+        {
+            TRACE("BitBlt failed %i\n", GetLastError());
+            SelectObject(hdc, bmp);
+            goto done;
+        }
+        if (SelectObject( hdc, bmp) == NULL)
+        {
+            TRACE("SelectObject failed %i\n", GetLastError());
+            goto done;
+        }
         for (i = 0, ptr = bits; i < cy; i++)
             for (j = 0; j < cx; j++, ptr++)
                 if ((((BYTE *)mask_bits)[i * width_bytes + j / 8] << (j % 8)) & 0x80) *ptr = 0;
@@ -1361,11 +1417,12 @@ done:
 }
 
 #ifdef __REACTOS__
-HDC saturate_image( HIMAGELIST himl, HDC dest_dc, int dest_x, int dest_y,
-                    int src_x, int src_y, int cx, int cy, COLORREF rgbFg)
+BOOL saturate_image(HIMAGELIST himl, HDC dest_dc, int dest_x, int dest_y,
+                    int src_x, int src_y, int cx, int cy, COLORREF rgbFg,
+                    HDC *hdcImageListDC, HDC *hdcMaskListDC)
 {
-    HDC hdc = NULL;
-    HBITMAP bmp = 0;
+    HDC hdc = NULL, hdcMask = NULL;
+    HBITMAP bmp = 0, bmpMask = 0;
     BITMAPINFO *info;
 
     unsigned int *ptr;
@@ -1390,10 +1447,18 @@ HDC saturate_image( HIMAGELIST himl, HDC dest_dc, int dest_x, int dest_y,
     if (!(bmp = CreateDIBSection(himl->hdcImage, info, DIB_RGB_COLORS, &bits, 0, 0 ))) goto done;
 
     /* bind both surfaces */
-    SelectObject(hdc, bmp);
+    if (SelectObject(hdc, bmp) == NULL)
+    {
+        TRACE("SelectObject failed\n");
+        goto done;
+    }
 
     /* copy into our dc the section that covers just the icon we we're asked for */
-    BitBlt(hdc, 0, 0, cx, cy, himl->hdcImage, src_x, src_y, SRCCOPY);
+    if (!BitBlt(hdc, 0, 0, cx, cy, himl->hdcImage, src_x, src_y, SRCCOPY))
+    {
+        TRACE("BitBlt failed!\n");
+        goto done;
+    }
 
     /* loop every pixel of the bitmap */
     for (i = 0, ptr = bits; i < cx * cy; i++, ptr++)
@@ -1409,16 +1474,37 @@ HDC saturate_image( HIMAGELIST himl, HDC dest_dc, int dest_x, int dest_y,
         *ptr = RGBA(mixed_color, mixed_color, mixed_color, GetAValue(orig_color));
     }
 
+    if (himl->hdcMask)
+    {
+        hdcMask = CreateCompatibleDC(NULL);
+        bmpMask = CreateCompatibleBitmap(hdcMask, cx, cy);
+
+        SelectObject(hdcMask, bmpMask);
+
+        if (!BitBlt(hdcMask, 0, 0, cx, cy, himl->hdcMask, src_x, src_y, SRCCOPY))
+        {
+            ERR("BitBlt failed %i\n", GetLastError());
+            DeleteDC(hdcMask);
+            hdcMask = NULL;
+            goto done;
+        }
+        TRACE("mask ok\n");
+    }
+
 done:
 
     if (bmp)
         DeleteObject(bmp);
+    if (bmpMask)
+        DeleteObject(bmpMask);
 
     if (info)
         HeapFree(GetProcessHeap(), 0, info);
 
     /* return the handle to our desaturated dc, that will substitute its original counterpart in the next calls */
-    return hdc;
+    *hdcMaskListDC = hdcMask;
+    *hdcImageListDC = hdc;
+    return (hdc != NULL);
 }
 #endif /* __REACTOS__ */
 
@@ -1450,7 +1536,7 @@ ImageList_DrawIndirect (IMAGELISTDRAWPARAMS *pimldp)
     POINT pt;
     BOOL has_alpha;
 #ifdef __REACTOS__
-    HDC hdcSaturated = NULL;
+    HDC hdcSaturated = NULL, hdcSaturatedMask = NULL;
 #endif
 
     if (!pimldp || !(himl = pimldp->himl)) return FALSE;
@@ -1508,14 +1594,17 @@ ImageList_DrawIndirect (IMAGELISTDRAWPARAMS *pimldp)
      */
     if (fState & ILS_SATURATE)
     {
-        hdcSaturated = saturate_image(himl, pimldp->hdcDst, pimldp->x, pimldp->y,
-                                      pt.x, pt.y, cx, cy, pimldp->rgbFg);
-
-        hImageListDC = hdcSaturated;
-        /* shitty way of getting subroutines to blit at the right place (top left corner),
-           as our modified imagelist only contains a single image for performance reasons */
-        pt.x = 0;
-        pt.y = 0;
+        if (saturate_image(himl, pimldp->hdcDst, pimldp->x, pimldp->y,
+                           pt.x, pt.y, cx, cy, pimldp->rgbFg,
+                           &hdcSaturated, &hdcSaturatedMask))
+        {
+            hImageListDC = hdcSaturated;
+            hMaskListDC = hdcSaturatedMask;
+            /* shitty way of getting subroutines to blit at the right place (top left corner),
+               as our modified imagelist only contains a single image for performance reasons */
+            pt.x = 0;
+            pt.y = 0;
+        }
     }
 #endif
 
@@ -1540,7 +1629,7 @@ ImageList_DrawIndirect (IMAGELISTDRAWPARAMS *pimldp)
         if (bIsTransparent)
         {
 #ifdef __REACTOS__
-            bResult = alpha_blend_image( himl, hImageListDC, pimldp->hdcDst, pimldp->x, pimldp->y,
+            bResult = alpha_blend_image( himl, hImageListDC, hMaskListDC, pimldp->hdcDst, pimldp->x, pimldp->y,
 #else
             bResult = alpha_blend_image( himl, pimldp->hdcDst, pimldp->x, pimldp->y,
 #endif
@@ -1554,7 +1643,7 @@ ImageList_DrawIndirect (IMAGELISTDRAWPARAMS *pimldp)
         hOldBrush = SelectObject (hImageDC, CreateSolidBrush (colour));
         PatBlt( hImageDC, 0, 0, cx, cy, PATCOPY );
 #ifdef __REACTOS__
-        alpha_blend_image( himl, hImageListDC, hImageDC, 0, 0, pt.x, pt.y, cx, cy, func, fStyle, blend_col );
+        alpha_blend_image( himl, hImageListDC, hMaskListDC, hImageDC, 0, 0, pt.x, pt.y, cx, cy, func, fStyle, blend_col );
 #else
         alpha_blend_image( himl, hImageDC, 0, 0, pt.x, pt.y, cx, cy, func, fStyle, blend_col );
 #endif
@@ -1684,6 +1773,8 @@ cleanup:
 #ifdef __REACTOS__
     if (hdcSaturated)
         DeleteDC(hdcSaturated);
+    if (hdcSaturatedMask)
+        DeleteDC(hdcSaturatedMask);
 #endif
     DeleteObject(hBlendMaskBmp);
     DeleteObject(hImageBmp);
@@ -1843,8 +1934,13 @@ DWORD WINAPI
 ImageList_GetFlags(HIMAGELIST himl)
 {
     TRACE("%p\n", himl);
-
+#ifdef __REACTOS__
+    if(!is_valid2(himl))
+        return 0;
+    return himl->flags;
+#else
     return is_valid(himl) ? himl->flags : 0;
+#endif
 }
 
 
@@ -2032,6 +2128,12 @@ ImageList_GetImageInfo (HIMAGELIST himl, INT i, IMAGEINFO *pImageInfo)
 BOOL WINAPI
 ImageList_GetImageRect (HIMAGELIST himl, INT i, LPRECT lpRect)
 {
+#ifdef __REACTOS__
+    IMAGEINFO ImageInfo;
+    if (!ImageList_GetImageInfo(himl, i, &ImageInfo))
+        return FALSE;
+    *lpRect = ImageInfo.rcImage;
+#else
     POINT pt;
 
     if (!is_valid(himl) || (lpRect == NULL))
@@ -2044,7 +2146,7 @@ ImageList_GetImageRect (HIMAGELIST himl, INT i, LPRECT lpRect)
     lpRect->top    = pt.y;
     lpRect->right  = pt.x + himl->cx;
     lpRect->bottom = pt.y + himl->cy;
-
+#endif
     return TRUE;
 }
 
@@ -3300,6 +3402,10 @@ static HBITMAP ImageList_CreateImage(HDC hdc, HIMAGELIST himl, UINT count)
 UINT WINAPI
 ImageList_SetColorTable(HIMAGELIST himl, UINT uStartIndex, UINT cEntries, const RGBQUAD *prgb)
 {
+#ifdef __REACTOS__
+    if(!is_valid2(himl))
+        return 0;
+#endif
     TRACE("(%p, %d, %d, %p)\n", himl, uStartIndex, cEntries, prgb);
     himl->color_table_set = TRUE;
     return SetDIBColorTable(himl->hdcImage, uStartIndex, cEntries, prgb);
@@ -3391,6 +3497,9 @@ static ULONG WINAPI ImageListImpl_Release(IImageList2 *iface)
         if (This->hbrBlend25) DeleteObject (This->hbrBlend25);
         if (This->hbrBlend50) DeleteObject (This->hbrBlend50);
 
+#ifdef __REACTOS__
+        This->usMagic = IMAGELIST_MAGIC_DESTROYED;
+#endif
         This->IImageList2_iface.lpVtbl = NULL;
         heap_free(This->has_alpha);
         heap_free(This);
@@ -3526,6 +3635,12 @@ static HRESULT WINAPI ImageListImpl_Copy(IImageList2 *iface, int dst_index,
     if (!unk_src)
         return E_FAIL;
 
+#ifdef __REACTOS__
+    /* Make sure that the second image list uses the same implementation with the first */
+    if (!is_valid2((HIMAGELIST)unk_src))
+        return E_FAIL;
+#endif
+
     /* TODO: Add test for IID_ImageList2 too */
     if (FAILED(IUnknown_QueryInterface(unk_src, &IID_IImageList,
             (void **) &src)))
@@ -3549,6 +3664,12 @@ static HRESULT WINAPI ImageListImpl_Merge(IImageList2 *iface, int i1,
     HRESULT ret = E_FAIL;
 
     TRACE("(%p)->(%d %p %d %d %d %s %p)\n", iface, i1, punk2, i2, dx, dy, debugstr_guid(riid), ppv);
+
+#ifdef __REACTOS__
+    /* Make sure that the second image list uses the same implementation with the first */
+    if (!is_valid2((HIMAGELIST)punk2))
+        return E_FAIL;
+#endif
 
     /* TODO: Add test for IID_ImageList2 too */
     if (FAILED(IUnknown_QueryInterface(punk2, &IID_IImageList,
@@ -3879,7 +4000,16 @@ static BOOL is_valid(HIMAGELIST himl)
     BOOL valid;
     __TRY
     {
+    #ifdef __REACTOS__
+        valid = himl && himl->usMagic == IMAGELIST_MAGIC;
+        if (!valid && himl && himl->usMagic == IMAGELIST_MAGIC_DESTROYED)
+        {
+            ERR("Imagelist no longer valid: 0x%p\n", himl);
+        }
+    #else
         valid = himl && himl->IImageList2_iface.lpVtbl == &ImageListImpl_Vtbl;
+    #endif
+
     }
     __EXCEPT_PAGE_FAULT
     {
@@ -3926,6 +4056,9 @@ static HRESULT ImageListImpl_CreateInstance(const IUnknown *pUnkOuter, REFIID ii
     if (!This) return E_OUTOFMEMORY;
 
     This->IImageList2_iface.lpVtbl = &ImageListImpl_Vtbl;
+#ifdef __REACTOS__
+    This->usMagic = IMAGELIST_MAGIC;
+#endif
     This->ref = 1;
 
     ret = IImageList2_QueryInterface(&This->IImageList2_iface, iid, ppv);
@@ -3933,3 +4066,316 @@ static HRESULT ImageListImpl_CreateInstance(const IUnknown *pUnkOuter, REFIID ii
 
     return ret;
 }
+
+
+
+#ifdef __REACTOS__
+//The big bad reactos image list hack!
+#undef ImageList_Add
+#undef ImageList_ReplaceIcon
+#undef ImageList_SetOverlayImage
+#undef ImageList_Replace
+#undef ImageList_AddMasked
+#undef ImageList_Remove
+#undef ImageList_GetIcon
+#undef ImageList_GetImageInfo
+#undef ImageList_Copy
+#undef ImageList_Merge
+#undef ImageList_Duplicate
+#undef ImageList_GetIconSize
+#undef ImageList_SetIconSize
+#undef ImageList_GetImageCount
+#undef ImageList_SetImageCount
+#undef ImageList_SetBkColor
+#undef ImageList_GetBkColor
+#undef ImageList_BeginDrag
+#undef ImageList_DrawIndirect
+
+static inline IImageList2* IImageList2_from_impl(HIMAGELIST himl)
+{
+    if (is_valid(himl))
+    {
+        return &himl->IImageList2_iface;
+    }
+    return NULL;
+}
+
+BOOL is_valid2(HIMAGELIST himl)
+{
+    BOOL valid;
+    __TRY
+    {
+        valid = himl && 
+                himl->IImageList2_iface.lpVtbl == &ImageListImpl_Vtbl && 
+                himl->usMagic == IMAGELIST_MAGIC;
+        if (!valid && himl &&
+            himl->usMagic == IMAGELIST_MAGIC_DESTROYED)
+        {
+            ERR("Imagelist no longer valid: 0x%p\n", himl);
+        }
+    }
+    __EXCEPT_PAGE_FAULT
+    {
+        valid = FALSE;
+    }
+    __ENDTRY
+    return valid;
+}
+
+INT WINAPI
+ImageList_Add (HIMAGELIST himl,	HBITMAP hbmImage, HBITMAP hbmMask)
+{
+    int res;
+    HRESULT hr;
+    IImageList2* piml = IImageList2_from_impl(himl);
+    if (!piml)
+        return -1;
+
+    hr = piml->lpVtbl->Add(piml, hbmImage, hbmMask, &res);
+    if (FAILED(hr))
+        return -1;
+
+    return res;
+}
+
+INT WINAPI
+ImageList_ReplaceIcon (HIMAGELIST himl, INT nIndex, HICON hIcon)
+{
+    int res;
+    HRESULT hr;
+    IImageList2* piml = IImageList2_from_impl(himl);
+    if (!piml)
+        return -1;
+
+    hr = piml->lpVtbl->ReplaceIcon(piml, nIndex, hIcon, &res);
+    if (FAILED(hr))
+        return -1;
+
+    return res;
+}
+
+BOOL WINAPI
+ImageList_SetOverlayImage (HIMAGELIST himl, INT iImage, INT iOverlay)
+{
+    IImageList2* piml = IImageList2_from_impl(himl);
+    if (!piml)
+        return FALSE;
+
+    return (piml->lpVtbl->SetOverlayImage(piml, iImage, iOverlay) == S_OK) ? TRUE : FALSE;
+}
+
+BOOL WINAPI
+ImageList_Replace (HIMAGELIST himl, INT i, HBITMAP hbmImage,
+		   HBITMAP hbmMask)
+{
+    IImageList2* piml = IImageList2_from_impl(himl);
+    if (!piml)
+        return FALSE;
+
+    return (piml->lpVtbl->Replace(piml, i, hbmImage, hbmMask) == S_OK) ? TRUE : FALSE;
+}
+
+INT WINAPI
+ImageList_AddMasked (HIMAGELIST himl, HBITMAP hBitmap, COLORREF clrMask)
+{
+    int res;
+    IImageList2* piml = IImageList2_from_impl(himl);
+    HRESULT hr;
+    if (!piml)
+        return -1;
+
+    hr = piml->lpVtbl->AddMasked(piml, hBitmap, clrMask, &res);
+    if (FAILED(hr))
+        return -1;
+
+    return res;
+}
+
+BOOL WINAPI
+ImageList_Remove (HIMAGELIST himl, INT i)
+{
+    IImageList2* piml = IImageList2_from_impl(himl);
+    if (!piml)
+        return -1;
+
+    return (piml->lpVtbl->Remove(piml, i) == S_OK) ? TRUE : FALSE;
+}
+
+HICON WINAPI
+ImageList_GetIcon (HIMAGELIST himl, INT i, UINT fStyle)
+{
+    HICON res;
+    IImageList2* piml = IImageList2_from_impl(himl);
+    HRESULT hr;
+    if (!piml)
+        return NULL;
+
+    hr = piml->lpVtbl->GetIcon(piml, i, fStyle, &res);
+    if (FAILED(hr))
+        return NULL;
+
+    return res;
+}
+
+BOOL WINAPI
+ImageList_GetImageInfo (HIMAGELIST himl, INT i, IMAGEINFO *pImageInfo)
+{
+    IImageList2* piml = IImageList2_from_impl(himl);
+    if (!piml)
+        return FALSE;
+
+    return (piml->lpVtbl->GetImageInfo(piml, i, pImageInfo) == S_OK) ? TRUE : FALSE;
+}
+
+BOOL WINAPI
+ImageList_Copy (HIMAGELIST himlDst, INT iDst,	HIMAGELIST himlSrc,
+		INT iSrc, UINT uFlags)
+{
+    IImageList2 *pimlDst, *pimlSrc;
+    pimlDst = IImageList2_from_impl(himlDst);
+    pimlSrc = IImageList2_from_impl(himlSrc);
+    if (!pimlDst || !pimlSrc)
+        return FALSE;
+
+    return (pimlDst->lpVtbl->Copy(pimlDst, iDst, (IUnknown*)pimlSrc, iSrc, uFlags) == S_OK) ? TRUE : FALSE;
+}
+
+HIMAGELIST WINAPI
+ImageList_Merge (HIMAGELIST himl1, INT i1, HIMAGELIST himl2, INT i2,
+		 INT dx, INT dy)
+{
+    HRESULT hr;
+    IImageList2 *piml1, *piml2, *pimlMerged;
+    piml1 = IImageList2_from_impl(himl1);
+    piml2 = IImageList2_from_impl(himl2);
+    if (!piml1 || !piml2)
+        return NULL;
+
+    hr = piml1->lpVtbl->Merge(piml1, i1, (IUnknown*)piml2, i2, dx, dy, &IID_IImageList2, (void**)&pimlMerged);
+    if (FAILED(hr))
+        return NULL;
+
+    return (HIMAGELIST)pimlMerged;
+}
+
+HIMAGELIST WINAPI
+ImageList_Duplicate (HIMAGELIST himlSrc)
+{
+    HRESULT hr;
+    IImageList2 *piml, *pimlCloned;
+    piml = IImageList2_from_impl(himlSrc);
+    if (!piml)
+        return FALSE;
+
+    hr = piml->lpVtbl->Clone(piml, &IID_IImageList2, (void**)&pimlCloned);
+    if (FAILED(hr))
+        return NULL;
+
+    return (HIMAGELIST)pimlCloned;
+}
+
+BOOL WINAPI
+ImageList_GetIconSize (HIMAGELIST himl, INT *cx, INT *cy)
+{
+    IImageList2* piml = IImageList2_from_impl(himl);
+    if (!piml)
+        return FALSE;
+
+    return (piml->lpVtbl->GetIconSize(piml, cx, cy) == S_OK) ? TRUE : FALSE;
+}
+
+BOOL WINAPI
+ImageList_SetIconSize (HIMAGELIST himl, INT cx, INT cy)
+{
+    IImageList2* piml = IImageList2_from_impl(himl);
+    if (!piml)
+        return FALSE;
+
+    return (piml->lpVtbl->SetIconSize(piml, cx, cy) == S_OK) ? TRUE : FALSE;
+}
+
+INT WINAPI
+ImageList_GetImageCount (HIMAGELIST himl)
+{
+    int res;
+    HRESULT hr;
+    IImageList2* piml = IImageList2_from_impl(himl);
+    if (!piml)
+        return 0;
+
+    hr = piml->lpVtbl->GetImageCount(piml, &res);
+    if (FAILED(hr))
+        return 0;
+
+    return res;
+}
+
+BOOL WINAPI
+ImageList_SetImageCount (HIMAGELIST himl, UINT iImageCount)
+{
+    IImageList2* piml = IImageList2_from_impl(himl);
+    if (!piml)
+        return FALSE;
+
+    return (piml->lpVtbl->SetImageCount(piml, iImageCount) == S_OK) ? TRUE : FALSE;
+}
+
+COLORREF WINAPI
+ImageList_SetBkColor (HIMAGELIST himl, COLORREF clrBk)
+{
+    COLORREF res;
+    HRESULT hr;
+    IImageList2* piml = IImageList2_from_impl(himl);
+    if (!piml)
+        return CLR_NONE;
+
+    hr = piml->lpVtbl->SetBkColor(piml, clrBk, &res);
+    if (FAILED(hr))
+        return CLR_NONE;
+
+    return res;
+}
+
+COLORREF WINAPI
+ImageList_GetBkColor (HIMAGELIST himl)
+{
+    COLORREF res;
+    HRESULT hr;
+    IImageList2* piml = IImageList2_from_impl(himl);
+    if (!piml)
+        return CLR_NONE;
+
+    hr = piml->lpVtbl->GetBkColor(piml, &res);
+    if (FAILED(hr))
+        return CLR_NONE;
+
+    return res;
+}
+
+BOOL WINAPI
+ImageList_BeginDrag (HIMAGELIST himlTrack, INT iTrack,
+	             INT dxHotspot, INT dyHotspot)
+{
+    IImageList2* piml = IImageList2_from_impl(himlTrack);
+    if (!piml)
+        return FALSE;
+
+    return (piml->lpVtbl->BeginDrag(piml, iTrack, dxHotspot, dyHotspot) == S_OK) ? TRUE : FALSE;
+}
+
+BOOL WINAPI
+ImageList_DrawIndirect (IMAGELISTDRAWPARAMS *pimldp)
+{
+    IImageList2* piml;
+
+    if (!pimldp)
+        return FALSE;
+
+    piml = IImageList2_from_impl(pimldp->himl);
+    if (!piml)
+        return FALSE;
+
+    return (piml->lpVtbl->Draw(piml, pimldp) == S_OK) ? TRUE : FALSE;
+}
+
+#endif

@@ -1026,6 +1026,114 @@ IopGetFileMode(IN PFILE_OBJECT FileObject)
     return Mode;
 }
 
+static
+BOOLEAN
+IopGetMountFlag(IN PDEVICE_OBJECT DeviceObject)
+{
+    KIRQL OldIrql;
+    PVPB Vpb;
+    BOOLEAN Mounted;
+
+    /* Assume not mounted */
+    Mounted = FALSE;
+
+    /* Check whether we have the mount flag */
+    IoAcquireVpbSpinLock(&OldIrql);
+
+    Vpb = DeviceObject->Vpb;
+    if (Vpb != NULL &&
+        BooleanFlagOn(Vpb->Flags, VPB_MOUNTED))
+    {
+        Mounted = TRUE;
+    }
+
+    IoReleaseVpbSpinLock(OldIrql);
+
+    return Mounted;
+}
+
+static
+BOOLEAN
+IopVerifyDriverObjectOnStack(IN PDEVICE_OBJECT DeviceObject,
+                             IN PDRIVER_OBJECT DriverObject)
+{
+    PDEVICE_OBJECT StackDO;
+
+    /* Browse our whole device stack, trying to find the appropriate driver */
+    StackDO = IopGetDeviceAttachmentBase(DeviceObject);
+    while (StackDO != NULL)
+    {
+        /* We've found the driver, return success */
+        if (StackDO->DriverObject == DriverObject)
+        {
+            return TRUE;
+        }
+
+        /* Move to the next */
+        StackDO = StackDO->AttachedDevice;
+    }
+
+    /* We only reach there if driver was not found */
+    return FALSE;
+}
+
+static
+NTSTATUS
+IopGetDriverPathInformation(IN PFILE_OBJECT FileObject,
+                            IN PFILE_FS_DRIVER_PATH_INFORMATION DriverPathInfo,
+                            IN ULONG Length)
+{
+    KIRQL OldIrql;
+    NTSTATUS Status;
+    UNICODE_STRING DriverName;
+    PDRIVER_OBJECT DriverObject;
+
+    /* Make sure the structure is consistent (ie, driver name fits into the buffer) */
+    if (Length - FIELD_OFFSET(FILE_FS_DRIVER_PATH_INFORMATION, DriverName) < DriverPathInfo->DriverNameLength)
+    {
+        return STATUS_INVALID_PARAMETER;
+    }
+
+    /* Setup the whole driver name */
+    DriverName.Length = DriverPathInfo->DriverNameLength;
+    DriverName.MaximumLength = DriverPathInfo->DriverNameLength;
+    DriverName.Buffer = &DriverPathInfo->DriverName[0];
+
+    /* Ask Ob for such driver */
+    Status = ObReferenceObjectByName(&DriverName,
+                                     OBJ_CASE_INSENSITIVE,
+                                     NULL,
+                                     0,
+                                     IoDriverObjectType,
+                                     KernelMode,
+                                     NULL,
+                                     (PVOID*)&DriverObject);
+    /* No such driver, bail out */
+    if (!NT_SUCCESS(Status))
+    {
+        return Status;
+    }
+
+    /* Lock the devices database, we'll browse it */
+    OldIrql = KeAcquireQueuedSpinLock(LockQueueIoDatabaseLock);
+    /* If we have a VPB, browse the stack from the volume */
+    if (FileObject->Vpb != NULL && FileObject->Vpb->DeviceObject != NULL)
+    {
+        DriverPathInfo->DriverInPath = IopVerifyDriverObjectOnStack(FileObject->Vpb->DeviceObject, DriverObject);
+    }
+    /* Otherwise, do it from the normal device */
+    else
+    {
+        DriverPathInfo->DriverInPath = IopVerifyDriverObjectOnStack(FileObject->DeviceObject, DriverObject);
+    }
+    KeReleaseQueuedSpinLock(LockQueueIoDatabaseLock, OldIrql);
+
+    /* No longer needed */
+    ObDereferenceObject(DriverObject);
+
+    return STATUS_SUCCESS;
+}
+
 /* PUBLIC FUNCTIONS **********************************************************/
 
 /*
@@ -4037,6 +4145,14 @@ NtQueryVolumeInformationFile(IN HANDLE FileHandle,
                                        NULL);
     if (!NT_SUCCESS(Status)) return Status;
 
+    /* Only allow direct device open for FileFsDeviceInformation */
+    if (BooleanFlagOn(FileObject->Flags, FO_DIRECT_DEVICE_OPEN) &&
+        FsInformationClass != FileFsDeviceInformation)
+    {
+        ObDereferenceObject(FileObject);
+        return STATUS_INVALID_DEVICE_REQUEST;
+    }
+
     /* Check if we should use Sync IO or not */
     if (FileObject->Flags & FO_SYNCHRONOUS_IO)
     {
@@ -4048,7 +4164,113 @@ NtQueryVolumeInformationFile(IN HANDLE FileHandle,
             return Status;
         }
     }
-    else
+
+    /*
+     * Quick path for FileFsDeviceInformation - the kernel has enough
+     * info to reply instead of the driver, excepted for network file systems
+     */
+    if (FsInformationClass == FileFsDeviceInformation &&
+        (BooleanFlagOn(FileObject->Flags, FO_DIRECT_DEVICE_OPEN) || FileObject->DeviceObject->DeviceType != FILE_DEVICE_NETWORK_FILE_SYSTEM))
+    {
+        PFILE_FS_DEVICE_INFORMATION FsDeviceInfo = FsInformation;
+        DeviceObject = FileObject->DeviceObject;
+
+        _SEH2_TRY
+        {
+            FsDeviceInfo->DeviceType = DeviceObject->DeviceType;
+
+            /* Complete characteristcs with mount status if relevant */
+            FsDeviceInfo->Characteristics = DeviceObject->Characteristics;
+            if (IopGetMountFlag(DeviceObject))
+            {
+                SetFlag(FsDeviceInfo->Characteristics, FILE_DEVICE_IS_MOUNTED);
+            }
+
+            IoStatusBlock->Information = sizeof(FILE_FS_DEVICE_INFORMATION);
+            IoStatusBlock->Status = STATUS_SUCCESS;
+        }
+        _SEH2_EXCEPT(EXCEPTION_EXECUTE_HANDLER)
+        {
+            /* Check if we had a file lock */
+            if (BooleanFlagOn(FileObject->Flags, FO_SYNCHRONOUS_IO))
+            {
+                /* Release it */
+                IopUnlockFileObject(FileObject);
+            }
+
+            /* Dereference the FO */
+            ObDereferenceObject(FileObject);
+
+            _SEH2_YIELD(return _SEH2_GetExceptionCode());
+        }
+        _SEH2_END;
+
+        /* Check if we had a file lock */
+        if (BooleanFlagOn(FileObject->Flags, FO_SYNCHRONOUS_IO))
+        {
+            /* Release it */
+            IopUnlockFileObject(FileObject);
+        }
+
+        /* Dereference the FO */
+        ObDereferenceObject(FileObject);
+
+        return STATUS_SUCCESS;
+    }
+    /* This is to be handled by the kernel, not by FSD */
+    else if (FsInformationClass == FileFsDriverPathInformation)
+    {
+        PFILE_FS_DRIVER_PATH_INFORMATION DriverPathInfo;
+
+        _SEH2_TRY
+        {
+            /* Allocate our local structure */
+            DriverPathInfo = ExAllocatePoolWithQuotaTag(NonPagedPool, Length, TAG_IO);
+
+            /* And copy back caller data */
+            RtlCopyMemory(DriverPathInfo, FsInformation, Length);
+
+            /* Is the driver in the IO path? */
+            Status = IopGetDriverPathInformation(FileObject, DriverPathInfo, Length);
+            /* We failed, don't continue execution */
+            if (!NT_SUCCESS(Status))
+            {
+                RtlRaiseStatus(Status);
+            }
+
+            /* We succeed, copy back info */
+            ((PFILE_FS_DRIVER_PATH_INFORMATION)FsInformation)->DriverInPath = DriverPathInfo->DriverInPath;
+
+            /* We're done */
+            IoStatusBlock->Information = sizeof(FILE_FS_DRIVER_PATH_INFORMATION);
+            IoStatusBlock->Status = STATUS_SUCCESS;
+        }
+        _SEH2_EXCEPT(EXCEPTION_EXECUTE_HANDLER)
+        {
+            Status = _SEH2_GetExceptionCode();
+        }
+        _SEH2_END;
+
+        /* Don't leak */
+        if (DriverPathInfo != NULL)
+        {
+            ExFreePoolWithTag(DriverPathInfo, TAG_IO);
+        }
+
+        /* Check if we had a file lock */
+        if (BooleanFlagOn(FileObject->Flags, FO_SYNCHRONOUS_IO))
+        {
+            /* Release it */
+            IopUnlockFileObject(FileObject);
+        }
+
+        /* Dereference the FO */
+        ObDereferenceObject(FileObject);
+
+        return Status;
+    }
+
+    if (!BooleanFlagOn(FileObject->Flags, FO_SYNCHRONOUS_IO))
     {
         /* Use local event */
         Event = ExAllocatePoolWithTag(NonPagedPool, sizeof(KEVENT), TAG_IO);

@@ -179,7 +179,7 @@ public:
 
             WCHAR path[MAX_PATH];
 
-            StringCbCopyW(path, _countof(path), m_NtPath);
+            StringCbCopyW(path, sizeof(path), m_NtPath);
             PathAppendW(path, info->entryName);
 
             LPITEMIDLIST first = ILCloneFirst(pidl);
@@ -631,17 +631,17 @@ public:
     }
 
     // IPersistFolder
-    virtual HRESULT STDMETHODCALLTYPE Initialize(LPCITEMIDLIST pidl)
+    virtual HRESULT STDMETHODCALLTYPE Initialize(PCIDLIST_ABSOLUTE pidl)
     {
         m_shellPidl = ILClone(pidl);
 
-        StringCbCopy(m_NtPath, _countof(m_NtPath), L"\\");
+        StringCbCopyW(m_NtPath, sizeof(m_NtPath), L"\\");
 
         return S_OK;
     }
 
     // IPersistFolder2
-    virtual HRESULT STDMETHODCALLTYPE GetCurFolder(LPITEMIDLIST * pidl)
+    virtual HRESULT STDMETHODCALLTYPE GetCurFolder(PIDLIST_ABSOLUTE * pidl)
     {
         if (pidl)
             *pidl = ILClone(m_shellPidl);

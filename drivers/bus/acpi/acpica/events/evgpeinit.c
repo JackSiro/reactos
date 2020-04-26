@@ -5,7 +5,7 @@
  *****************************************************************************/
 
 /*
- * Copyright (C) 2000 - 2019, Intel Corp.
+ * Copyright (C) 2000 - 2020, Intel Corp.
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -194,8 +194,6 @@ AcpiEvGpeInitialize (
              * GPE0 and GPE1 do not have to be contiguous in the GPE number
              * space. However, GPE0 always starts at GPE number zero.
              */
-            GpeNumberMax = AcpiGbl_FADT.Gpe1Base +
-                ((RegisterCount1 * ACPI_GPE_REGISTER_WIDTH) - 1);
         }
     }
 
@@ -207,7 +205,6 @@ AcpiEvGpeInitialize (
 
         ACPI_DEBUG_PRINT ((ACPI_DB_INIT,
             "There are no GPE blocks defined in the FADT\n"));
-        Status = AE_OK;
         goto Cleanup;
     }
 
@@ -339,7 +336,7 @@ AcpiEvMatchGpeMethod (
     ACPI_STATUS             Status;
     UINT32                  GpeNumber;
     UINT8                   TempGpeNumber;
-    char                    Name[ACPI_NAME_SIZE + 1];
+    char                    Name[ACPI_NAMESEG_SIZE + 1];
     UINT8                   Type;
 
 
@@ -360,7 +357,7 @@ AcpiEvMatchGpeMethod (
      * 1) Extract the method name and null terminate it
      */
     ACPI_MOVE_32_TO_32 (Name, &MethodNode->Name.Integer);
-    Name[ACPI_NAME_SIZE] = 0;
+    Name[ACPI_NAMESEG_SIZE] = 0;
 
     /* 2) Name must begin with an underscore */
 

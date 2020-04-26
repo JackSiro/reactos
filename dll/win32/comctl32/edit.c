@@ -720,7 +720,11 @@ static void EDIT_BuildLineDefs_ML(EDITSTATE *es, INT istart, INT iend, INT delta
 		if ((es->style & ES_CENTER) || (es->style & ES_RIGHT))
 			rc.left = es->format_rect.left;
 		else
+#ifdef __REACTOS__ /* CORE-11475 */
+			rc.left = (short)LOWORD(EDIT_EM_PosFromChar(es, nstart_index, FALSE));
+#else
                         rc.left = LOWORD(EDIT_EM_PosFromChar(es, nstart_index, FALSE));
+#endif
 		rc.right = es->format_rect.right;
 		SetRectRgn(hrgn, rc.left, rc.top, rc.right, rc.bottom);
 
@@ -1046,7 +1050,11 @@ static LRESULT EDIT_EM_PosFromChar(EDITSTATE *es, INT index, BOOL after_wrap)
 			x -= es->x_offset;
 		}
 		else
+#ifdef __REACTOS__ /* CORE-15780 */
+			x = (lw > 0 ? es->x_offset : x - es->x_offset);
+#else
 			x = es->x_offset;
+#endif
 
 		if (es->style & ES_RIGHT)
 			x = w - (lw - x);

@@ -180,7 +180,8 @@ public:
     void Initialize(HWND hWndParent, CBalloonQueue * queue);
 };
 
-extern const WCHAR szSysPagerWndClass[];
+
+static const WCHAR szSysPagerWndClass[] = L"SysPager";
 
 class CSysPagerWnd :
     public CComCoClass<CSysPagerWnd>,
@@ -257,6 +258,10 @@ public:
 
     HRESULT Initialize(IN HWND hWndParent);
 };
+
+/*
+ * IconWatcher
+ */
 
 CIconWatcher::CIconWatcher() :
     m_hWatcherThread(NULL),
@@ -444,14 +449,14 @@ UINT WINAPI CIconWatcher::WatcherThread(_In_opt_ LPVOID lpParam)
         {
             // We've been kicked, we have updates to our list (or we're exiting the thread)
             if (This->m_Loop)
-                TRACE("Updating watched icon list");
+                TRACE("Updating watched icon list\n");
         }
         else if ((Status >= WAIT_OBJECT_0 + 1) && (Status < Size))
         {
             IconWatcherData *Icon;
             Icon = This->GetListEntry(NULL, WatchList[Status], false);
 
-            TRACE("Pid %lu owns a notification icon and has stopped without deleting it. We'll cleanup on its behalf", Icon->ProcessId);
+            TRACE("Pid %lu owns a notification icon and has stopped without deleting it. We'll cleanup on its behalf\n", Icon->ProcessId);
 
             TRAYNOTIFYDATAW tnid = {0};
             tnid.dwSignature = NI_NOTIFY_SIG;
@@ -489,8 +494,8 @@ UINT WINAPI CIconWatcher::WatcherThread(_In_opt_ LPVOID lpParam)
 }
 
 /*
-* NotifyToolbar
-*/
+ * BalloonQueue
+ */
 
 CBalloonQueue::CBalloonQueue() :
     m_hwndParent(NULL),
@@ -737,6 +742,7 @@ BOOL CNotifyToolbar::AddButton(_In_ CONST NOTIFYICONDATA *iconData)
     tbBtn.dwData = (DWORD_PTR)notifyItem;
     tbBtn.iString = (INT_PTR) text;
     tbBtn.idCommand = GetButtonCount();
+    tbBtn.iBitmap = -1;
 
     if (iconData->uFlags & NIF_STATE)
     {
@@ -832,7 +838,7 @@ BOOL CNotifyToolbar::UpdateButton(_In_ CONST NOTIFYICONDATA *iconData)
     InternalIconData * notifyItem;
     TBBUTTONINFO tbbi = { 0 };
 
-    TRACE("Updating icon %d from hWnd %08x flags%s%s state%s%s",
+    TRACE("Updating icon %d from hWnd %08x flags%s%s state%s%s\n",
         iconData->uID, iconData->hWnd,
         (iconData->uFlags & NIF_ICON) ? " ICON" : "",
         (iconData->uFlags & NIF_STATE) ? " STATE" : "",
@@ -842,7 +848,7 @@ BOOL CNotifyToolbar::UpdateButton(_In_ CONST NOTIFYICONDATA *iconData)
     int index = FindItem(iconData->hWnd, iconData->uID, &notifyItem);
     if (index < 0)
     {
-        WARN("Icon %d from hWnd %08x DOES NOT EXIST!", iconData->uID, iconData->hWnd);
+        WARN("Icon %d from hWnd %08x DOES NOT EXIST!\n", iconData->uID, iconData->hWnd);
         return AddButton(iconData);
     }
 
@@ -941,7 +947,7 @@ BOOL CNotifyToolbar::RemoveButton(_In_ CONST NOTIFYICONDATA *iconData)
     int index = FindItem(iconData->hWnd, iconData->uID, &notifyItem);
     if (index < 0)
     {
-        TRACE("Icon %d from hWnd %08x ALREADY MISSING!", iconData->uID, iconData->hWnd);
+        TRACE("Icon %d from hWnd %08x ALREADY MISSING!\n", iconData->uID, iconData->hWnd);
 
         return FALSE;
     }
@@ -1255,7 +1261,6 @@ void CNotifyToolbar::Initialize(HWND hWndParent, CBalloonQueue * queue)
 /*
  * SysPagerWnd
  */
-const WCHAR szSysPagerWndClass[] = L"SysPager";
 
 CSysPagerWnd::CSysPagerWnd() {}
 
@@ -1526,17 +1531,27 @@ LRESULT CSysPagerWnd::OnTimer(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL& bHa
     return 0;
 }
 
+LRESULT appbar_message( COPYDATASTRUCT* cds );
+
 LRESULT CSysPagerWnd::OnCopyData(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL& bHandled)
 {
     PCOPYDATASTRUCT cpData = (PCOPYDATASTRUCT)lParam;
-    if (cpData->dwData == 1)
+    if (cpData->dwData == TABDMC_NOTIFY)
     {
         /* A taskbar NotifyIcon notification */
         PTRAYNOTIFYDATAW pData = (PTRAYNOTIFYDATAW)cpData->lpData;
         if (pData->dwSignature == NI_NOTIFY_SIG)
             return NotifyIcon(pData->dwMessage, &pData->nid);
     }
-    // TODO: Handle other types of taskbar notifications
+    else if (cpData->dwData == TABDMC_APPBAR)
+    {
+        FIXME("Taskbar Tray Application Bar\n");
+        return appbar_message( cpData );
+    }
+    else if (cpData->dwData == TABDMC_LOADINPROC)
+    {
+        FIXME("Taskbar Load In Proc\n");
+    }
 
     return FALSE;
 }

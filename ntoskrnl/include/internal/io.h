@@ -539,6 +539,29 @@ typedef enum _SECURITY_DESCRIPTOR_TYPE
 } SECURITY_DESCRIPTOR_TYPE, *PSECURITY_DESCRIPTOR_TYPE;
 
 //
+// Action types and data for IopQueueDeviceAction()
+//
+typedef enum _DEVICE_ACTION
+{
+    DeviceActionInvalidateDeviceRelations,
+    MaxDeviceAction
+} DEVICE_ACTION;
+
+typedef struct _DEVICE_ACTION_DATA
+{
+    LIST_ENTRY RequestListEntry;
+    PDEVICE_OBJECT DeviceObject;
+    DEVICE_ACTION Action;
+    union
+    {
+        struct
+        {
+            DEVICE_RELATION_TYPE Type;
+        } InvalidateDeviceRelations;
+    };
+} DEVICE_ACTION_DATA, *PDEVICE_ACTION_DATA;
+
+//
 // Resource code
 //
 ULONG
@@ -931,6 +954,12 @@ IoGetRelatedTargetDevice(
 VOID
 NTAPI
 IopUnloadDevice(
+    IN PDEVICE_OBJECT DeviceObject
+);
+
+PDEVICE_OBJECT
+NTAPI
+IopGetDeviceAttachmentBase(
     IN PDEVICE_OBJECT DeviceObject
 );
 
@@ -1393,6 +1422,14 @@ IopStoreSystemPartitionInformation(IN PUNICODE_STRING NtSystemPartitionDeviceNam
 );
 
 //
+// Device action
+//
+VOID
+IopQueueDeviceAction(
+    _In_ PDEVICE_ACTION_DATA ActionData
+);
+
+//
 // Global I/O Data
 //
 extern POBJECT_TYPE IoCompletionType;
@@ -1412,6 +1449,7 @@ extern PDRIVER_OBJECT IopRootDriverObject;
 extern KSPIN_LOCK IopDeviceActionLock;
 extern LIST_ENTRY IopDeviceActionRequestList;
 extern RESERVE_IRP_ALLOCATOR IopReserveIrpAllocator;
+extern BOOLEAN IoRemoteBootClient;
 
 //
 // Inlined Functions

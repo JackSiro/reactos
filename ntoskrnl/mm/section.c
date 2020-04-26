@@ -197,7 +197,7 @@ NTSTATUS NTAPI PeFmtCreateSection(IN CONST VOID * FileHeader,
     ULONG cbHeadersSize = 0;
     ULONG nSectionAlignment;
     ULONG nFileAlignment;
-    ULONG_PTR ImageBase;
+    ULONG_PTR ImageBase = 0;
     const IMAGE_DOS_HEADER * pidhDosHeader;
     const IMAGE_NT_HEADERS32 * pinhNtHeader;
     const IMAGE_OPTIONAL_HEADER32 * piohOptHeader;
@@ -358,14 +358,17 @@ l_ReadHeaderFromFile:
 
     switch(piohOptHeader->Magic)
     {
-    case IMAGE_NT_OPTIONAL_HDR32_MAGIC:
-#ifdef _WIN64
-    case IMAGE_NT_OPTIONAL_HDR64_MAGIC:
-#endif // _WIN64
-        break;
-
-    default:
-        DIE(("Unrecognized optional header, Magic is %X\n", piohOptHeader->Magic));
+        case IMAGE_NT_OPTIONAL_HDR64_MAGIC:
+#ifndef _WIN64
+            nStatus = STATUS_INVALID_IMAGE_WIN_64;
+            DIE(("Win64 optional header, unsupported\n"));
+#else
+            // Fall through.
+#endif
+        case IMAGE_NT_OPTIONAL_HDR32_MAGIC:
+            break;
+        default:
+            DIE(("Unrecognized optional header, Magic is %X\n", piohOptHeader->Magic));
     }
 
     if (RTL_CONTAINS_FIELD(piohOptHeader, cbOptHeaderSize, SectionAlignment) &&
@@ -3303,9 +3306,12 @@ MmspCompareSegments(const void * x,
     const MM_SECTION_SEGMENT *Segment1 = (const MM_SECTION_SEGMENT *)x;
     const MM_SECTION_SEGMENT *Segment2 = (const MM_SECTION_SEGMENT *)y;
 
-    return
-        (Segment1->Image.VirtualAddress - Segment2->Image.VirtualAddress) >>
-        ((sizeof(ULONG_PTR) - sizeof(int)) * 8);
+    if (Segment1->Image.VirtualAddress > Segment2->Image.VirtualAddress)
+        return 1;
+    else if (Segment1->Image.VirtualAddress < Segment2->Image.VirtualAddress)
+        return -1;
+    else
+        return 0;
 }
 
 /*
@@ -3739,7 +3745,7 @@ MmCreateImageSection(PROS_SECTION_OBJECT *SectionObject,
         return STATUS_INVALID_FILE_FOR_SECTION;
 
 #ifndef NEWCC
-    if (FileObject->SectionObjectPointer->SharedCacheMap == NULL)
+    if (!CcIsFileCached(FileObject))
     {
         DPRINT1("Denying section creation due to missing cache initialization\n");
         return STATUS_INVALID_FILE_FOR_SECTION;
@@ -4573,11 +4579,11 @@ MmMapViewOfSection(IN PVOID SectionObject,
         ImageSectionObject->ImageInformation.ImageFileSize = (ULONG)ImageSize;
 
         /* Check for an illegal base address */
-        if (((ImageBase + ImageSize) > (ULONG_PTR)MmHighestUserAddress) ||
+        if (((ImageBase + ImageSize) > (ULONG_PTR)MM_HIGHEST_VAD_ADDRESS) ||
                 ((ImageBase + ImageSize) < ImageSize))
         {
             ASSERT(*BaseAddress == NULL);
-            ImageBase = ALIGN_DOWN_BY((ULONG_PTR)MmHighestUserAddress - ImageSize,
+            ImageBase = ALIGN_DOWN_BY((ULONG_PTR)MM_HIGHEST_VAD_ADDRESS - ImageSize,
                                       MM_VIRTMEM_GRANULARITY);
             NotAtBase = TRUE;
         }

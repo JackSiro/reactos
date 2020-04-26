@@ -1,4 +1,11 @@
-/* Russian language resource file by Petr Akhlamov (petr-akhlamov@yandex.ru) */
+/*
+ * PROJECT:     ReactOS Explorer
+ * LICENSE:     LGPL-2.1-or-later (https://spdx.org/licenses/LGPL-2.1-or-later)
+ * PURPOSE:     Russian resource file
+ * COPYRIGHT:   Copyright 2014-2015 Petr Akhlamov (petr-akhlamov@yandex.ru)
+ *              Copyright 2017-2020 Stanislav Motylkov (binarymaster@mail.ru)
+ *              Copyright 2019 Abdulganiev Rafael (abdulganiev.rafael[at]gmail.com)
+ */
 
 LANGUAGE LANG_RUSSIAN, SUBLANG_DEFAULT
 
@@ -132,6 +139,30 @@ BEGIN
     COMBOBOX IDC_TEXTOPTIONS, 52, 0, 123, 57, CBS_DROPDOWNLIST | WS_VSCROLL | WS_TABSTOP
     LTEXT "Размер зн&ачка:", -1, 4, 20, 48, 15
     COMBOBOX IDC_ICONOPTIONS, 52, 18, 123, 57, CBS_DROPDOWNLIST | WS_VSCROLL | WS_TABSTOP
+END
+
+IDD_SEARCH_DLG DIALOGEX 0, 0, 260, 85
+STYLE DS_SHELLFONT | DS_CONTROL | WS_CHILD | WS_VISIBLE | WS_CAPTION | WS_DLGFRAME
+FONT 8, "MS Shell Dlg"
+BEGIN
+    LTEXT "Поиск по одному или нескольким критериям.", IDC_SEARCH_LABEL, 4, 2, 120, 20
+
+    LTEXT "Полное или &частичное имя файла:", -1, 10, 25, 500, 10
+    EDITTEXT IDC_SEARCH_FILENAME, 10, 35, 100, 12, ES_AUTOHSCROLL | WS_BORDER | WS_TABSTOP
+
+    LTEXT "С&лово или фраза в файле:", -1, 10, 50, 500, 10
+    EDITTEXT IDC_SEARCH_QUERY, 10, 60, 100, 12, ES_AUTOHSCROLL | WS_BORDER | WS_TABSTOP
+
+    LTEXT "П&оиск в:", -1, 10, 75, 500, 10
+    CONTROL "", IDC_SEARCH_COMBOBOX, WC_COMBOBOXEXW, WS_CHILD | WS_VISIBLE | WS_CLIPCHILDREN | WS_TABSTOP | CCS_NODIVIDER | CCS_NOMOVEY | CBS_OWNERDRAWFIXED, 10, 85, 200, 200
+
+    DEFPUSHBUTTON "Най&ти", IDC_SEARCH_BUTTON, 80, 110, 40, 15, WS_GROUP | WS_TABSTOP | WS_VISIBLE
+    PUSHBUTTON "Остановит&ь", IDC_SEARCH_STOP_BUTTON, 80, 110, 40, 15, WS_GROUP | WS_TABSTOP
+
+    AUTOCHECKBOX "Искать в &скрытых файлах и папках",
+                 IDC_SEARCH_HIDDEN, 4, 130, 136, 8, WS_VISIBLE | WS_GROUP | WS_TABSTOP
+
+    CONTROL "", IDC_PROGRESS_BAR, PROGRESS_CLASSA, WS_BORDER | PBS_MARQUEE, 10, 155, 200, 8
 END
 
 /* Accelerators */
@@ -288,7 +319,7 @@ STRINGTABLE
 BEGIN
     IDS_BACK "Назад на ""%s"""
     IDS_FORWARD "Вперед на ""%s"""
-    IDS_FOLDER_OPTIONS "Folder Options"
+    IDS_FOLDER_OPTIONS "Свойства папки"
 END
 
 STRINGTABLE
@@ -301,4 +332,22 @@ BEGIN
     IDS_BROWSEFORNEWTOOLAR "Выберите папку"
     IDS_TOOLBAR_ERR_TITLE "Панель инструментов"
     IDS_TOOLBAR_ERR_TEXT "Не удалось создать панель инструментов."
+END
+
+STRINGTABLE
+BEGIN
+    IDS_SEARCH_RESULTS "Результаты поиска"
+    IDS_SEARCHINVALID "'%1' не является допустимой папкой."
+    IDS_SEARCH_FOLDER "Ищем в ""%s"""
+    IDS_SEARCH_FILES_FOUND "Найдено файлов: %u"
+    IDS_SEARCH_OPEN_FOLDER "Открыть &расположение объекта"
+    IDS_COL_NAME "Имя"
+    IDS_COL_LOCATION "В папке"
+    IDS_COL_RELEVANCE "Релевантность"
+END
+
+STRINGTABLE
+BEGIN
+    IDS_PARSE_ADDR_ERR_TITLE "Проводник ReactOS"
+    IDS_PARSE_ADDR_ERR_TEXT "Проводник ReactOS не может найти '%1'. Проверьте правильность написания и попробуйте снова."
 END

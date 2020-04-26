@@ -11,29 +11,52 @@
 #define NDEBUG
 #include <debug.h>
 
+//
+// Retrieves the ComponentId and Level for BREAKPOINT_PRINT
+// and OutputString and OutputStringLength for BREAKPOINT_PROMPT.
+//
+#if defined(_X86_)
+
+//
+// EBX/EDI on x86
+//
+#define KdpGetParameterThree(Context)  ((Context)->Ebx)
+#define KdpGetParameterFour(Context)   ((Context)->Edi)
+
+#elif defined(_AMD64_)
+
+//
+// R8/R9 on AMD64
+//
+#define KdpGetParameterThree(Context)  ((Context)->R8)
+#define KdpGetParameterFour(Context)   ((Context)->R9)
+
+#elif defined(_ARM_)
+
+//
+// R3/R4 on ARM
+//
+#define KdpGetParameterThree(Context)  ((Context)->R3)
+#define KdpGetParameterFour(Context)   ((Context)->R4)
+
+#else
+#error Unsupported Architecture
+#endif
+
 /* VARIABLES ***************************************************************/
 
 BOOLEAN KdDebuggerEnabled = FALSE;
 BOOLEAN KdEnteredDebugger = FALSE;
 BOOLEAN KdDebuggerNotPresent = TRUE;
 BOOLEAN KdBreakAfterSymbolLoad = FALSE;
-BOOLEAN KdpBreakPending = FALSE;
 BOOLEAN KdPitchDebugger = TRUE;
 BOOLEAN KdIgnoreUmExceptions = FALSE;
-KD_CONTEXT KdpContext;
-ULONG Kd_WIN2000_Mask;
+
 VOID NTAPI PspDumpThreads(BOOLEAN SystemThreads);
 
-typedef struct
-{
-    ULONG ComponentId;
-    ULONG Level;
-} KD_COMPONENT_DATA;
-#define MAX_KD_COMPONENT_TABLE_ENTRIES 128
-KD_COMPONENT_DATA KdComponentTable[MAX_KD_COMPONENT_TABLE_ENTRIES];
-ULONG KdComponentTableEntries = 0;
-
+#if 0
 ULONG Kd_DEFAULT_MASK = 1 << DPFLTR_ERROR_LEVEL;
+#endif
 
 /* PRIVATE FUNCTIONS *********************************************************/
 
@@ -49,8 +72,19 @@ KdpServiceDispatcher(ULONG Service,
     switch (Service)
     {
         case BREAKPOINT_PRINT: /* DbgPrint */
-            Result = KdpPrintString(Buffer1, Buffer1Length, PreviousMode);
+        {
+            /* Call KDBG */
+            BOOLEAN Handled;
+            Result = KdpPrint(MAXULONG,
+                              DPFLTR_INFO_LEVEL,
+                              (PCHAR)Buffer1,
+                              (USHORT)Buffer1Length,
+                              PreviousMode,
+                              NULL, // TrapFrame,
+                              NULL, // ExceptionFrame,
+                              &Handled);
             break;
+        }
 
 #if DBG
         case ' soR': /* ROS-INTERNAL */
@@ -97,7 +131,7 @@ KdpServiceDispatcher(ULONG Service,
         /* Special  case for stack frame dumps */
         case 'DsoR':
         {
-            KeRosDumpStackFrames((PULONG)Buffer1, Buffer1Length);
+            KeRosDumpStackFrames((PULONG_PTR)Buffer1, Buffer1Length);
             break;
         }
 
@@ -143,14 +177,20 @@ KdpEnterDebuggerException(IN PKTRAP_FRAME TrapFrame,
         /* Check if this is a debug print */
         if (ExceptionCommand == BREAKPOINT_PRINT)
         {
-            /* Print the string */
-            KdpServiceDispatcher(BREAKPOINT_PRINT,
-                                 (PVOID)ExceptionRecord->ExceptionInformation[1],
-                                 ExceptionRecord->ExceptionInformation[2],
-                                 PreviousMode);
+            /* Call KDBG */
+            NTSTATUS ReturnStatus;
+            BOOLEAN Handled;
+            ReturnStatus = KdpPrint((ULONG)KdpGetParameterThree(Context),
+                                    (ULONG)KdpGetParameterFour(Context),
+                                    (PCHAR)ExceptionRecord->ExceptionInformation[1],
+                                    (USHORT)ExceptionRecord->ExceptionInformation[2],
+                                    PreviousMode,
+                                    TrapFrame,
+                                    ExceptionFrame,
+                                    &Handled);
 
-            /* Return success */
-            KeSetContextReturnRegister(Context, STATUS_SUCCESS);
+            /* Update the return value for the caller */
+            KeSetContextReturnRegister(Context, ReturnStatus);
         }
 #ifdef KDBG
         else if (ExceptionCommand == BREAKPOINT_LOAD_SYMBOLS)
@@ -167,7 +207,7 @@ KdpEnterDebuggerException(IN PKTRAP_FRAME TrapFrame,
                     ProbeForRead(SymbolsInfo,
                                  sizeof(*SymbolsInfo),
                                  1);
-                    RtlCopyMemory(&CapturedSymbolsInfo,
+                    KdpMoveMemory(&CapturedSymbolsInfo,
                                   SymbolsInfo,
                                   sizeof(*SymbolsInfo));
                     SymbolsInfo = &CapturedSymbolsInfo;
@@ -190,25 +230,18 @@ KdpEnterDebuggerException(IN PKTRAP_FRAME TrapFrame,
         }
         else if (ExceptionCommand == BREAKPOINT_PROMPT)
         {
-            ULONG ReturnValue;
-            LPSTR OutString;
-            USHORT OutStringLength;
-
-            /* Get the response string  and length */
-            OutString = (LPSTR)Context->Ebx;
-            OutStringLength = (USHORT)Context->Edi;
-
             /* Call KDBG */
-            ReturnValue = KdpPrompt((LPSTR)ExceptionRecord->
-                                    ExceptionInformation[1],
-                                    (USHORT)ExceptionRecord->
-                                    ExceptionInformation[2],
-                                    OutString,
-                                    OutStringLength,
-                                    PreviousMode);
+            ULONG ReturnLength;
+            ReturnLength = KdpPrompt((PCHAR)ExceptionRecord->ExceptionInformation[1],
+                                     (USHORT)ExceptionRecord->ExceptionInformation[2],
+                                     (PCHAR)KdpGetParameterThree(Context),
+                                     (USHORT)KdpGetParameterFour(Context),
+                                     PreviousMode,
+                                     TrapFrame,
+                                     ExceptionFrame);
 
-            /* Return the number of characters that we received */
-            Context->Eax = ReturnValue;
+            /* Update the return value for the caller */
+            KeSetContextReturnRegister(Context, ReturnLength);
         }
 #endif
 
@@ -244,38 +277,10 @@ KdpEnterDebuggerException(IN PKTRAP_FRAME TrapFrame,
                                                   Context,
                                                   TrapFrame);
     }
+
+    /* We'll manually dump the stack for the user... */
+    KeRosDumpStackFrames(NULL, 0);
 #endif /* not KDBG */
-
-    /* Debugger didn't handle it, please handle! */
-    if (Return == kdHandleException) return FALSE;
-
-    /* Debugger handled it */
-    return TRUE;
-}
-
-BOOLEAN
-NTAPI
-KdpCallGdb(IN PKTRAP_FRAME TrapFrame,
-           IN PEXCEPTION_RECORD ExceptionRecord,
-           IN PCONTEXT Context)
-{
-    KD_CONTINUE_TYPE Return = kdDoNotHandleException;
-
-    /* Get out of here if the Debugger isn't connected */
-    if (KdDebuggerNotPresent) return FALSE;
-
-    /* FIXME:
-     * Right now, the GDB wrapper seems to handle exceptions differntly
-     * from KDGB and both are called at different times, while the GDB
-     * one is only called once and that's it. I don't really have the knowledge
-     * to fix the GDB stub, so until then, we'll be using this hack
-     */
-    if (WrapperInitRoutine)
-    {
-        Return = WrapperTable.KdpExceptionRoutine(ExceptionRecord,
-                                                  Context,
-                                                  TrapFrame);
-    }
 
     /* Debugger didn't handle it, please handle! */
     if (Return == kdHandleException) return FALSE;
@@ -295,6 +300,26 @@ KdIsThisAKdTrap(IN PEXCEPTION_RECORD ExceptionRecord,
 }
 
 /* PUBLIC FUNCTIONS *********************************************************/
+
+VOID
+NTAPI
+KdUpdateDataBlock(VOID)
+{
+}
+
+BOOLEAN
+NTAPI
+KdEnterDebugger(IN PKTRAP_FRAME TrapFrame,
+                IN PKEXCEPTION_FRAME ExceptionFrame)
+{
+    return FALSE;
+}
+
+VOID
+NTAPI
+KdExitDebugger(IN BOOLEAN Enable)
+{
+}
 
 /*
  * @implemented
@@ -334,6 +359,13 @@ KdDisableDebugger(VOID)
     return STATUS_SUCCESS;
 }
 
+NTSTATUS
+NTAPI
+KdEnableDebuggerWithLock(IN BOOLEAN NeedLock)
+{
+    return STATUS_ACCESS_DENIED;
+}
+
 /*
  * @implemented
  */
@@ -366,7 +398,7 @@ BOOLEAN
 NTAPI
 KdPollBreakIn(VOID)
 {
-    return KdpBreakPending;
+    return FALSE;
 }
 
 /*
@@ -394,91 +426,6 @@ KdChangeOption(IN KD_OPTION Option,
 {
     UNIMPLEMENTED;
     return STATUS_NOT_IMPLEMENTED;
-}
-
-
-NTSTATUS
-NTAPI
-NtQueryDebugFilterState(IN ULONG ComponentId,
-                        IN ULONG Level)
-{
-    ULONG i;
-
-    /* Convert Level to mask if it isn't already one */
-    if (Level < 32)
-        Level = 1 << Level;
-
-    /* Check if it is not the default component */
-    if (ComponentId != MAXULONG)
-    {
-        /* No, search for an existing entry in the table */
-        for (i = 0; i < KdComponentTableEntries; i++)
-        {
-            /* Check if it is the right component */
-            if (ComponentId == KdComponentTable[i].ComponentId)
-            {
-                /* Check if mask are matching */
-                return (Level & KdComponentTable[i].Level) ? TRUE : FALSE;
-            }
-        }
-    }
-
-    /* Entry not found in the table, use default mask */
-    return (Level & Kd_DEFAULT_MASK) ? TRUE : FALSE;
-}
-
-NTSTATUS
-NTAPI
-NtSetDebugFilterState(IN ULONG ComponentId,
-                      IN ULONG Level,
-                      IN BOOLEAN State)
-{
-    ULONG i;
-
-    /* Convert Level to mask if it isn't already one */
-    if (Level < 32)
-        Level = 1 << Level;
-    Level &= ~DPFLTR_MASK;
-
-    /* Check if it is the default component */
-    if (ComponentId == MAXULONG)
-    {
-        /* Yes, modify the default mask */
-        if (State)
-            Kd_DEFAULT_MASK |= Level;
-        else
-            Kd_DEFAULT_MASK &= ~Level;
-
-        return STATUS_SUCCESS;
-    }
-
-    /* Search for an existing entry */
-    for (i = 0; i < KdComponentTableEntries; i++ )
-    {
-        if (ComponentId == KdComponentTable[i].ComponentId)
-            break;
-    }
-
-    /* Check if we have found an existing entry */
-    if (i == KdComponentTableEntries)
-    {
-        /* Check if we have enough space in the table */
-        if (i == MAX_KD_COMPONENT_TABLE_ENTRIES)
-            return STATUS_INVALID_PARAMETER_1;
-
-        /* Add a new entry */
-        ++KdComponentTableEntries;
-        KdComponentTable[i].ComponentId = ComponentId;
-        KdComponentTable[i].Level = Kd_DEFAULT_MASK;
-    }
-
-    /* Update entry table */
-    if (State)
-        KdComponentTable[i].Level |= Level;
-    else
-        KdComponentTable[i].Level &= ~Level;
-
-    return STATUS_SUCCESS;
 }
 
 /*

@@ -109,8 +109,8 @@ DWORD WINAPI AllocateAndGetIfTableFromStack(PMIB_IFTABLE *ppIfTable,
 {
   DWORD ret;
 
-  TRACE("ppIfTable %p, bOrder %ld, heap 0x%08lx, flags 0x%08lx\n", ppIfTable,
-   (DWORD)bOrder, (DWORD)heap, flags);
+  TRACE("ppIfTable %p, bOrder %ld, heap 0x%p, flags 0x%08lx\n", ppIfTable,
+   (DWORD)bOrder, heap, flags);
   if (!ppIfTable)
     ret = ERROR_INVALID_PARAMETER;
   else {
@@ -153,8 +153,8 @@ DWORD WINAPI AllocateAndGetIpAddrTableFromStack(PMIB_IPADDRTABLE *ppIpAddrTable,
 {
   DWORD ret;
 
-  TRACE("ppIpAddrTable %p, bOrder %ld, heap 0x%08lx, flags 0x%08lx\n",
-   ppIpAddrTable, (DWORD)bOrder, (DWORD)heap, flags);
+  TRACE("ppIpAddrTable %p, bOrder %ld, heap 0x%p, flags 0x%08lx\n",
+   ppIpAddrTable, (DWORD)bOrder, heap, flags);
   if (!ppIpAddrTable)
     ret = ERROR_INVALID_PARAMETER;
   else {
@@ -195,8 +195,8 @@ DWORD WINAPI AllocateAndGetIpForwardTableFromStack(PMIB_IPFORWARDTABLE *
 {
   DWORD ret;
 
-  TRACE("ppIpForwardTable %p, bOrder %ld, heap 0x%08lx, flags 0x%08lx\n",
-   ppIpForwardTable, (DWORD)bOrder, (DWORD)heap, flags);
+  TRACE("ppIpForwardTable %p, bOrder %ld, heap 0x%p, flags 0x%08lx\n",
+   ppIpForwardTable, (DWORD)bOrder, heap, flags);
   if (!ppIpForwardTable)
     ret = ERROR_INVALID_PARAMETER;
   else {
@@ -239,8 +239,8 @@ DWORD WINAPI AllocateAndGetIpNetTableFromStack(PMIB_IPNETTABLE *ppIpNetTable,
 {
   DWORD ret;
 
-  TRACE("ppIpNetTable %p, bOrder %ld, heap 0x%08lx, flags 0x%08lx\n",
-   ppIpNetTable, (DWORD)bOrder, (DWORD)heap, flags);
+  TRACE("ppIpNetTable %p, bOrder %ld, heap 0x%p, flags 0x%08lx\n",
+   ppIpNetTable, (DWORD)bOrder, heap, flags);
   if (!ppIpNetTable)
     ret = ERROR_INVALID_PARAMETER;
   else {
@@ -283,8 +283,8 @@ DWORD WINAPI AllocateAndGetTcpTableFromStack(PMIB_TCPTABLE *ppTcpTable,
 {
   DWORD ret;
 
-  TRACE("ppTcpTable %p, bOrder %ld, heap 0x%08lx, flags 0x%08lx\n",
-   ppTcpTable, (DWORD)bOrder, (DWORD)heap, flags);
+  TRACE("ppTcpTable %p, bOrder %ld, heap 0x%p, flags 0x%08lx\n",
+   ppTcpTable, (DWORD)bOrder, heap, flags);
   if (!ppTcpTable)
     ret = ERROR_INVALID_PARAMETER;
   else {
@@ -328,8 +328,8 @@ DWORD WINAPI AllocateAndGetTcpExTableFromStack(PVOID *ppTcpTable,
 {
   DWORD ret;
 
-  TRACE("ppTcpTable %p, bOrder %ld, heap 0x%08lx, flags 0x%08lx, family 0x%08lx\n",
-   ppTcpTable, (DWORD)bOrder, (DWORD)heap, flags, family);
+  TRACE("ppTcpTable %p, bOrder %ld, heap 0x%p, flags 0x%08lx, family 0x%08lx\n",
+   ppTcpTable, (DWORD)bOrder, heap, flags, family);
   if (!ppTcpTable)
     ret = ERROR_INVALID_PARAMETER;
   else {
@@ -374,8 +374,8 @@ DWORD WINAPI AllocateAndGetTcpExTable2FromStack(PVOID *ppTcpTable,
 {
   DWORD ret;
 
-  TRACE("ppTcpTable %p, bOrder %ld, heap 0x%08lx, flags 0x%08lx, family %ld, class %ld\n",
-   ppTcpTable, (DWORD)bOrder, (DWORD)heap, flags, family, class);
+  TRACE("ppTcpTable %p, bOrder %ld, heap 0x%p, flags 0x%08lx, family %ld, class %ld\n",
+   ppTcpTable, (DWORD)bOrder, heap, flags, family, class);
   if (!ppTcpTable)
     ret = ERROR_INVALID_PARAMETER;
   else {
@@ -418,8 +418,8 @@ DWORD WINAPI AllocateAndGetUdpTableFromStack(PMIB_UDPTABLE *ppUdpTable,
 {
   DWORD ret;
 
-  TRACE("ppUdpTable %p, bOrder %ld, heap 0x%08lx, flags 0x%08lx\n",
-   ppUdpTable, (DWORD)bOrder, (DWORD)heap, flags);
+  TRACE("ppUdpTable %p, bOrder %ld, heap 0x%p, flags 0x%08lx\n",
+   ppUdpTable, (DWORD)bOrder, heap, flags);
   if (!ppUdpTable)
     ret = ERROR_INVALID_PARAMETER;
   else {
@@ -463,8 +463,8 @@ DWORD WINAPI AllocateAndGetUdpExTableFromStack(PVOID *ppUdpTable,
 {
   DWORD ret;
 
-  TRACE("ppUdpTable %p, bOrder %ld, heap 0x%08lx, flags 0x%08lx, family 0x%08lx\n",
-   ppUdpTable, (DWORD)bOrder, (DWORD)heap, flags, family);
+  TRACE("ppUdpTable %p, bOrder %ld, heap 0x%p, flags 0x%08lx, family 0x%08lx\n",
+   ppUdpTable, (DWORD)bOrder, heap, flags, family);
   if (!ppUdpTable)
     ret = ERROR_INVALID_PARAMETER;
   else {
@@ -509,8 +509,8 @@ DWORD WINAPI AllocateAndGetUdpExTable2FromStack(PVOID *ppUdpTable,
 {
   DWORD ret;
 
-  TRACE("ppUdpTable %p, bOrder %ld, heap 0x%08lx, flags 0x%08lx, family %ld, class %ld\n",
-   ppUdpTable, (DWORD)bOrder, (DWORD)heap, flags, family, class);
+  TRACE("ppUdpTable %p, bOrder %ld, heap 0x%p, flags 0x%08lx, family %ld, class %ld\n",
+   ppUdpTable, (DWORD)bOrder, heap, flags, family, class);
   if (!ppUdpTable)
     ret = ERROR_INVALID_PARAMETER;
   else {
@@ -1060,7 +1060,7 @@ DWORD WINAPI GetExtendedTcpTable(PVOID pTcpTable, PDWORD pdwSize, BOOL bOrder, U
                               sizeof(MIB_TCPROW), TcpTableSorter);
                 }
 
-                free(pOurTcpTable);
+                HeapFree(GetProcessHeap(),0, pOurTcpTable);
             }
         }
         break;
@@ -1105,7 +1105,7 @@ DWORD WINAPI GetExtendedTcpTable(PVOID pTcpTable, PDWORD pdwSize, BOOL bOrder, U
                               sizeof(MIB_TCPROW), TcpTableSorter);
                 }
 
-                free(pOurTcpTable);
+                HeapFree(GetProcessHeap(), 0, pOurTcpTable);
             }
         }
         break;
@@ -1150,7 +1150,7 @@ DWORD WINAPI GetExtendedTcpTable(PVOID pTcpTable, PDWORD pdwSize, BOOL bOrder, U
                               sizeof(MIB_TCPROW), TcpTableSorter);
                 }
 
-                free(pOurTcpTable);
+                HeapFree(GetProcessHeap(), 0, pOurTcpTable);
             }
         }
         break;
@@ -1178,7 +1178,7 @@ DWORD WINAPI GetExtendedTcpTable(PVOID pTcpTable, PDWORD pdwSize, BOOL bOrder, U
                               sizeof(MIB_TCPROW_OWNER_PID), TcpTableSorter);
                 }
 
-                free(pOurTcpTable);
+                HeapFree(GetProcessHeap(), 0, pOurTcpTable);
             }
         }
         break;
@@ -1224,7 +1224,7 @@ DWORD WINAPI GetExtendedTcpTable(PVOID pTcpTable, PDWORD pdwSize, BOOL bOrder, U
                               sizeof(MIB_TCPROW_OWNER_PID), TcpTableSorter);
                 }
 
-                free(pOurTcpTable);
+                HeapFree(GetProcessHeap(), 0, pOurTcpTable);
             }
         }
         break;
@@ -1270,7 +1270,7 @@ DWORD WINAPI GetExtendedTcpTable(PVOID pTcpTable, PDWORD pdwSize, BOOL bOrder, U
                               sizeof(MIB_TCPROW_OWNER_PID), TcpTableSorter);
                 }
 
-                free(pOurTcpTable);
+                HeapFree(GetProcessHeap(), 0, pOurTcpTable);
             }
         }
         break;
@@ -1298,7 +1298,7 @@ DWORD WINAPI GetExtendedTcpTable(PVOID pTcpTable, PDWORD pdwSize, BOOL bOrder, U
                               sizeof(MIB_TCPROW_OWNER_MODULE), TcpTableSorter);
                 }
 
-                free(pOurTcpTable);
+                HeapFree(GetProcessHeap(), 0, pOurTcpTable);
             }
         }
         break;
@@ -1344,7 +1344,7 @@ DWORD WINAPI GetExtendedTcpTable(PVOID pTcpTable, PDWORD pdwSize, BOOL bOrder, U
                               sizeof(MIB_TCPROW_OWNER_MODULE), TcpTableSorter);
                 }
 
-                free(pOurTcpTable);
+                HeapFree(GetProcessHeap(), 0, pOurTcpTable);
             }
         }
         break;
@@ -1390,7 +1390,7 @@ DWORD WINAPI GetExtendedTcpTable(PVOID pTcpTable, PDWORD pdwSize, BOOL bOrder, U
                               sizeof(MIB_TCPROW_OWNER_MODULE), TcpTableSorter);
                 }
 
-                free(pOurTcpTable);
+                HeapFree(GetProcessHeap(), 0, pOurTcpTable);
             }
         }
         break;
@@ -1480,7 +1480,7 @@ DWORD WINAPI GetExtendedUdpTable(PVOID pUdpTable, PDWORD pdwSize, BOOL bOrder, U
                               sizeof(MIB_UDPROW), UdpTableSorter);
                 }
 
-                free(pOurUdpTable);
+                HeapFree(GetProcessHeap(), 0, pOurUdpTable);
             }
         }
         break;
@@ -1507,7 +1507,7 @@ DWORD WINAPI GetExtendedUdpTable(PVOID pUdpTable, PDWORD pdwSize, BOOL bOrder, U
                               sizeof(MIB_UDPROW_OWNER_PID), UdpTableSorter);
                 }
 
-                free(pOurUdpTable);
+                HeapFree(GetProcessHeap(), 0, pOurUdpTable);
             }
         }
         break;
@@ -1534,7 +1534,7 @@ DWORD WINAPI GetExtendedUdpTable(PVOID pUdpTable, PDWORD pdwSize, BOOL bOrder, U
                               sizeof(MIB_UDPROW_OWNER_MODULE), UdpTableSorter);
                 }
 
-                free(pOurUdpTable);
+                HeapFree(GetProcessHeap(), 0, pOurUdpTable);
             }
         }
         break;
@@ -3186,7 +3186,10 @@ DWORD WINAPI DECLSPEC_HOTPATCH GetAdaptersAddresses(ULONG Family,ULONG Flags,PVO
 
     ret = openTcpFile(&tcpFile, FILE_READ_DATA);
     if (!NT_SUCCESS(ret))
+    {
+        free(indexTable);
         return ERROR_NO_DATA;
+    }
 
     for (i = indexTable->numIndexes; i >= 0; i--)
     {
@@ -3200,10 +3203,10 @@ DWORD WINAPI DECLSPEC_HOTPATCH GetAdaptersAddresses(ULONG Family,ULONG Flags,PVO
 
             /* Friendly name */
             if (!(Flags & GAA_FLAG_SKIP_FRIENDLY_NAME))
-                requiredSize += strlen((char *)ifInfo.if_info.ent.if_descr) + 1; //FIXME
+                requiredSize += ifInfo.if_info.ent.if_descrlen + 1; //FIXME
 
             /* Adapter name */
-            requiredSize += strlen((char *)ifInfo.if_info.ent.if_descr) + 1;
+            requiredSize += ifInfo.if_info.ent.if_descrlen + 1;
 
             /* Unicast address */
             if (!(Flags & GAA_FLAG_SKIP_UNICAST))
@@ -3248,7 +3251,7 @@ DWORD WINAPI DECLSPEC_HOTPATCH GetAdaptersAddresses(ULONG Family,ULONG Flags,PVO
 
             /* Adapter name */
             currentAddress->AdapterName = (PVOID)currentLocation;
-            currentLocation += strlen((char *)ifInfo.if_info.ent.if_descr) + 1;
+            currentLocation += ifInfo.if_info.ent.if_descrlen + 1;
 
             /* Unicast address */
             if (!(Flags & GAA_FLAG_SKIP_UNICAST))
@@ -3297,7 +3300,8 @@ DWORD WINAPI DECLSPEC_HOTPATCH GetAdaptersAddresses(ULONG Family,ULONG Flags,PVO
             currentAddress->IfIndex = indexTable->indexes[i];
 
             /* Adapter name */
-            strcpy(currentAddress->AdapterName, (char *)ifInfo.if_info.ent.if_descr);
+            memcpy(currentAddress->AdapterName, ifInfo.if_info.ent.if_descr, ifInfo.if_info.ent.if_descrlen);
+            currentAddress->AdapterName[ifInfo.if_info.ent.if_descrlen] = '\0';
 
             if (!(Flags & GAA_FLAG_SKIP_UNICAST))
             {

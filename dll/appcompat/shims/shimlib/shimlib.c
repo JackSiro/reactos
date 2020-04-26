@@ -23,18 +23,20 @@ typedef struct UsedShim
 
 
 ULONG g_ShimEngDebugLevel = 0xffffffff;
+static HINSTANCE g_ShimLib_hInstance;
 static HANDLE g_ShimLib_Heap;
 static PSLIST_HEADER g_UsedShims;
 
 void ShimLib_Init(HINSTANCE hInstance)
 {
+    g_ShimLib_hInstance = hInstance;
     g_ShimLib_Heap = HeapCreate(0, 0x10000, 0);
 
     g_UsedShims = (PSLIST_HEADER)ShimLib_ShimMalloc(sizeof(SLIST_HEADER));
     RtlInitializeSListHead(g_UsedShims);
 }
 
-void ShimLib_Deinit()
+void ShimLib_Deinit(VOID)
 {
     // Is this a good idea?
     HeapDestroy(g_ShimLib_Heap);
@@ -50,6 +52,11 @@ void ShimLib_ShimFree(PVOID pData)
     HeapFree(g_ShimLib_Heap, 0, pData);
 }
 
+HINSTANCE ShimLib_Instance(VOID)
+{
+    return g_ShimLib_hInstance;
+}
+
 PCSTR ShimLib_StringNDuplicateA(PCSTR szString, SIZE_T stringLengthIncludingNullTerm)
 {
     PSTR NewString = ShimLib_ShimMalloc(stringLengthIncludingNullTerm);
@@ -62,9 +69,9 @@ PCSTR ShimLib_StringDuplicateA(PCSTR szString)
     return ShimLib_StringNDuplicateA(szString, lstrlenA(szString) + 1);
 }
 
-BOOL ShimLib_StrAEqualsW(PCSTR szString, PCWSTR wszString)
+BOOL ShimLib_StrAEqualsWNC(PCSTR szString, PCWSTR wszString)
 {
-    while (*szString == *wszString)
+    while (toupper(*szString) == towupper(*wszString))
     {
         if (!*szString)
             return TRUE;
@@ -93,7 +100,7 @@ BOOL ShimLib_StrAEqualsW(PCSTR szString, PCWSTR wszString)
 #endif
 
 
-_SHMALLOC(".shm") SHIMREG _shim_start = { 0 };
+_SHMALLOC(".shm$AAA") SHIMREG _shim_start = { 0 };
 _SHMALLOC(".shm$ZZZ") SHIMREG _shim_end = { 0 };
 
 
@@ -105,11 +112,11 @@ PHOOKAPI WINAPI ShimLib_GetHookAPIs(IN LPCSTR szCommandLine, IN LPCWSTR wszShimN
 {
     PSHIMREG ps = &_shim_start;
     ps++;
-    for (; ps != &_shim_end; ps++)
+    for (; ps < &_shim_end; ps++)
     {
         if (ps->GetHookAPIs != NULL && ps->ShimName != NULL)
         {
-            if (ShimLib_StrAEqualsW(ps->ShimName, wszShimName))
+            if (ShimLib_StrAEqualsWNC(ps->ShimName, wszShimName))
             {
                 pUsedShim shim = (pUsedShim)ShimLib_ShimMalloc(sizeof(UsedShim));
                 shim->pShim = ps;

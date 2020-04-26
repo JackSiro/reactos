@@ -1,12 +1,18 @@
 
 add_definitions(
     -D__WINESRC__
+    -D__ROS_LONG64__
     -DENTRY_PREFIX=WIC_
     -DPROXY_DELEGATION
     -DWINE_REGISTER_DLL)
 
 remove_definitions(-D_WIN32_WINNT=0x502)
 add_definitions(-D_WIN32_WINNT=0x600)
+
+if(MSVC)
+    # error C4133: 'function': incompatible types - from 'WICPixelFormatNumericRepresentation *' to 'DWORD *'
+    replace_compile_flags("/we4133" " ")
+endif()
 
 include_directories(
     BEFORE ${REACTOS_SOURCE_DIR}/sdk/include/reactos/wine
@@ -70,7 +76,7 @@ list(APPEND ADDITIONAL_SOURCE
     ${CMAKE_CURRENT_BINARY_DIR}/windowscodecs.def
     ${CMAKE_CURRENT_BINARY_DIR}/windowscodecs_wincodec_p.c)
 
-add_library(windowscodecs SHARED
+add_library(windowscodecs MODULE
     ${SOURCE}
     ${ADDITIONAL_SOURCE})
 

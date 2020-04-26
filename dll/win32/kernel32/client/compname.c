@@ -335,21 +335,24 @@ GetComputerNameExW(COMPUTER_NAME_FORMAT NameType,
         case ComputerNamePhysicalDnsDomain:
             return GetComputerNameFromRegistry(L"\\Registry\\Machine\\System\\CurrentControlSet"
                                                L"\\Services\\Tcpip\\Parameters",
-                                               L"Domain",
+                                               L"NV Domain",
                                                lpBuffer,
                                                nSize);
 
-        /* XXX Redo these */
+        /* XXX Redo this */
         case ComputerNamePhysicalDnsFullyQualified:
             return GetComputerNameExW(ComputerNameDnsFullyQualified,
                                       lpBuffer,
                                       nSize);
 
         case ComputerNamePhysicalDnsHostname:
-            return GetComputerNameExW(ComputerNameDnsHostname,
-                                      lpBuffer,
-                                      nSize);
+            return GetComputerNameFromRegistry(L"\\Registry\\Machine\\System\\CurrentControlSet"
+                                               L"\\Services\\Tcpip\\Parameters",
+                                               L"NV Hostname",
+                                               lpBuffer,
+                                               nSize);
 
+        /* XXX Redo this */
         case ComputerNamePhysicalNetBIOS:
             return GetComputerNameExW(ComputerNameNetBIOS,
                                       lpBuffer,
@@ -477,7 +480,14 @@ IsValidComputerName(COMPUTER_NAME_FORMAT NameType,
         p++;
     }
 
-    if (Length == 0 || Length > MAX_COMPUTERNAME_LENGTH)
+    if (NameType == ComputerNamePhysicalDnsDomain)
+        return TRUE;
+
+    if (Length == 0)
+        return FALSE;
+
+    if (NameType == ComputerNamePhysicalNetBIOS &&
+        Length > MAX_COMPUTERNAME_LENGTH)
         return FALSE;
 
     return TRUE;
@@ -592,25 +602,33 @@ WINAPI
 SetComputerNameExW(COMPUTER_NAME_FORMAT NameType,
                    LPCWSTR lpBuffer)
 {
+    BOOL ret1, ret2;
+
     if (!IsValidComputerName(NameType, lpBuffer))
     {
         SetLastError(ERROR_INVALID_PARAMETER);
         return FALSE;
     }
 
-    switch( NameType )
+    switch (NameType)
     {
         case ComputerNamePhysicalDnsDomain:
             return SetComputerNameToRegistry(L"\\Registry\\Machine\\System\\CurrentControlSet"
                                              L"\\Services\\Tcpip\\Parameters",
-                                             L"Domain",
+                                             L"NV Domain",
                                              lpBuffer);
 
         case ComputerNamePhysicalDnsHostname:
-            return SetComputerNameToRegistry(L"\\Registry\\Machine\\System\\CurrentControlSet"
+            ret1 = SetComputerNameToRegistry(L"\\Registry\\Machine\\System\\CurrentControlSet"
                                              L"\\Services\\Tcpip\\Parameters",
-                                             L"Hostname",
+                                             L"NV Hostname",
                                              lpBuffer);
+
+            ret2 = SetComputerNameToRegistry(L"\\Registry\\Machine\\System\\CurrentControlSet"
+                                             L"\\Control\\ComputerName\\ComputerName",
+                                             L"ComputerName",
+                                             lpBuffer);
+            return (ret1 && ret2);
 
         case ComputerNamePhysicalNetBIOS:
             return SetComputerNameToRegistry(L"\\Registry\\Machine\\System\\CurrentControlSet"

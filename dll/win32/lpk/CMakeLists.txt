@@ -5,11 +5,12 @@ spec2def(lpk.dll lpk.spec ADD_IMPORTLIB)
 
 list(APPEND SOURCE
     bidi.c
+    direction.c
     lpk.c
     stub.c
     ros_lpk.h)
 
-add_library(lpk SHARED
+add_library(lpk MODULE
     ${SOURCE}
     lpk.rc
     ${CMAKE_CURRENT_BINARY_DIR}/lpk.def)

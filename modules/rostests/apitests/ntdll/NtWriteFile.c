@@ -38,6 +38,24 @@ SizeOfMdl(VOID)
     return Is64BitSystem() ? 48 : 28;
 }
 
+static
+ULONG
+SizeOfSector(VOID)
+{
+    BOOL Ret;
+    ULONG SectorSize;
+
+    /* FIXME: Would be better to actually open systemroot */
+    Ret = GetDiskFreeSpaceW(NULL, NULL, &SectorSize, NULL, NULL);
+    ok(Ret != FALSE, "GetDiskFreeSpaceW failed: %lx\n", GetLastError());
+    if (!Ret)
+    {
+        SectorSize = 4096; /* On failure, assume max size */
+    }
+
+    return SectorSize;
+}
+
 START_TEST(NtWriteFile)
 {
     NTSTATUS Status;
@@ -192,6 +210,93 @@ START_TEST(NtWriteFile)
                          &IoStatus,
                          Buffer,
                          TooLargeDataSize,
+                         &ByteOffset,
+                         NULL);
+    ok_hex(Status, STATUS_SUCCESS);
+
+    DispositionInfo.DeleteFile = TRUE;
+    Status = NtSetInformationFile(FileHandle,
+                                  &IoStatus,
+                                  &DispositionInfo,
+                                  sizeof(DispositionInfo),
+                                  FileDispositionInformation);
+    ok_hex(Status, STATUS_SUCCESS);
+    Status = NtClose(FileHandle);
+    ok_hex(Status, STATUS_SUCCESS);
+
+    Status = NtFreeVirtualMemory(NtCurrentProcess(),
+                                 &Buffer,
+                                 &BufferSize,
+                                 MEM_RELEASE);
+    ok_hex(Status, STATUS_SUCCESS);
+
+    /* Now, testing aligned/non aligned writes */
+
+    BufferSize = SizeOfSector();
+    trace("Sector is %ld bytes\n", BufferSize);
+
+    Status = NtAllocateVirtualMemory(NtCurrentProcess(),
+                                     &Buffer,
+                                     0,
+                                     &BufferSize,
+                                     MEM_RESERVE | MEM_COMMIT,
+                                     PAGE_READONLY);
+    if (!NT_SUCCESS(Status))
+    {
+        skip("Failed to allocate memory, status %lx\n", Status);
+        return;
+    }
+
+    Status = NtCreateFile(&FileHandle,
+                          FILE_WRITE_DATA | DELETE | SYNCHRONIZE,
+                          &ObjectAttributes,
+                          &IoStatus,
+                          NULL,
+                          0,
+                          0,
+                          FILE_SUPERSEDE,
+                          FILE_NON_DIRECTORY_FILE | FILE_SYNCHRONOUS_IO_NONALERT |
+                                                    FILE_NO_INTERMEDIATE_BUFFERING |
+                                                    FILE_WRITE_THROUGH,
+                          NULL,
+                          0);
+    ok_hex(Status, STATUS_SUCCESS);
+
+    /* non-cached, broken length -- fails with invalid parameter */
+    ByteOffset.QuadPart = 0;
+    Status = NtWriteFile(FileHandle,
+                         NULL,
+                         NULL,
+                         NULL,
+                         &IoStatus,
+                         Buffer,
+                         4,
+                         &ByteOffset,
+                         NULL);
+    ok_hex(Status, STATUS_INVALID_PARAMETER);
+
+    /* non-cached, broken offset -- fails with invalid parameter */
+    ByteOffset.QuadPart = 4;
+    Status = NtWriteFile(FileHandle,
+                         NULL,
+                         NULL,
+                         NULL,
+                         &IoStatus,
+                         Buffer,
+                         BufferSize,
+                         &ByteOffset,
+                         NULL);
+    ok_hex(Status, STATUS_INVALID_PARAMETER);
+
+    /* non-cached, good length and offset -- succeeds */
+    ByteOffset.QuadPart = 0;
+    Status = NtWriteFile(FileHandle,
+                         NULL,
+                         NULL,
+                         NULL,
+                         &IoStatus,
+                         Buffer,
+                         BufferSize,
                          &ByteOffset,
                          NULL);
     ok_hex(Status, STATUS_SUCCESS);

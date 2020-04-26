@@ -2,7 +2,8 @@
  * PROJECT:     ReactOS Setup Library
  * LICENSE:     GPL-2.0+ (https://spdx.org/licenses/GPL-2.0+)
  * PURPOSE:     Partition list functions
- * COPYRIGHT:   Copyright 2003-2018 Casper S. Hornstrup (chorns@users.sourceforge.net)
+ * COPYRIGHT:   Copyright 2003-2019 Casper S. Hornstrup (chorns@users.sourceforge.net)
+ *              Copyright 2018-2019 Hermes Belusca-Maito
  */
 
 #pragma once
@@ -30,8 +31,6 @@ typedef enum _FORMATSTATE
     Formatted
 } FORMATSTATE, *PFORMATSTATE;
 
-struct _FILE_SYSTEM;
-
 typedef struct _PARTENTRY
 {
     LIST_ENTRY ListEntry;
@@ -43,21 +42,23 @@ typedef struct _PARTENTRY
     ULARGE_INTEGER StartSector;
     ULARGE_INTEGER SectorCount;
 
-    BOOLEAN BootIndicator;
+    BOOLEAN BootIndicator;  // NOTE: See comment for the PARTLIST::SystemPartition member.
     UCHAR PartitionType;
-    ULONG HiddenSectors;
     ULONG OnDiskPartitionNumber; /* Enumerated partition number (primary partitions first, excluding the extended partition container, then the logical partitions) */
     ULONG PartitionNumber;       /* Current partition number, only valid for the currently running NTOS instance */
     ULONG PartitionIndex;        /* Index in the LayoutBuffer->PartitionEntry[] cached array of the corresponding DiskEntry */
 
     WCHAR DriveLetter;
     WCHAR VolumeLabel[20];
-    // CHAR FileSystemName[9];  // NOTE: Superseded by the FileSystem member
+    WCHAR FileSystem[MAX_PATH+1];
+    FORMATSTATE FormatState;
 
     BOOLEAN LogicalPartition;
 
     /* Partition is partitioned disk space */
     BOOLEAN IsPartitioned;
+
+/** The following three properties may be replaced by flags **/
 
     /* Partition is new, table does not exist on disk yet */
     BOOLEAN New;
@@ -68,27 +69,16 @@ typedef struct _PARTENTRY
     /* Partition must be checked */
     BOOLEAN NeedsCheck;
 
-    FORMATSTATE FormatState;
-    struct _FILE_SYSTEM* FileSystem;
-
 } PARTENTRY, *PPARTENTRY;
-
-
-typedef struct _BIOSDISKENTRY
-{
-    LIST_ENTRY ListEntry;
-    ULONG DiskNumber;
-    ULONG Signature;
-    ULONG Checksum;
-    BOOLEAN Recognized;
-    CM_DISK_GEOMETRY_DEVICE_DATA DiskGeometry;
-    CM_INT13_DRIVE_PARAMETER Int13DiskData;
-} BIOSDISKENTRY, *PBIOSDISKENTRY;
-
 
 typedef struct _DISKENTRY
 {
     LIST_ENTRY ListEntry;
+
+    /* The list of disks/partitions this disk belongs to */
+    struct _PARTLIST *PartList;
+
+    MEDIA_TYPE MediaType;   /* FixedMedia or RemovableMedia */
 
     /* Disk geometry */
 
@@ -101,9 +91,12 @@ typedef struct _DISKENTRY
     ULONG SectorAlignment;
     ULONG CylinderAlignment;
 
-    /* BIOS parameters */
+    /* BIOS Firmware parameters */
     BOOLEAN BiosFound;
-    ULONG BiosDiskNumber;
+    ULONG HwAdapterNumber;
+    ULONG HwControllerNumber;
+    ULONG HwDiskNumber;         /* Disk number currently assigned on the system */
+    ULONG HwFixedDiskNumber;    /* Disk number on the system when *ALL* removable disks are not connected */
 //    ULONG Signature;  // Obtained from LayoutBuffer->Signature
 //    ULONG Checksum;
 
@@ -136,36 +129,31 @@ typedef struct _DISKENTRY
 
 } DISKENTRY, *PDISKENTRY;
 
+typedef struct _BIOSDISKENTRY
+{
+    LIST_ENTRY ListEntry;
+    ULONG AdapterNumber;
+    ULONG ControllerNumber;
+    ULONG DiskNumber;
+    ULONG Signature;
+    ULONG Checksum;
+    PDISKENTRY DiskEntry;   /* Corresponding recognized disk; is NULL if the disk is not recognized */ // RecognizedDiskEntry;
+    CM_DISK_GEOMETRY_DEVICE_DATA DiskGeometry;
+    CM_INT13_DRIVE_PARAMETER Int13DiskData;
+} BIOSDISKENTRY, *PBIOSDISKENTRY;
 
 typedef struct _PARTLIST
 {
-    /*
-     * Disk & Partition iterators.
-     *
-     * NOTE that when CurrentPartition != NULL, then CurrentPartition->DiskEntry
-     * must be the same as CurrentDisk. We should however keep the two members
-     * separated as we can have a current (selected) disk without any current
-     * partition, if the former does not contain any.
-     */
-    PDISKENTRY CurrentDisk;
-    PPARTENTRY CurrentPartition;
-
     /*
      * The system partition where the boot manager resides.
      * The corresponding system disk is obtained via:
      *    SystemPartition->DiskEntry.
      */
+    // NOTE: It seems to appear that the specifications of ARC and (u)EFI
+    // actually allow for multiple system partitions to exist on the system.
+    // If so we should instead rely on the BootIndicator bit of the PARTENTRY
+    // structure in order to find these.
     PPARTENTRY SystemPartition;
-    /*
-     * The original system partition in case we are redefining it because
-     * we do not have write support on it.
-     * Please note that this is partly a HACK and MUST NEVER happen on
-     * architectures where real system partitions are mandatory (because then
-     * they are formatted in FAT FS and we support write operation on them).
-     * The corresponding original system disk is obtained via:
-     *    OriginalSystemPartition->DiskEntry.
-     */
-    PPARTENTRY OriginalSystemPartition;
 
     LIST_ENTRY DiskListHead;
     LIST_ENTRY BiosDiskListHead;
@@ -232,6 +220,13 @@ RoundingDivide(
    IN ULONGLONG Divisor);
 
 
+BOOLEAN
+IsSuperFloppy(
+    IN PDISKENTRY DiskEntry);
+
+BOOLEAN
+IsPartitionActive(
+    IN PPARTENTRY PartEntry);
 
 PPARTLIST
 CreatePartitionList(VOID);
@@ -243,7 +238,7 @@ DestroyPartitionList(
 PDISKENTRY
 GetDiskByBiosNumber(
     IN PPARTLIST List,
-    IN ULONG BiosDiskNumber);
+    IN ULONG HwDiskNumber);
 
 PDISKENTRY
 GetDiskByNumber(
@@ -276,7 +271,7 @@ GetDiskOrPartition(
     OUT PDISKENTRY* pDiskEntry,
     OUT PPARTENTRY* pPartEntry OPTIONAL);
 
-BOOLEAN
+PPARTENTRY
 SelectPartition(
     IN PPARTLIST List,
     IN ULONG DiskNumber,
@@ -284,36 +279,60 @@ SelectPartition(
 
 PPARTENTRY
 GetNextPartition(
-    IN PPARTLIST List);
+    IN PPARTLIST List,
+    IN PPARTENTRY CurrentPart OPTIONAL);
 
 PPARTENTRY
 GetPrevPartition(
-    IN PPARTLIST List);
+    IN PPARTLIST List,
+    IN PPARTENTRY CurrentPart OPTIONAL);
 
 BOOLEAN
 CreatePrimaryPartition(
     IN PPARTLIST List,
+    IN OUT PPARTENTRY PartEntry,
     IN ULONGLONG SectorCount,
     IN BOOLEAN AutoCreate);
 
 BOOLEAN
 CreateExtendedPartition(
     IN PPARTLIST List,
+    IN OUT PPARTENTRY PartEntry,
     IN ULONGLONG SectorCount);
 
 BOOLEAN
 CreateLogicalPartition(
     IN PPARTLIST List,
+    IN OUT PPARTENTRY PartEntry,
     IN ULONGLONG SectorCount,
     IN BOOLEAN AutoCreate);
 
-VOID
-DeleteCurrentPartition(
-    IN PPARTLIST List);
+NTSTATUS
+DismountVolume(
+    IN PPARTENTRY PartEntry);
 
-VOID
-CheckActiveSystemPartition(
-    IN PPARTLIST List);
+BOOLEAN
+DeletePartition(
+    IN PPARTLIST List,
+    IN PPARTENTRY PartEntry,
+    OUT PPARTENTRY* FreeRegion OPTIONAL);
+
+PPARTENTRY
+FindSupportedSystemPartition(
+    IN PPARTLIST List,
+    IN BOOLEAN ForceSelect,
+    IN PDISKENTRY AlternativeDisk OPTIONAL,
+    IN PPARTENTRY AlternativePart OPTIONAL);
+
+BOOLEAN
+SetActivePartition(
+    IN PPARTLIST List,
+    IN PPARTENTRY PartEntry,
+    IN PPARTENTRY OldActivePart OPTIONAL);
+
+NTSTATUS
+WritePartitions(
+    IN PDISKENTRY DiskEntry);
 
 BOOLEAN
 WritePartitionsToDisk(
@@ -336,15 +355,15 @@ SetPartitionType(
 
 ERROR_NUMBER
 PrimaryPartitionCreationChecks(
-    IN PPARTLIST List);
+    IN PPARTENTRY PartEntry);
 
 ERROR_NUMBER
 ExtendedPartitionCreationChecks(
-    IN PPARTLIST List);
+    IN PPARTENTRY PartEntry);
 
 ERROR_NUMBER
 LogicalPartitionCreationChecks(
-    IN PPARTLIST List);
+    IN PPARTENTRY PartEntry);
 
 BOOLEAN
 GetNextUnformattedPartition(

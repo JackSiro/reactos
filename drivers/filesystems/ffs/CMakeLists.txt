@@ -28,15 +28,15 @@ list(APPEND SOURCE
     src/write.c
     inc/ffsdrv.h)
 
-add_library(ffs SHARED ${SOURCE} src/ffsdrv.rc)
+add_library(ffs MODULE ${SOURCE} src/ffsdrv.rc)
 
 if(USE_CLANG_CL OR (NOT MSVC))
-    add_target_compile_flags(ffs "-Wno-pointer-sign -Wno-unused-function")
-    add_target_compile_flags(ffs "-Wno-unused-variable -Wno-missing-braces")
+    target_compile_options(ffs PRIVATE -Wno-pointer-sign -Wno-unused-function)
+    target_compile_options(ffs PRIVATE -Wno-unused-variable -Wno-missing-braces)
     if(USE_CLANG_CL)
-        add_target_compile_flags(ffs "-Wno-empty-body")
+        target_compile_options(ffs PRIVATE -Wno-empty-body)
     else()
-        add_target_compile_flags(ffs "-Wno-unused-but-set-variable")
+        target_compile_options(ffs PRIVATE -Wno-unused-but-set-variable)
     endif()
 endif()
 

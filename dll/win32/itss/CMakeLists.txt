@@ -1,5 +1,5 @@
 
-add_definitions(-D__WINESRC__)
+add_definitions(-D__WINESRC__ -D__ROS_LONG64__)
 include_directories(${REACTOS_SOURCE_DIR}/sdk/include/reactos/wine)
 spec2def(itss.dll itss.spec)
 
@@ -12,7 +12,7 @@ list(APPEND SOURCE
     storage.c
     precomp.h)
 
-add_library(itss SHARED
+add_library(itss MODULE
     ${SOURCE}
     guid.c
     rsrc.rc

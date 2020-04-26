@@ -239,13 +239,13 @@ UDFFileDirInfoToNT(
     UNICODE_STRING DosName;
     PEXTENDED_FILE_ENTRY ExFileEntry;
     USHORT Ident;
-    BOOLEAN ReadSizes;
+    BOOLEAN ReadSizes = FALSE;
     NTSTATUS status;
     PtrUDFNTRequiredFCB NtReqFcb;
 
     UDFPrint(("@=%#x, FileDirNdx %x\n", &Vcb, FileDirNdx));
 
-    ASSERT((ULONG)NTFileInfo > 0x1000);
+    ASSERT((ULONG_PTR)NTFileInfo > 0x1000);
     RtlZeroMemory(NTFileInfo, sizeof(FILE_BOTH_DIR_INFORMATION));
     
     DosName.Buffer = (PWCHAR)&(NTFileInfo->ShortName);

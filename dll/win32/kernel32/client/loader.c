@@ -110,23 +110,25 @@ WINAPI
 DECLSPEC_HOTPATCH
 LoadLibraryA(LPCSTR lpLibFileName)
 {
+    static const CHAR TwainDllName[] = "twain_32.dll";
     LPSTR PathBuffer;
     UINT Len;
     HINSTANCE Result;
 
     /* Treat twain_32.dll in a special way (what a surprise...) */
-    if (lpLibFileName && !_strcmpi(lpLibFileName, "twain_32.dll"))
+    if (lpLibFileName && !_strcmpi(lpLibFileName, TwainDllName))
     {
         /* Allocate space for the buffer */
-        PathBuffer = RtlAllocateHeap(RtlGetProcessHeap(), 0, MAX_PATH);
+        PathBuffer = RtlAllocateHeap(RtlGetProcessHeap(), 0, MAX_PATH + sizeof(ANSI_NULL));
         if (PathBuffer)
         {
             /* Get windows dir in this buffer */
-            Len = GetWindowsDirectoryA(PathBuffer, MAX_PATH - 13); /* 13 is sizeof of '\\twain_32.dll' */
-            if (Len && Len < (MAX_PATH - 13))
+            Len = GetWindowsDirectoryA(PathBuffer, MAX_PATH);
+            if ((Len != 0) && (Len < (MAX_PATH - sizeof(TwainDllName) - sizeof('\\'))))
             {
                 /* We successfully got windows directory. Concatenate twain_32.dll to it */
-                strncat(PathBuffer, "\\twain_32.dll", 13);
+                PathBuffer[Len] = '\\';
+                strcpy(&PathBuffer[Len + 1], TwainDllName);
 
                 /* And recursively call ourselves with a new string */
                 Result = LoadLibraryA(PathBuffer);
@@ -462,17 +464,8 @@ FreeLibrary(HINSTANCE hLibModule)
 
     if (LDR_IS_DATAFILE(hLibModule))
     {
-        // FIXME: This SEH should go inside RtlImageNtHeader instead
-        // See https://jira.reactos.org/browse/CORE-14857
-        _SEH2_TRY
-        {
-            /* This is a LOAD_LIBRARY_AS_DATAFILE module, check if it's a valid one */
-            NtHeaders = RtlImageNtHeader((PVOID)((ULONG_PTR)hLibModule & ~1));
-        }
-        _SEH2_EXCEPT(EXCEPTION_EXECUTE_HANDLER)
-        {
-            NtHeaders = NULL;
-        } _SEH2_END
+        /* This is a LOAD_LIBRARY_AS_DATAFILE module, check if it's a valid one */
+        NtHeaders = RtlImageNtHeader((PVOID)((ULONG_PTR)hLibModule & ~1));
 
         if (NtHeaders)
         {

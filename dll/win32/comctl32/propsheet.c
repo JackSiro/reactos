@@ -1333,6 +1333,9 @@ static UINT GetTemplateSize(const DLGTEMPLATE* pTemplate)
   return ret;
 }
 
+#ifdef __REACTOS__
+static void PROPSHEET_UnChanged(HWND hwndDlg, HWND hwndCleanPage);
+#endif
 /******************************************************************************
  *            PROPSHEET_CreatePage
  *
@@ -1467,12 +1470,18 @@ static BOOL PROPSHEET_CreatePage(HWND hwndParent,
      (psInfo->ppshheader.dwFlags & PSH_WATERMARK) &&
      (ppshpage->dwFlags & PSP_HIDEHEADER))
   {
+#ifdef __REACTOS__
+    if (psInfo->ppshheader.u4.hbmWatermark)
+#endif
       SetWindowSubclass(hwndPage, PROPSHEET_WizardSubclassProc, 1,
                         (DWORD_PTR)ppshpage);
   }
   if (!(psInfo->ppshheader.dwFlags & INTRNL_ANY_WIZARD))
       EnableThemeDialogTexture (hwndPage, ETDT_ENABLETAB);
 
+#ifdef __REACTOS__
+  PROPSHEET_UnChanged(hwndParent, hwndPage);
+#endif
   return TRUE;
 }
 

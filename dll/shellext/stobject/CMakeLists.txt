@@ -28,13 +28,13 @@ list(APPEND SOURCE
     volume.cpp
     precomp.h)
 
-add_library(stobject SHARED
+add_library(stobject MODULE
     ${SOURCE}
     stobject.rc
     ${CMAKE_CURRENT_BINARY_DIR}/stobject.def)
 
 set_module_type(stobject win32dll UNICODE)
-target_link_libraries(stobject uuid wine atlnew)
+target_link_libraries(stobject uuid wine)
 
 add_importlibs(stobject
     setupapi

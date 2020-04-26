@@ -63,9 +63,8 @@
 #include "ldr.h"
 #ifndef _WINKD_
 #include "kd.h"
-#else
-#include "kd64.h"
 #endif
+#include "kd64.h"
 #include "fsrtl.h"
 #include "lpc.h"
 #include "rtl.h"
@@ -80,6 +79,7 @@
 #include "hal.h"
 #include "hdl.h"
 #include "arch/intrin_i.h"
+#include <arbiter.h>
 
 /*
  * generic information class probing code

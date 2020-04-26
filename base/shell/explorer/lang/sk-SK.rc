@@ -52,10 +52,7 @@ BEGIN
             MENUITEM "&Tlačiarne a faxy", IDM_PRINTERSANDFAXES, MFT_STRING, MFS_ENABLED
             MENUITEM "P&anel úloh a ponuka Štart", IDM_TASKBARANDSTARTMENU, MFT_STRING, MFS_ENABLED
         END
-        POPUP "&Hľadať", IDM_SEARCH
-        BEGIN
-            MENUITEM "", -1, MFT_SEPARATOR
-        END
+        MENUITEM "&Hľadať", IDM_SEARCH, MFT_STRING, MFS_ENABLED
         MENUITEM "&Pomoc a technická podpora", IDM_HELPANDSUPPORT, MFT_STRING, MFS_ENABLED
         MENUITEM "Sp&ustiť...", IDM_RUN, MFT_STRING, MFS_ENABLED
         MENUITEM "", 450, MFT_SEPARATOR, MFS_ENABLED
@@ -94,11 +91,11 @@ CAPTION "Ponuka Štart"
 FONT 8, "MS Shell Dlg", 0, 0, 0x1
 BEGIN
     CONTROL "", IDC_TASKBARPROP_STARTMENU_BITMAP, "Static", SS_BITMAP | SS_SUNKEN,7, 7, 183, 108
-    AUTORADIOBUTTON "Pon&uka Štart", IDC_TASKBARPROP_STARTMENU, 7, 135, 105, 10, WS_DISABLED
-    LTEXT "This menu style gives you easy access to your folders, favorite programs, and search.", IDC_STATIC, 20, 145, 150, 24, WS_DISABLED
-    PUSHBUTTON "P&rispôsobiť...", IDC_TASKBARPROP_STARTMENUCUST, 192, 132, 53, 14, WS_DISABLED
+    AUTORADIOBUTTON "Pon&uka Štart", IDC_TASKBARPROP_STARTMENU, 7, 135, 105, 10
+    LTEXT "This menu style gives you easy access to your folders, favorite programs, and search.", IDC_TASKBARPROP_STARTMENUMODERNTEXT, 20, 145, 150, 24
+    PUSHBUTTON "P&rispôsobiť...", IDC_TASKBARPROP_STARTMENUCUST, 192, 132, 53, 14
     AUTORADIOBUTTON "Klasická po&nuka Štart", IDC_TASKBARPROP_STARTMENUCLASSIC, 7, 175, 105, 10
-    LTEXT "This menu style gives you the classic look and functionality", IDC_STATIC, 20, 185, 150, 24
+    LTEXT "This menu style gives you the classic look and functionality", IDC_TASKBARPROP_STARTMENUCLASSICTEXT, 20, 185, 150, 24
     PUSHBUTTON "&Prispôsobiť...", IDC_TASKBARPROP_STARTMENUCLASSICCUST, 192, 172, 53, 14
 END
 

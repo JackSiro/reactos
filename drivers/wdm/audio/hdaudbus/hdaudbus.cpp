@@ -63,6 +63,7 @@ HDA_FdoPnp(
         {
             CodecEntry = FDODeviceExtension->Codecs[CodecIndex];
 
+            ASSERT(CodecEntry->AudioGroupCount <= HDA_MAX_AUDIO_GROUPS);
             for (AFGIndex = 0; AFGIndex < CodecEntry->AudioGroupCount; AFGIndex++)
             {
                 ChildDeviceExtension = static_cast<PHDA_PDO_DEVICE_EXTENSION>(CodecEntry->AudioGroups[AFGIndex]->ChildPDO->DeviceExtension);
@@ -283,6 +284,7 @@ HDA_AddDevice(
     /* init device extension*/
     DeviceExtension->IsFDO = TRUE;
     DeviceExtension->LowerDevice = IoAttachDeviceToDeviceStack(DeviceObject, PhysicalDeviceObject);
+    IoInitializeDpcRequest(DeviceObject, HDA_DpcForIsr);
     RtlZeroMemory(DeviceExtension->Codecs, sizeof(PHDA_CODEC_ENTRY) * (HDA_MAX_CODECS + 1));
 
     /* set device flags */

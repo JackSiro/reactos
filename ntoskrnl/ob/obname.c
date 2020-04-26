@@ -37,94 +37,138 @@ ULONG ObpUnsecureGlobalNamesLength = sizeof(ObpUnsecureGlobalNamesBuffer);
 INIT_FUNCTION
 NTSTATUS
 NTAPI
-ObpCreateGlobalDosDevicesSD(OUT PSECURITY_DESCRIPTOR *SecurityDescriptor)
+ObpGetDosDevicesProtection(OUT PSECURITY_DESCRIPTOR SecurityDescriptor)
 {
-    PSECURITY_DESCRIPTOR Sd = NULL;
     PACL Dacl;
-    ULONG AclSize, SdSize;
+    ULONG AclSize;
     NTSTATUS Status;
 
-    AclSize = sizeof(ACL) +
-              sizeof(ACE) + RtlLengthSid(SeWorldSid) +
-              sizeof(ACE) + RtlLengthSid(SeLocalSystemSid) +
-              sizeof(ACE) + RtlLengthSid(SeWorldSid) +
-              sizeof(ACE) + RtlLengthSid(SeAliasAdminsSid) +
-              sizeof(ACE) + RtlLengthSid(SeLocalSystemSid) +
-              sizeof(ACE) + RtlLengthSid(SeCreatorOwnerSid);
-
-    SdSize = sizeof(SECURITY_DESCRIPTOR) + AclSize;
-
-    /* Allocate the SD and ACL */
-    Sd = ExAllocatePoolWithTag(PagedPool, SdSize, TAG_SD);
-    if (Sd == NULL)
-    {
-        return STATUS_INSUFFICIENT_RESOURCES;
-    }
-
     /* Initialize the SD */
-    Status = RtlCreateSecurityDescriptor(Sd,
-                                         SECURITY_DESCRIPTOR_REVISION);
-    if (!NT_SUCCESS(Status))
-        return Status;
+    Status = RtlCreateSecurityDescriptor(SecurityDescriptor, SECURITY_DESCRIPTOR_REVISION);
+    ASSERT(NT_SUCCESS(Status));
 
-    Dacl = (PACL)((INT_PTR)Sd + sizeof(SECURITY_DESCRIPTOR));
+    if (ObpProtectionMode & 1)
+    {
+        AclSize = sizeof(ACL) +
+                  sizeof(ACE) + RtlLengthSid(SeWorldSid) +
+                  sizeof(ACE) + RtlLengthSid(SeLocalSystemSid) +
+                  sizeof(ACE) + RtlLengthSid(SeWorldSid) +
+                  sizeof(ACE) + RtlLengthSid(SeAliasAdminsSid) +
+                  sizeof(ACE) + RtlLengthSid(SeLocalSystemSid) +
+                  sizeof(ACE) + RtlLengthSid(SeCreatorOwnerSid);
 
-    /* Initialize the DACL */
-    RtlCreateAcl(Dacl, AclSize, ACL_REVISION);
+        /* Allocate the ACL */
+        Dacl = ExAllocatePoolWithTag(PagedPool, AclSize, 'lcaD');
+        if (Dacl == NULL)
+        {
+            return STATUS_INSUFFICIENT_RESOURCES;
+        }
 
-    /* Add the ACEs */
-    RtlAddAccessAllowedAce(Dacl,
-                           ACL_REVISION,
-                           GENERIC_READ | GENERIC_EXECUTE,
-                           SeWorldSid);
+        /* Initialize the DACL */
+        Status = RtlCreateAcl(Dacl, AclSize, ACL_REVISION);
+        ASSERT(NT_SUCCESS(Status));
 
-    RtlAddAccessAllowedAce(Dacl,
-                           ACL_REVISION,
-                           GENERIC_ALL,
-                           SeLocalSystemSid);
+        /* Add the ACEs */
+        Status = RtlAddAccessAllowedAce(Dacl,
+                                        ACL_REVISION,
+                                        GENERIC_READ | GENERIC_EXECUTE,
+                                        SeWorldSid);
+        ASSERT(NT_SUCCESS(Status));
 
-    RtlAddAccessAllowedAceEx(Dacl,
-                             ACL_REVISION,
-                             INHERIT_ONLY_ACE | CONTAINER_INHERIT_ACE | OBJECT_INHERIT_ACE,
-                             GENERIC_EXECUTE,
-                             SeWorldSid);
+        Status = RtlAddAccessAllowedAce(Dacl,
+                                        ACL_REVISION,
+                                        GENERIC_ALL,
+                                        SeLocalSystemSid);
+        ASSERT(NT_SUCCESS(Status));
 
-    RtlAddAccessAllowedAceEx(Dacl,
-                             ACL_REVISION,
-                             INHERIT_ONLY_ACE | CONTAINER_INHERIT_ACE | OBJECT_INHERIT_ACE,
-                             GENERIC_ALL,
-                             SeAliasAdminsSid);
+        Status = RtlAddAccessAllowedAceEx(Dacl,
+                                          ACL_REVISION,
+                                          INHERIT_ONLY_ACE | CONTAINER_INHERIT_ACE | OBJECT_INHERIT_ACE,
+                                          GENERIC_EXECUTE,
+                                          SeWorldSid);
+        ASSERT(NT_SUCCESS(Status));
 
-    RtlAddAccessAllowedAceEx(Dacl,
-                             ACL_REVISION,
-                             INHERIT_ONLY_ACE | CONTAINER_INHERIT_ACE | OBJECT_INHERIT_ACE,
-                             GENERIC_ALL,
-                             SeLocalSystemSid);
+        Status = RtlAddAccessAllowedAceEx(Dacl,
+                                          ACL_REVISION,
+                                          INHERIT_ONLY_ACE | CONTAINER_INHERIT_ACE | OBJECT_INHERIT_ACE,
+                                          GENERIC_ALL,
+                                          SeAliasAdminsSid);
+        ASSERT(NT_SUCCESS(Status));
 
-    RtlAddAccessAllowedAceEx(Dacl,
-                             ACL_REVISION,
-                             INHERIT_ONLY_ACE | CONTAINER_INHERIT_ACE | OBJECT_INHERIT_ACE,
-                             GENERIC_ALL,
-                             SeCreatorOwnerSid);
+        Status = RtlAddAccessAllowedAceEx(Dacl,
+                                          ACL_REVISION,
+                                          INHERIT_ONLY_ACE | CONTAINER_INHERIT_ACE | OBJECT_INHERIT_ACE,
+                                          GENERIC_ALL,
+                                          SeLocalSystemSid);
+        ASSERT(NT_SUCCESS(Status));
+
+        Status = RtlAddAccessAllowedAceEx(Dacl,
+                                          ACL_REVISION,
+                                          INHERIT_ONLY_ACE | CONTAINER_INHERIT_ACE | OBJECT_INHERIT_ACE,
+                                          GENERIC_ALL,
+                                          SeCreatorOwnerSid);
+        ASSERT(NT_SUCCESS(Status));
+    }
+    else
+    {
+        AclSize = sizeof(ACL) +
+                  sizeof(ACE) + RtlLengthSid(SeLocalSystemSid) +
+                  sizeof(ACE) + RtlLengthSid(SeWorldSid) +
+                  sizeof(ACE) + RtlLengthSid(SeLocalSystemSid);
+
+        /* Allocate the ACL */
+        Dacl = ExAllocatePoolWithTag(PagedPool, AclSize, 'lcaD');
+        if (Dacl == NULL)
+        {
+            return STATUS_INSUFFICIENT_RESOURCES;
+        }
+
+        /* Initialize the DACL */
+        Status = RtlCreateAcl(Dacl, AclSize, ACL_REVISION);
+        ASSERT(NT_SUCCESS(Status));
+
+        /* Add the ACEs */
+        Status = RtlAddAccessAllowedAce(Dacl,
+                                        ACL_REVISION,
+                                        GENERIC_READ | GENERIC_EXECUTE | GENERIC_WRITE,
+                                        SeWorldSid);
+        ASSERT(NT_SUCCESS(Status));
+
+        Status = RtlAddAccessAllowedAce(Dacl,
+                                        ACL_REVISION,
+                                        GENERIC_ALL,
+                                        SeLocalSystemSid);
+        ASSERT(NT_SUCCESS(Status));
+
+        Status = RtlAddAccessAllowedAceEx(Dacl,
+                                          ACL_REVISION,
+                                          INHERIT_ONLY_ACE | CONTAINER_INHERIT_ACE | OBJECT_INHERIT_ACE,
+                                          GENERIC_ALL,
+                                          SeWorldSid);
+        ASSERT(NT_SUCCESS(Status));
+    }
 
     /* Attach the DACL to the SD */
-    Status = RtlSetDaclSecurityDescriptor(Sd,
-                                          TRUE,
-                                          Dacl,
-                                          FALSE);
-    if (!NT_SUCCESS(Status))
-        goto done;
+    Status = RtlSetDaclSecurityDescriptor(SecurityDescriptor, TRUE, Dacl, FALSE);
+    ASSERT(NT_SUCCESS(Status));
 
-    *SecurityDescriptor = Sd;
+    return STATUS_SUCCESS;
+}
 
-done:
-    if (!NT_SUCCESS(Status))
-    {
-        if (Sd != NULL)
-            ExFreePoolWithTag(Sd, TAG_SD);
-    }
+INIT_FUNCTION
+VOID
+NTAPI
+ObpFreeDosDevicesProtection(OUT PSECURITY_DESCRIPTOR SecurityDescriptor)
+{
+    PACL Dacl;
+    NTSTATUS Status;
+    BOOLEAN DaclPresent, DaclDefaulted;
 
-    return Status;
+    Status = RtlGetDaclSecurityDescriptor(SecurityDescriptor, &DaclPresent, &Dacl, &DaclDefaulted);
+    ASSERT(NT_SUCCESS(Status));
+    ASSERT(DaclPresent);
+    ASSERT(Dacl != NULL);
+    ExFreePoolWithTag(Dacl, 'lcaD');
 }
 
 INIT_FUNCTION
@@ -135,11 +179,20 @@ ObpCreateDosDevicesDirectory(VOID)
     OBJECT_ATTRIBUTES ObjectAttributes;
     UNICODE_STRING RootName, TargetName, LinkName;
     HANDLE Handle, SymHandle;
-    PSECURITY_DESCRIPTOR DosDevicesSD = NULL;
+    SECURITY_DESCRIPTOR DosDevicesSD;
     NTSTATUS Status;
 
+    /*
+     * Enable LUID mappings only if not explicitely disabled
+     * and if protection mode is set
+     */
+    if (ObpProtectionMode == 0 || ObpLUIDDeviceMapsDisabled != 0)
+        ObpLUIDDeviceMapsEnabled = 0;
+    else
+        ObpLUIDDeviceMapsEnabled = 1;
+
     /* Create a custom security descriptor for the global DosDevices directory */
-    Status = ObpCreateGlobalDosDevicesSD(&DosDevicesSD);
+    Status = ObpGetDosDevicesProtection(&DosDevicesSD);
     if (!NT_SUCCESS(Status))
         return Status;
 
@@ -149,37 +202,17 @@ ObpCreateDosDevicesDirectory(VOID)
                                &RootName,
                                OBJ_PERMANENT,
                                NULL,
-                               DosDevicesSD);
+                               &DosDevicesSD);
     Status = NtCreateDirectoryObject(&Handle,
                                      DIRECTORY_ALL_ACCESS,
                                      &ObjectAttributes);
-    ExFreePoolWithTag(DosDevicesSD, TAG_SD);
-    if (!NT_SUCCESS(Status)) return Status;
+    if (!NT_SUCCESS(Status))
+        goto done;
 
     /* Create the system device map */
-    Status = ObpCreateDeviceMap(Handle);
+    Status = ObSetDeviceMap(NULL, Handle);
     if (!NT_SUCCESS(Status))
-        return Status;
-
-    /*********************************************\
-    |*** HACK until we support device mappings ***|
-    |*** Add a symlink \??\ <--> \GLOBAL??\    ***|
-    \*********************************************/
-    RtlInitUnicodeString(&LinkName, L"\\??");
-    InitializeObjectAttributes(&ObjectAttributes,
-                               &LinkName,
-                               OBJ_PERMANENT,
-                               NULL,
-                               NULL);
-    Status = NtCreateSymbolicLinkObject(&SymHandle,
-                                        SYMBOLIC_LINK_ALL_ACCESS,
-                                        &ObjectAttributes,
-                                        &RootName);
-    if (NT_SUCCESS(Status)) NtClose(SymHandle);
-    /*********************************************\
-    \*********************************************/
-
-    // FIXME: Create a device mapping for the global \?? directory
+        goto done;
 
     /*
      * Initialize the \??\GLOBALROOT symbolic link
@@ -191,7 +224,7 @@ ObpCreateDosDevicesDirectory(VOID)
                                &LinkName,
                                OBJ_PERMANENT,
                                Handle,
-                               NULL);
+                               &DosDevicesSD);
     Status = NtCreateSymbolicLinkObject(&SymHandle,
                                         SYMBOLIC_LINK_ALL_ACCESS,
                                         &ObjectAttributes,
@@ -209,7 +242,7 @@ ObpCreateDosDevicesDirectory(VOID)
                                &LinkName,
                                OBJ_PERMANENT,
                                Handle,
-                               NULL);
+                               &DosDevicesSD);
     Status = NtCreateSymbolicLinkObject(&SymHandle,
                                         SYMBOLIC_LINK_ALL_ACCESS,
                                         &ObjectAttributes,
@@ -218,7 +251,8 @@ ObpCreateDosDevicesDirectory(VOID)
 
     /* Close the directory handle */
     NtClose(Handle);
-    if (!NT_SUCCESS(Status)) return Status;
+    if (!NT_SUCCESS(Status))
+        goto done;
 
     /*
      * Initialize the \DosDevices symbolic link pointing to the global
@@ -231,12 +265,15 @@ ObpCreateDosDevicesDirectory(VOID)
                                &LinkName,
                                OBJ_PERMANENT,
                                NULL,
-                               NULL);
+                               &DosDevicesSD);
     Status = NtCreateSymbolicLinkObject(&SymHandle,
                                         SYMBOLIC_LINK_ALL_ACCESS,
                                         &ObjectAttributes,
                                         &RootName);
     if (NT_SUCCESS(Status)) NtClose(SymHandle);
+
+done:
+    ObpFreeDosDevicesProtection(&DosDevicesSD);
 
     /* Return status */
     return Status;
@@ -433,6 +470,8 @@ ObpLookupObjectName(IN HANDLE RootHandle OPTIONAL,
     PWCHAR NewName;
     POBJECT_HEADER_NAME_INFO ObjectNameInfo;
     ULONG MaxReparse = 30;
+    PDEVICE_MAP DeviceMap = NULL;
+    UNICODE_STRING LocalName;
     PAGED_CODE();
     OBTRACE(OB_NAMESPACE_DEBUG,
             "%s - Finding Object: %wZ. Expecting: %p\n",
@@ -585,6 +624,8 @@ ObpLookupObjectName(IN HANDLE RootHandle OPTIONAL,
             *FoundObject = Object;
             return Status;
         }
+
+        LocalName = *ObjectName;
     }
     else
     {
@@ -638,7 +679,14 @@ ObpLookupObjectName(IN HANDLE RootHandle OPTIONAL,
         else
         {
 ParseFromRoot:
-            /* FIXME: Check if we have a device map */
+            LocalName = *ObjectName;
+
+            /* Deference the device map if we already have one */
+            if (DeviceMap != NULL)
+            {
+                ObfDereferenceDeviceMap(DeviceMap);
+                DeviceMap = NULL;
+            }
 
             /* Check if this is a possible DOS name */
             if (!((ULONG_PTR)(ObjectName->Buffer) & 7))
@@ -656,7 +704,17 @@ ParseFromRoot:
                     (*(PULONGLONG)(ObjectName->Buffer) ==
                      ObpDosDevicesShortNamePrefix.Alignment.QuadPart))
                 {
-                    /* FIXME! */
+                    DeviceMap = ObpReferenceDeviceMap();
+                    /* We have a local mapping, drop the ?? prefix */
+                    if (DeviceMap != NULL && DeviceMap->DosDevicesDirectory != NULL)
+                    {
+                        LocalName.Length -= ObpDosDevicesShortName.Length;
+                        LocalName.MaximumLength -= ObpDosDevicesShortName.Length;
+                        LocalName.Buffer += (ObpDosDevicesShortName.Length / sizeof(WCHAR));
+
+                        /* We'll browse that local directory */
+                        Directory = DeviceMap->DosDevicesDirectory;
+                    }
                 }
                 else if ((ObjectName->Length == ObpDosDevicesShortName.Length -
                                                 sizeof(WCHAR)) &&
@@ -665,7 +723,23 @@ ParseFromRoot:
                          (*((PWCHAR)(ObjectName->Buffer) + 2) ==
                           (WCHAR)(ObpDosDevicesShortNameRoot.Alignment.HighPart)))
                 {
-                    /* FIXME! */
+                    DeviceMap = ObpReferenceDeviceMap();
+
+                    /* Caller is looking for the directory itself */
+                    if (DeviceMap != NULL && DeviceMap->DosDevicesDirectory != NULL)
+                    {
+                        Status = ObReferenceObjectByPointer(DeviceMap->DosDevicesDirectory,
+                                                            0,
+                                                            ObjectType,
+                                                            AccessMode);
+                        if (NT_SUCCESS(Status))
+                        {
+                            *FoundObject = DeviceMap->DosDevicesDirectory;
+                        }
+
+                        ObfDereferenceDeviceMap(DeviceMap);
+                        return Status;
+                    }
                 }
             }
         }
@@ -683,7 +757,7 @@ ParseFromRoot:
     while (Reparse && MaxReparse)
     {
         /* Get the name */
-        RemainingName = *ObjectName;
+        RemainingName = LocalName;
 
         /* Disable reparsing again */
         Reparse = FALSE;
@@ -1092,7 +1166,7 @@ ReparseObject:
     }
 
     /* Check if we have a device map and dereference it if so */
-    //if (DeviceMap) ObfDereferenceDeviceMap(DeviceMap);
+    if (DeviceMap) ObfDereferenceDeviceMap(DeviceMap);
 
     /* Check if we have a referenced directory and dereference it if so */
     if (ReferencedDirectory) ObDereferenceObject(ReferencedDirectory);

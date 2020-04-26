@@ -23,9 +23,9 @@ MixerThread(LPVOID Parameter)
 	while(GetMessage(&msg, NULL, 0, 0))
 	{
 			if (msg.message == MM_MIXM_CONTROL_CHANGE)
-				printf("got MM_MIXM_CONTROL_CHANGE wParam %x lParam %lx\n", msg.wParam, msg.lParam);
+				printf("got MM_MIXM_CONTROL_CHANGE wParam %Ix lParam %Ix\n", msg.wParam, msg.lParam);
 			else if (msg.message == MM_MIXM_LINE_CHANGE)
-				printf("got MM_MIXM_LINE_CHANGE wParam %x lParam %lx\n", msg.wParam, msg.lParam);
+				printf("got MM_MIXM_LINE_CHANGE wParam %Ix lParam %Ix\n", msg.wParam, msg.lParam);
 	}
 	return 1;
 }
@@ -83,7 +83,7 @@ printMixerLine(LPMIXERLINEW MixerLine, IN ULONG MixerIndex)
     printf("dwDestination %lu\n", MixerLine->dwDestination);
     printf("dwLineID %lx\n", MixerLine->dwLineID);
     printf("dwSource %lx\n", MixerLine->dwSource);
-    printf("dwUser %lu\n", MixerLine->dwUser);
+    printf("dwUser %Iu\n", MixerLine->dwUser);
     printf("fdwLine %lu\n", MixerLine->fdwLine);
     printf("szName %S\n", MixerLine->szName);
     printf("szShortName %S\n", MixerLine->szShortName);

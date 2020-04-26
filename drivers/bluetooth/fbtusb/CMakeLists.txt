@@ -10,10 +10,10 @@ list(APPEND SOURCE
     fbtusb.c
     precomp.h)
 
-add_library(fbtusb SHARED ${SOURCE} fbtusb.rc)
+add_library(fbtusb MODULE ${SOURCE} fbtusb.rc)
 
 if(NOT MSVC)
-    add_target_compile_flags(fbtusb "-Wno-unused-but-set-variable")
+    target_compile_options(fbtusb PRIVATE "-Wno-unused-but-set-variable")
 endif()
 
 set_module_type(fbtusb kernelmodedriver)

@@ -15,11 +15,11 @@ END
 STRINGTABLE
 BEGIN
     //Power related strings
-    IDS_PWR_PROPERTIES        "&Adjust Power Properties"
+    IDS_PWR_PROPERTIES        "&Modifier les paramètres d'alimentation"
     IDS_PWR_METER             "&Open Power Meter"
     IDS_PWR_RUN               "shell32.dll,Control_RunDLL PowerCfg.cpl"
-    IDS_PWR_PERCENT_REMAINING "%.2f%% remaining"
-    IDS_PWR_CHARGING          "%.2f%% and charging"
+    IDS_PWR_PERCENT_REMAINING "%u%% remaining"
+    IDS_PWR_CHARGING          "%u%% and charging"
     IDS_PWR_UNKNOWN_REMAINING "Unknown remaining"
     IDS_PWR_AC "On AC power"
     IDS_PWR_HOURS_REMAINING "%1!u!:%2!02u! hours (%3!u!%%) remaining"

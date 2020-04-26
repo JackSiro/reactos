@@ -89,6 +89,7 @@ static const struct gdi_dc_funcs DummyPhysDevFuncs =
     (PVOID)NULL_Unused, //BOOL     (*pGetCharABCWidths)(PHYSDEV,UINT,UINT,LPABC);
     (PVOID)NULL_Unused, //BOOL     (*pGetCharABCWidthsI)(PHYSDEV,UINT,UINT,WORD*,LPABC);
     (PVOID)NULL_Unused, //BOOL     (*pGetCharWidth)(PHYSDEV,UINT,UINT,LPINT);
+    (PVOID)NULL_Unused, //BOOL     (*pGetCharWidthInfo)(PHYSDEV,void*);
     (PVOID)NULL_Unused, //INT      (*pGetDeviceCaps)(PHYSDEV,INT);
     (PVOID)NULL_Unused, //BOOL     (*pGetDeviceGammaRamp)(PHYSDEV,LPVOID);
     (PVOID)NULL_Unused, //DWORD    (*pGetFontData)(PHYSDEV,DWORD,DWORD,LPVOID,DWORD);
@@ -319,6 +320,8 @@ alloc_dc_ptr(WORD magic)
             HeapFree(GetProcessHeap(), 0, pWineDc);
             return NULL;
         }
+
+        pWineDc->iType = LDC_EMFLDC;
 
         /* Set the Wine DC as LDC */
         GdiSetLDC(pWineDc->hdc, pWineDc);
@@ -1130,6 +1133,17 @@ METADC_Dispatch(
     {
         /* Let the caller handle it */
         return FALSE;
+    }
+
+    // See if this is other than a METADATA issue.
+    if (GDI_HANDLE_GET_TYPE(hdc) == GDILoObjType_LO_ALTDC_TYPE)
+    {
+       WINEDC* pwdc = (WINEDC*)GdiGetLDC(hdc);
+       if (pwdc && pwdc->iType != LDC_EMFLDC)
+       {
+          /* Let the caller handle it */
+          return FALSE;
+       }
     }
 
     physdev = GetPhysDev(hdc);

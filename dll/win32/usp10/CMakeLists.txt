@@ -7,6 +7,7 @@ list(APPEND SOURCE
     bidi.c
     bracket.c
     breaking.c
+    direction.c
     indic.c
     indicsyllable.c
     linebreak.c
@@ -18,7 +19,7 @@ list(APPEND SOURCE
     precomp.h
     ${CMAKE_CURRENT_BINARY_DIR}/usp10_stubs.c)
 
-add_library(usp10 SHARED
+add_library(usp10 MODULE
     ${SOURCE}
     ${CMAKE_CURRENT_BINARY_DIR}/usp10.def)
 

@@ -1186,13 +1186,15 @@ USBPORT_ReopenPipe(IN PDEVICE_OBJECT FdoDevice,
         USBPORT_Wait(FdoDevice, 1);
     }
 
-    KeAcquireSpinLock(&FdoExtension->MiniportSpinLock, &MiniportOldIrql);
+    KeAcquireSpinLock(&Endpoint->EndpointSpinLock, &Endpoint->EndpointOldIrql);
+    KeAcquireSpinLockAtDpcLevel(&FdoExtension->MiniportSpinLock);
 
     Packet->SetEndpointState(FdoExtension->MiniPortExt,
                              Endpoint + 1,
                              USBPORT_ENDPOINT_REMOVE);
 
-    KeReleaseSpinLock(&FdoExtension->MiniportSpinLock, MiniportOldIrql);
+    KeReleaseSpinLockFromDpcLevel(&FdoExtension->MiniportSpinLock);
+    KeReleaseSpinLock(&Endpoint->EndpointSpinLock, Endpoint->EndpointOldIrql);
 
     USBPORT_Wait(FdoDevice, 2);
 
@@ -1252,6 +1254,7 @@ USBPORT_ReopenPipe(IN PDEVICE_OBJECT FdoDevice,
 
         if (Endpoint->StateLast == USBPORT_ENDPOINT_ACTIVE)
         {
+            KeReleaseSpinLockFromDpcLevel(&Endpoint->StateChangeSpinLock);
             KeAcquireSpinLockAtDpcLevel(&FdoExtension->MiniportSpinLock);
 
             Packet->SetEndpointState(FdoExtension->MiniPortExt,
@@ -1260,8 +1263,11 @@ USBPORT_ReopenPipe(IN PDEVICE_OBJECT FdoDevice,
 
             KeReleaseSpinLockFromDpcLevel(&FdoExtension->MiniportSpinLock);
         }
+        else
+        {
+            KeReleaseSpinLockFromDpcLevel(&Endpoint->StateChangeSpinLock);
+        }
 
-        KeReleaseSpinLockFromDpcLevel(&Endpoint->StateChangeSpinLock);
         KeReleaseSpinLock(&Endpoint->EndpointSpinLock, Endpoint->EndpointOldIrql);
     }
 
@@ -1351,9 +1357,9 @@ USBPORT_InvalidateEndpointHandler(IN PDEVICE_OBJECT FdoDevice,
     {
         KeAcquireSpinLock(&FdoExtension->EndpointListSpinLock, &OldIrql);
 
-        Entry = &FdoExtension->EndpointList;
-
-        while (Entry && Entry != &FdoExtension->EndpointList)
+        for (Entry = FdoExtension->EndpointList.Flink;
+             Entry && Entry != &FdoExtension->EndpointList;
+             Entry = Entry->Flink)
         {
             endpoint = CONTAINING_RECORD(Entry,
                                          USBPORT_ENDPOINT,
@@ -1370,8 +1376,6 @@ USBPORT_InvalidateEndpointHandler(IN PDEVICE_OBJECT FdoDevice,
                     IsAddEntry = TRUE;
                 }
             }
-
-            Entry = endpoint->EndpointLink.Flink;
         }
 
         KeReleaseSpinLock(&FdoExtension->EndpointListSpinLock, OldIrql);

@@ -169,10 +169,15 @@ CcpDereferenceBcb(
         KeReleaseSpinLock(&SharedCacheMap->BcbSpinLock, OldIrql);
 
         ASSERT(Bcb->PinCount == 0);
+        /*
+         * Don't mark dirty, if it was dirty,
+         * the VACB was already marked as such
+         * following the call to CcSetDirtyPinnedData
+         */
         CcRosReleaseVacb(SharedCacheMap,
                          Bcb->Vacb,
                          TRUE,
-                         Bcb->Dirty,
+                         FALSE,
                          FALSE);
 
         ExDeleteResourceLite(&Bcb->Lock);
@@ -211,7 +216,6 @@ CcpGetAppropriateBcb(
     iBcb->PFCB.MappedLength = Length;
     iBcb->PFCB.MappedFileOffset = *FileOffset;
     iBcb->Vacb = Vacb;
-    iBcb->Dirty = FALSE;
     iBcb->PinCount = 0;
     iBcb->RefCount = 1;
     ExInitializeResourceLite(&iBcb->Lock);
@@ -574,7 +578,6 @@ CcSetDirtyPinnedData (
     CCTRACE(CC_API_DEBUG, "Bcb=%p Lsn=%p\n",
         Bcb, Lsn);
 
-    iBcb->Dirty = TRUE;
     if (!iBcb->Vacb->Dirty)
     {
         CcRosMarkDirtyVacb(iBcb->Vacb);
@@ -682,10 +685,15 @@ CcUnpinRepinnedBcb (
             ASSERT(iBcb->PinCount == 0);
         }
 
+        /*
+         * Don't mark dirty, if it was dirty,
+         * the VACB was already marked as such
+         * following the call to CcSetDirtyPinnedData
+         */
         CcRosReleaseVacb(iBcb->Vacb->SharedCacheMap,
                          iBcb->Vacb,
                          TRUE,
-                         iBcb->Dirty,
+                         FALSE,
                          FALSE);
 
         ExDeleteResourceLite(&iBcb->Lock);

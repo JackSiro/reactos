@@ -135,6 +135,155 @@ NetUnregisterDomainNameChangeNotification(
 }
 
 
+PSTR
+WINAPI
+NetpAllocAnsiStrFromWStr(
+    _In_ PWSTR InString)
+{
+    UNICODE_STRING UnicodeString;
+    ANSI_STRING AnsiString;
+    ULONG Size;
+    NET_API_STATUS NetStatus;
+    NTSTATUS Status;
+
+    RtlInitUnicodeString(&UnicodeString, InString);
+
+    Size = RtlUnicodeStringToAnsiSize(&UnicodeString);
+    NetStatus = NetApiBufferAllocate(Size,
+                                     (PVOID*)&AnsiString.Buffer);
+    if (NetStatus != NERR_Success)
+        return NULL;
+
+    Status = RtlUnicodeStringToAnsiString(&AnsiString,
+                                          &UnicodeString,
+                                          FALSE);
+    if (!NT_SUCCESS(Status))
+    {
+        NetApiBufferFree(AnsiString.Buffer);
+        return NULL;
+    }
+
+    return AnsiString.Buffer;
+}
+
+
+PSTR
+WINAPI
+NetpAllocStrFromWStr(
+    _In_ PWSTR InString)
+{
+    UNICODE_STRING UnicodeString;
+    OEM_STRING OemString;
+    ULONG Size;
+    NET_API_STATUS NetStatus;
+    NTSTATUS Status;
+
+    RtlInitUnicodeString(&UnicodeString, InString);
+
+    Size = RtlUnicodeStringToOemSize(&UnicodeString);
+    NetStatus = NetApiBufferAllocate(Size,
+                                     (PVOID*)&OemString.Buffer);
+    if (NetStatus != NERR_Success)
+        return NULL;
+
+    Status = RtlUnicodeStringToOemString(&OemString,
+                                         &UnicodeString,
+                                         FALSE);
+    if (!NT_SUCCESS(Status))
+    {
+        NetApiBufferFree(OemString.Buffer);
+        return NULL;
+    }
+
+    return OemString.Buffer;
+}
+
+
+PWSTR
+WINAPI
+NetpAllocWStrFromAnsiStr(
+    _In_ PSTR InString)
+{
+    ANSI_STRING AnsiString;
+    UNICODE_STRING UnicodeString;
+    ULONG Size;
+    NET_API_STATUS NetStatus;
+    NTSTATUS Status;
+
+    RtlInitAnsiString(&AnsiString, InString);
+
+    Size = RtlAnsiStringToUnicodeSize(&AnsiString);
+    NetStatus = NetApiBufferAllocate(Size,
+                                     (PVOID*)&UnicodeString.Buffer);
+    if (NetStatus != NERR_Success)
+        return NULL;
+
+    Status = RtlAnsiStringToUnicodeString(&UnicodeString,
+                                          &AnsiString,
+                                          FALSE);
+    if (!NT_SUCCESS(Status))
+    {
+        NetApiBufferFree(UnicodeString.Buffer);
+        return NULL;
+    }
+
+    return UnicodeString.Buffer;
+}
+
+
+PWSTR
+WINAPI
+NetpAllocWStrFromStr(
+    _In_ PSTR InString)
+{
+    OEM_STRING OemString;
+    UNICODE_STRING UnicodeString;
+    ULONG Size;
+    NET_API_STATUS NetStatus;
+    NTSTATUS Status;
+
+    RtlInitAnsiString((PANSI_STRING)&OemString, InString);
+
+    Size = RtlOemStringToUnicodeSize(&OemString);
+    NetStatus = NetApiBufferAllocate(Size,
+                                     (PVOID*)&UnicodeString.Buffer);
+    if (NetStatus != NERR_Success)
+        return NULL;
+
+    Status = RtlOemStringToUnicodeString(&UnicodeString,
+                                         &OemString,
+                                         FALSE);
+    if (!NT_SUCCESS(Status))
+    {
+        NetApiBufferFree(UnicodeString.Buffer);
+        return NULL;
+    }
+
+    return UnicodeString.Buffer;
+}
+
+
+PWSTR
+WINAPI
+NetpAllocWStrFromWStr(
+    _In_ PWSTR InString)
+{
+    PWSTR OutString;
+    ULONG Size;
+    NET_API_STATUS Status;
+
+    Size = (wcslen(InString) + 1) * sizeof(WCHAR);
+    Status = NetApiBufferAllocate(Size,
+                                  (PVOID*)&OutString);
+    if (Status != NERR_Success)
+        return NULL;
+
+    wcscpy(OutString, InString);
+
+    return OutString;
+}
+
+
 NET_API_STATUS
 WINAPI
 NetpNtStatusToApiStatus(

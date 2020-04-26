@@ -31,6 +31,8 @@
 #include <shellapi.h>
 #include <shlobj.h>
 #include <shlwapi.h>
+#include <strsafe.h>
+#include <winnls.h>
 
 #include "undocshell.h"
 #include "pidl.h"
@@ -41,6 +43,7 @@
 #include <wine/unicode.h>
 
 #include <reactos/version.h>
+#include <reactos/buildno.h>
 
 WINE_DEFAULT_DEBUG_CHANNEL(shell);
 
@@ -961,6 +964,9 @@ VOID WINAPI Printers_UnregisterWindow(HANDLE hClassPidl, HWND hwnd)
 typedef struct
 {
     LPCWSTR  szApp;
+#ifdef __REACTOS__
+    LPCWSTR  szOSVersion;
+#endif
     LPCWSTR  szOtherStuff;
     HICON hIcon;
 } ABOUT_INFO;
@@ -971,7 +977,7 @@ typedef struct
 /*************************************************************************
  * SHAppBarMessage            [SHELL32.@]
  */
-UINT_PTR WINAPI SHAppBarMessage(DWORD msg, PAPPBARDATA data)
+UINT_PTR WINAPI OLD_SHAppBarMessage(DWORD msg, PAPPBARDATA data)
 {
     int width=data->rc.right - data->rc.left;
     int height=data->rc.bottom - data->rc.top;
@@ -1132,8 +1138,8 @@ INT_PTR CALLBACK AboutAuthorsDlgProc( HWND hWnd, UINT msg, WPARAM wParam, LPARAM
 static INT_PTR CALLBACK AboutDlgProc( HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam )
 {
     static DWORD   cxLogoBmp;
-    static DWORD   cyLogoBmp;
-    static HBITMAP hLogoBmp;
+    static DWORD   cyLogoBmp, cyLineBmp;
+    static HBITMAP hLogoBmp, hLineBmp;
     static HWND    hWndAuthors;
 
     switch(msg)
@@ -1153,8 +1159,9 @@ static INT_PTR CALLBACK AboutDlgProc( HWND hWnd, UINT msg, WPARAM wParam, LPARAM
 
                 // Preload the ROS bitmap
                 hLogoBmp = (HBITMAP)LoadImage(shell32_hInstance, MAKEINTRESOURCE(IDB_REACTOS), IMAGE_BITMAP, 0, 0, LR_DEFAULTCOLOR);
+                hLineBmp = (HBITMAP)LoadImage(shell32_hInstance, MAKEINTRESOURCE(IDB_LINEBAR), IMAGE_BITMAP, 0, 0, LR_DEFAULTCOLOR);
 
-                if(hLogoBmp)
+                if(hLogoBmp && hLineBmp)
                 {
                     BITMAP bmpLogo;
 
@@ -1162,6 +1169,9 @@ static INT_PTR CALLBACK AboutDlgProc( HWND hWnd, UINT msg, WPARAM wParam, LPARAM
 
                     cxLogoBmp = bmpLogo.bmWidth;
                     cyLogoBmp = bmpLogo.bmHeight;
+
+                    GetObject( hLineBmp, sizeof(BITMAP), &bmpLogo );
+                    cyLineBmp = bmpLogo.bmHeight;
                 }
 
                 // Set App-specific stuff (icon, app name, szOtherStuff string)
@@ -1172,6 +1182,9 @@ static INT_PTR CALLBACK AboutDlgProc( HWND hWnd, UINT msg, WPARAM wParam, LPARAM
                 SetWindowTextW( hWnd, szAppTitle );
 
                 SetDlgItemTextW( hWnd, IDC_ABOUT_APPNAME, info->szApp );
+#ifdef __REACTOS__
+                SetDlgItemTextW( hWnd, IDC_ABOUT_VERSION, info->szOSVersion );
+#endif
                 SetDlgItemTextW( hWnd, IDC_ABOUT_OTHERSTUFF, info->szOtherStuff );
 
                 // Set the registered user and organization name
@@ -1258,20 +1271,25 @@ static INT_PTR CALLBACK AboutDlgProc( HWND hWnd, UINT msg, WPARAM wParam, LPARAM
 
         case WM_PAINT:
         {
-            if(hLogoBmp)
+            if(hLogoBmp && hLineBmp)
             {
                 PAINTSTRUCT ps;
                 HDC hdc;
                 HDC hdcMem;
+                HGDIOBJ hOldObj;
 
                 hdc = BeginPaint(hWnd, &ps);
                 hdcMem = CreateCompatibleDC(hdc);
 
                 if(hdcMem)
                 {
-                    SelectObject(hdcMem, hLogoBmp);
+                    hOldObj = SelectObject(hdcMem, hLogoBmp);
                     BitBlt(hdc, 0, 0, cxLogoBmp, cyLogoBmp, hdcMem, 0, 0, SRCCOPY);
 
+                    SelectObject(hdcMem, hLineBmp);
+                    BitBlt(hdc, 0, cyLogoBmp, cxLogoBmp, cyLineBmp, hdcMem, 0, 0, SRCCOPY);
+
+                    SelectObject(hdcMem, hOldObj);
                     DeleteDC(hdcMem);
                 }
 
@@ -1360,6 +1378,10 @@ BOOL WINAPI ShellAboutW( HWND hWnd, LPCWSTR szApp, LPCWSTR szOtherStuff,
     HRSRC hRes;
     DLGTEMPLATE *DlgTemplate;
     BOOL bRet;
+#ifdef __REACTOS__
+    WCHAR szVersionString[256];
+    WCHAR szFormat[256];
+#endif
 
     TRACE("\n");
 
@@ -1372,7 +1394,16 @@ BOOL WINAPI ShellAboutW( HWND hWnd, LPCWSTR szApp, LPCWSTR szOtherStuff,
     if(!DlgTemplate)
         return FALSE;
 
+#ifdef __REACTOS__
+    /* Output the version OS kernel strings */
+    LoadStringW(shell32_hInstance, IDS_ABOUT_VERSION_STRING, szFormat, _countof(szFormat));
+    StringCchPrintfW(szVersionString, _countof(szVersionString), szFormat, KERNEL_VERSION_STR, KERNEL_VERSION_BUILD_STR);
+#endif
+
     info.szApp        = szApp;
+#ifdef __REACTOS__
+    info.szOSVersion  = szVersionString;
+#endif
     info.szOtherStuff = szOtherStuff;
     info.hIcon        = hIcon ? hIcon : LoadIconW( 0, (LPWSTR)IDI_WINLOGO );
 

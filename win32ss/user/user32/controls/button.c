@@ -389,7 +389,8 @@ LRESULT WINAPI ButtonWndProc_common(HWND hWnd, UINT uMsg,
 	    break;
 	/* fall through */
     case WM_LBUTTONUP:
-#ifdef _REACTOS_
+#ifdef __REACTOS__
+    {
         BOOL TellParent = FALSE; //// ReactOS see note below.
 #endif
         state = get_button_state( hWnd );
@@ -412,28 +413,29 @@ LRESULT WINAPI ButtonWndProc_common(HWND hWnd, UINT uMsg,
                 SendMessageW( hWnd, BM_SETCHECK, !(state & BST_CHECKED), 0 );
                 break;
             case BS_AUTORADIOBUTTON:
-                SendMessageW( hWnd, BM_SETCHECK, TRUE, 0 );
+                BUTTON_CheckAutoRadioButton( hWnd );
                 break;
             case BS_AUTO3STATE:
                 SendMessageW( hWnd, BM_SETCHECK,
                                 (state & BST_INDETERMINATE) ? 0 : ((state & 3) + 1), 0 );
                 break;
             }
-#ifdef _REACTOS_
+#ifdef __REACTOS__
             TellParent = TRUE; // <---- Fix CORE-10194, Notify parent after capture is released.
 #else
             ReleaseCapture();
             BUTTON_NOTIFY_PARENT(hWnd, BN_CLICKED);
 #endif
         }
-#ifdef _REACTOS_
-        ReleaseCapture();
-        if (TellParent) BUTTON_NOTIFY_PARENT(hWnd, BN_CLICKED);
-#else
+#ifndef __REACTOS__
         else
         {
             ReleaseCapture();
         }
+#else
+        ReleaseCapture();
+        if (TellParent) BUTTON_NOTIFY_PARENT(hWnd, BN_CLICKED);
+    }
 #endif
         break;
 
@@ -624,8 +626,6 @@ LRESULT WINAPI ButtonWndProc_common(HWND hWnd, UINT uMsg,
             set_button_state( hWnd, (state & ~3) | wParam );
             paint_button( hWnd, btn_type, ODA_SELECT );
         }
-        if ((btn_type == BS_AUTORADIOBUTTON) && (wParam == BST_CHECKED) && (style & WS_CHILD))
-            BUTTON_CheckAutoRadioButton( hWnd );
         break;
 
     case BM_GETSTATE:
@@ -773,7 +773,11 @@ static UINT BUTTON_CalcLabelRect(HWND hwnd, HDC hdc, RECT *rc)
           }
 
           if ((hFont = get_button_font( hwnd ))) hPrevFont = SelectObject( hdc, hFont );
+#ifdef __REACTOS__
+          DrawTextW(hdc, text, -1, &r, ((dtStyle | DT_CALCRECT) & ~(DT_VCENTER | DT_BOTTOM)));
+#else
           DrawTextW(hdc, text, -1, &r, dtStyle | DT_CALCRECT);
+#endif
           if (hPrevFont) SelectObject( hdc, hPrevFont );
           HeapFree( GetProcessHeap(), 0, text );
 #ifdef __REACTOS__
@@ -1188,13 +1192,12 @@ static void BUTTON_CheckAutoRadioButton( HWND hwnd )
 
     parent = GetParent(hwnd);
     /* make sure that starting control is not disabled or invisible */
-    start = sibling = GetNextDlgGroupItem( parent, hwnd, TRUE );
+    start = sibling = hwnd;
     do
     {
         if (!sibling) break;
-        if ((hwnd != sibling) &&
-            ((GetWindowLongPtrW( sibling, GWL_STYLE) & BS_TYPEMASK) == BS_AUTORADIOBUTTON))
-            SendMessageW( sibling, BM_SETCHECK, BST_UNCHECKED, 0 );
+        if (SendMessageW( sibling, WM_GETDLGCODE, 0, 0 ) == (DLGC_BUTTON | DLGC_RADIOBUTTON))
+            SendMessageW( sibling, BM_SETCHECK, sibling == hwnd ? BST_CHECKED : BST_UNCHECKED, 0 );
         sibling = GetNextDlgGroupItem( parent, sibling, FALSE );
     } while (sibling != start);
 }

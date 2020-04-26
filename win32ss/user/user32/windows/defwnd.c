@@ -328,6 +328,9 @@ User32DefWindowProc(HWND hWnd,
 
     switch (Msg)
     {
+        case WM_DEVICECHANGE:
+            return TRUE;
+
         case WM_POPUPSYSTEMMENU:
         {
             /* This is an undocumented message used by the windows taskbar to
@@ -746,6 +749,12 @@ User32DefWindowProc(HWND hWnd,
                              (LPARAM)wParam);
 
             break;
+        }
+
+        case WM_COPYGLOBALDATA:
+        {
+            TRACE("WM_COPYGLOBALDATA hGlobal %p Size %d Flags 0x%x\n",lParam,wParam,GlobalFlags((HGLOBAL)lParam));
+            return lParam;
         }
 
 /* Move to Win32k !*/

@@ -20,11 +20,10 @@
 #include <freeldr.h>
 
 #include <debug.h>
+DBG_DEFAULT_CHANNEL(FILESYSTEM);
 
 #define TAG_PXE_FILE 'FexP'
 #define NO_FILE ((ULONG)-1)
-
-DBG_DEFAULT_CHANNEL(FILESYSTEM);
 
 static IP4 _ServerIP = { 0, };
 static ULONG _OpenFile = NO_FILE;
@@ -144,6 +143,9 @@ static ARC_STATUS PxeGetFileInformation(ULONG FileId, FILEINFORMATION* Informati
     RtlZeroMemory(Information, sizeof(*Information));
     Information->EndingAddress.LowPart = _FileSize;
     Information->CurrentAddress.LowPart = _FilePosition;
+
+    TRACE("PxeGetFileInformation(%lu) -> FileSize = %lu, FilePointer = 0x%lx\n",
+          FileId, Information->EndingAddress.LowPart, Information->CurrentAddress.LowPart);
 
     return ESUCCESS;
 }

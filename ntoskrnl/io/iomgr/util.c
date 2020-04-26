@@ -251,7 +251,7 @@ IoCheckEaBufferValidity(IN PFILE_FULL_EA_INFORMATION EaBuffer,
         /* Compute the remaining bits */
         EaLength -= NextEntryOffset;
         /* We must have bits left */
-        if (EaLength < 0)
+        if ((LONG)EaLength < 0)
         {
             goto FailPath;
         }
@@ -316,6 +316,14 @@ NTAPI
 IoSetHardErrorOrVerifyDevice(IN PIRP Irp,
                              IN PDEVICE_OBJECT DeviceObject)
 {
+    /* Ignore in case the IRP is not associated with any thread */
+    if (!Irp->Tail.Overlay.Thread)
+    {
+        DPRINT1("IoSetHardErrorOrVerifyDevice(0x%p, 0x%p): IRP has no thread, ignoring.\n",
+                Irp, DeviceObject);
+        return;
+    }
+
     /* Set the pointer in the IRP */
     Irp->Tail.Overlay.Thread->DeviceToVerify = DeviceObject;
 }

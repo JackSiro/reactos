@@ -1,6 +1,6 @@
 /* Translation and UTF-8 Conversion by mkbu95 <mkbu95@gmail.com> (August, 2011) */
 
-LANGUAGE LANG_PORTUGUESE, SUBLANG_NEUTRAL
+LANGUAGE LANG_PORTUGUESE, SUBLANG_PORTUGUESE_BRAZILIAN
 
 IDR_MAINMENU MENU
 BEGIN
@@ -180,6 +180,7 @@ BEGIN
     IDS_CAT_SCIENCE "Ciência"
     IDS_CAT_TOOLS "Ferramentas"
     IDS_CAT_VIDEO "Vídeo"
+    IDS_CAT_THEMES "Themes"
 END
 
 STRINGTABLE
@@ -192,7 +193,7 @@ BEGIN
     IDS_APPS_COUNT "Número de aplicativos: %d; Selected: %d"
     IDS_WELCOME_TITLE "Bem-vindo(a) a Central de Aplicativos ReactOS!\n\n"
     IDS_WELCOME_TEXT "Escolha uma categoria à esquerda, então escolha um aplicativo para instalar ou desinstalar.\nWeb Site ReactOS: "
-    IDS_WELCOME_URL "http://www.reactos.org"
+    IDS_WELCOME_URL "https://reactos.org/"
     IDS_INSTALLED "Instalado"
     IDS_AVAILABLEFORINST "Disponível para instalação"
     IDS_UPDATES "Atualizações"

@@ -95,10 +95,11 @@ static const unsigned int message_pointer_flags[] =
 };
 
 /* check whether a given message type includes pointers */
-static inline int is_pointer_message( UINT message )
+static inline int is_pointer_message( UINT message, WPARAM wparam )
 {
     if (message >= 8*sizeof(message_pointer_flags)) return FALSE;
-        return (message_pointer_flags[message / 32] & SET(message)) != 0;
+    if (message == WM_DEVICECHANGE && !(wparam & 0x8000)) return FALSE;
+    return (message_pointer_flags[message / 32] & SET(message)) != 0;
 }
 
 #undef SET
@@ -392,6 +393,13 @@ MsgiUMToKMMessage(PMSG UMMsg, PMSG KMMsg, BOOL Posted)
         }
         break;
 
+      case WM_COPYGLOBALDATA:
+        {
+           KMMsg->lParam = (LPARAM)GlobalLock((HGLOBAL)UMMsg->lParam);;
+           TRACE("WM_COPYGLOBALDATA get data ptr %p\n",KMMsg->lParam);
+        }
+        break;
+
       default:
         break;
     }
@@ -407,6 +415,11 @@ MsgiUMToKMCleanup(PMSG UMMsg, PMSG KMMsg)
     {
       case WM_COPYDATA:
         HeapFree(GetProcessHeap(), 0, (LPVOID) KMMsg->lParam);
+        break;
+      case WM_COPYGLOBALDATA:
+        TRACE("WM_COPYGLOBALDATA cleanup return\n");
+        GlobalUnlock((HGLOBAL)UMMsg->lParam);
+        GlobalFree((HGLOBAL)UMMsg->lParam);
         break;
       default:
         break;
@@ -452,6 +465,18 @@ MsgiKMToUMMessage(PMSG KMMsg, PMSG UMMsg)
         }
         break;
 
+      case WM_COPYGLOBALDATA:
+        {
+           PVOID Data;
+           HGLOBAL hGlobal = GlobalAlloc(GHND | GMEM_SHARE, KMMsg->wParam);
+           Data = GlobalLock(hGlobal);
+           if (Data) RtlCopyMemory(Data, (PVOID)KMMsg->lParam, KMMsg->wParam);
+           GlobalUnlock(hGlobal);
+           TRACE("WM_COPYGLOBALDATA to User hGlobal %p\n",hGlobal);
+           UMMsg->lParam = (LPARAM)hGlobal;
+        }
+        break;
+
       default:
         break;
     }
@@ -465,7 +490,7 @@ MsgiKMToUMCleanup(PMSG KMMsg, PMSG UMMsg)
   switch (KMMsg->message)
     {
       case WM_DDE_EXECUTE:
-#ifdef TODO
+#ifdef TODO // Kept as historic.
         HeapFree(GetProcessHeap(), 0, (LPVOID) KMMsg->lParam);
         GlobalUnlock((HGLOBAL) UMMsg->lParam);
 #endif
@@ -1893,7 +1918,7 @@ DispatchMessageA(CONST MSG *lpmsg)
     else
         Wnd = NULL;
 
-    if (is_pointer_message(lpmsg->message))
+    if (is_pointer_message(lpmsg->message, lpmsg->wParam))
     {
        SetLastError( ERROR_MESSAGE_SYNC_ONLY );
        return 0;
@@ -1982,7 +2007,7 @@ DispatchMessageW(CONST MSG *lpmsg)
     else
         Wnd = NULL;
 
-    if (is_pointer_message(lpmsg->message))
+    if (is_pointer_message(lpmsg->message, lpmsg->wParam))
     {
        SetLastError( ERROR_MESSAGE_SYNC_ONLY );
        return 0;
@@ -2138,7 +2163,7 @@ PeekMessageWorker( PMSG pMsg,
         {  // Not waiting for idle event.
            if (!pcti->fsChangeBits && !pcti->fsWakeBits)
            {  // No messages are available.
-              if ((GetTickCount() - pcti->tickLastMsgChecked) > 1000)
+              if ((GetTickCount() - pcti->timeLastRead) > 1000)
               {  // Up the msg read count if over 1 sec.
                  NtUserGetThreadState(THREADSTATE_UPTIMELASTREAD);
               }
@@ -2505,7 +2530,7 @@ SendMessageCallbackA(
   MSG AnsiMsg, UcMsg;
   CALL_BACK_INFO CallBackInfo;
 
-  if (is_pointer_message(Msg))
+  if (is_pointer_message(Msg, wParam))
   {
      SetLastError( ERROR_MESSAGE_SYNC_ONLY );
      return FALSE;
@@ -2555,7 +2580,7 @@ SendMessageCallbackW(
 {
   CALL_BACK_INFO CallBackInfo;
 
-  if (is_pointer_message(Msg))
+  if (is_pointer_message(Msg, wParam))
   {
      SetLastError( ERROR_MESSAGE_SYNC_ONLY );
      return FALSE;
@@ -2718,7 +2743,7 @@ SendNotifyMessageA(
   BOOL Ret;
   MSG AnsiMsg, UcMsg;
 
-  if (is_pointer_message(Msg))
+  if (is_pointer_message(Msg, wParam))
   {
      SetLastError( ERROR_MESSAGE_SYNC_ONLY );
      return FALSE;
@@ -2755,7 +2780,7 @@ SendNotifyMessageW(
 {
   LRESULT Result;
 
-  if (is_pointer_message(Msg))
+  if (is_pointer_message(Msg, wParam))
   {
      SetLastError( ERROR_MESSAGE_SYNC_ONLY );
      return FALSE;
@@ -2933,6 +2958,11 @@ User32CallWindowProcFromKernel(PVOID Arguments, ULONG ArgumentLength)
         case WM_CREATE:
         {
             TRACE("WM_CREATE CB %p lParam %p\n",CallbackArgs, KMMsg.lParam);
+            break;
+        }
+        case WM_NCCREATE:
+        {
+            TRACE("WM_NCCREATE CB %p lParam %p\n",CallbackArgs, KMMsg.lParam);
             break;
         }
         case WM_SYSTIMER:

@@ -28,15 +28,17 @@ class CFSFolder :
     public CComObjectRootEx<CComMultiThreadModelNoCS>,
     public IShellFolder2,
     public IPersistFolder3,
-    public IContextMenuCB
+    public IContextMenuCB,
+    public IShellFolderViewCB,
+    public IItemNameLimits
 {
     private:
-        CLSID *pclsid;
+        const CLSID *m_pclsid;
 
         /* both paths are parsible from the desktop */
-        LPWSTR sPathTarget;     /* complete path to target used for enumeration and ChangeNotify */
+        LPWSTR m_sPathTarget;     /* complete path to target used for enumeration and ChangeNotify */
 
-        LPITEMIDLIST pidlRoot; /* absolute pidl */
+        LPITEMIDLIST m_pidlRoot; /* absolute pidl */
 
         DWORD m_bGroupPolicyActive;
         HRESULT _CreateShellExtInstance(const CLSID *pclsid, LPCITEMIDLIST pidl, REFIID riid, LPVOID *ppvOut);
@@ -72,10 +74,10 @@ class CFSFolder :
         virtual HRESULT WINAPI GetClassID(CLSID *lpClassId);
 
         // IPersistFolder
-        virtual HRESULT WINAPI Initialize(LPCITEMIDLIST pidl);
+        virtual HRESULT WINAPI Initialize(PCIDLIST_ABSOLUTE pidl);
 
         // IPersistFolder2
-        virtual HRESULT WINAPI GetCurFolder(LPITEMIDLIST * pidl);
+        virtual HRESULT WINAPI GetCurFolder(PIDLIST_ABSOLUTE * pidl);
 
         // IPersistFolder3
         virtual HRESULT WINAPI InitializeEx(IBindCtx *pbc, LPCITEMIDLIST pidlRoot, const PERSIST_FOLDER_TARGET_INFO *ppfti);
@@ -83,6 +85,31 @@ class CFSFolder :
 
         // IContextMenuCB
         virtual HRESULT WINAPI CallBack(IShellFolder *psf, HWND hwndOwner, IDataObject *pdtobj, UINT uMsg, WPARAM wParam, LPARAM lParam);
+
+        // IShellFolderViewCB
+        virtual HRESULT WINAPI MessageSFVCB(UINT uMsg, WPARAM wParam, LPARAM lParam);
+
+        /*** IItemNameLimits methods ***/
+
+        STDMETHODIMP
+        GetMaxLength(LPCWSTR pszName, int *piMaxNameLen)
+        {
+            return E_NOTIMPL;
+        }
+
+        STDMETHODIMP
+        GetValidCharacters(LPWSTR *ppwszValidChars, LPWSTR *ppwszInvalidChars)
+        {
+            if (ppwszValidChars)
+            {
+                *ppwszValidChars = NULL;
+            }
+            if (ppwszInvalidChars)
+            {
+                SHStrDupW(INVALID_FILETITLE_CHARACTERSW, ppwszInvalidChars);
+            }
+            return S_OK;
+        }
 
         DECLARE_REGISTRY_RESOURCEID(IDR_SHELLFSFOLDER)
         DECLARE_NOT_AGGREGATABLE(CFSFolder)
@@ -96,7 +123,12 @@ class CFSFolder :
         COM_INTERFACE_ENTRY_IID(IID_IPersistFolder2, IPersistFolder2)
         COM_INTERFACE_ENTRY_IID(IID_IPersistFolder3, IPersistFolder3)
         COM_INTERFACE_ENTRY_IID(IID_IPersist, IPersist)
+        COM_INTERFACE_ENTRY_IID(IID_IShellFolderViewCB, IShellFolderViewCB)
+        COM_INTERFACE_ENTRY_IID(IID_IItemNameLimits, IItemNameLimits)
         END_COM_MAP()
+
+    protected:
+        HRESULT WINAPI GetCustomViewInfo(ULONG unknown, SFVM_CUSTOMVIEWINFO_DATA *data);
 };
 
 #endif /* _CFSFOLDER_H_ */

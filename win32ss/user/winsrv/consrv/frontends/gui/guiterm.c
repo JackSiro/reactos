@@ -16,6 +16,7 @@
 #define NDEBUG
 #include <debug.h>
 
+#include "concfg/font.h"
 #include "guiterm.h"
 #include "resource.h"
 
@@ -96,6 +97,7 @@ InvalidateCell(PGUI_CONSOLE_DATA GuiData,
  *                        GUI Terminal Initialization                         *
  ******************************************************************************/
 
+// FIXME: HACK: Potential HACK for CORE-8129; see revision 63595.
 VOID
 CreateSysMenu(HWND hWnd);
 
@@ -171,7 +173,7 @@ GuiConsoleInputThread(PVOID Param)
 
                 ASSERT(NewWindow == GuiData->hWindow);
 
-                InterlockedIncrement(&WindowCount);
+                _InterlockedIncrement(&WindowCount);
 
                 //
                 // FIXME: TODO: Move everything there into conwnd.c!OnNcCreate()
@@ -236,7 +238,7 @@ GuiConsoleInputThread(PVOID Param)
 
                 NtSetEvent(GuiData->hGuiTermEvent, NULL);
 
-                if (InterlockedDecrement(&WindowCount) == 0)
+                if (_InterlockedDecrement(&WindowCount) == 0)
                 {
                     DPRINT("CONSRV: Going to quit the Input Thread 0x%p\n", InputThreadId);
                     goto Quit;
@@ -293,12 +295,15 @@ GuiInit(IN PCONSOLE_INIT_INFO ConsoleInitInfo,
     HANDLE hInputThread;
     CLIENT_ID ClientId;
 
-    /*
-     * Initialize and register the console window class, if needed.
-     */
+    /* Perform one-time initialization */
     if (!ConsInitialized)
     {
+        /* Initialize and register the console window class */
         if (!RegisterConWndClass(ConSrvDllInstance)) return FALSE;
+
+        /* Initialize the font support -- additional TrueType fonts cache */
+        InitTTFontCache();
+
         ConsInitialized = TRUE;
     }
 
@@ -763,7 +768,7 @@ GuiSetActiveScreenBuffer(IN OUT PFRONTEND This)
     GuiData->WindowSizeLock = TRUE;
 
     InterlockedExchangePointer((PVOID*)&GuiData->ActiveBuffer,
-                               ConDrvGetActiveScreenBuffer(GuiData->Console));
+                               ConDrvGetActiveScreenBuffer((PCONSOLE)GuiData->Console));
 
     GuiData->WindowSizeLock = FALSE;
     LeaveCriticalSection(&GuiData->Lock);
@@ -909,6 +914,13 @@ GuiChangeIcon(IN OUT PFRONTEND This,
     }
 
     return TRUE;
+}
+
+static HDESK NTAPI
+GuiGetThreadConsoleDesktop(IN OUT PFRONTEND This)
+{
+    PGUI_CONSOLE_DATA GuiData = This->Context;
+    return GuiData->Desktop;
 }
 
 static HWND NTAPI
@@ -1109,7 +1121,7 @@ GuiMenuControl(IN OUT PFRONTEND This,
     GuiData->CmdIdLow  = CmdIdLow ;
     GuiData->CmdIdHigh = CmdIdHigh;
 
-    return GetSystemMenu(GuiData->hWindow, FALSE);
+    return GuiData->hSysMenu;
 }
 
 static BOOL NTAPI
@@ -1123,12 +1135,11 @@ GuiSetMenuClose(IN OUT PFRONTEND This,
      */
 
     PGUI_CONSOLE_DATA GuiData = This->Context;
-    HMENU hSysMenu = GetSystemMenu(GuiData->hWindow, FALSE);
 
-    if (hSysMenu == NULL) return FALSE;
+    if (GuiData->hSysMenu == NULL) return FALSE;
 
     GuiData->IsCloseButtonEnabled = Enable;
-    EnableMenuItem(hSysMenu, SC_CLOSE, MF_BYCOMMAND | (Enable ? MF_ENABLED : MF_GRAYED));
+    EnableMenuItem(GuiData->hSysMenu, SC_CLOSE, MF_BYCOMMAND | (Enable ? MF_ENABLED : MF_GRAYED));
 
     return TRUE;
 }
@@ -1148,6 +1159,7 @@ static FRONTEND_VTBL GuiVtbl =
     GuiRefreshInternalInfo,
     GuiChangeTitle,
     GuiChangeIcon,
+    GuiGetThreadConsoleDesktop,
     GuiGetConsoleWindowHandle,
     GuiGetLargestConsoleWindowSize,
     GuiGetSelectionInfo,
@@ -1226,7 +1238,7 @@ GuiLoadFrontEnd(IN OUT PFRONTEND FrontEnd,
         if ((ConsoleStartInfo->dwStartupFlags & STARTF_TITLEISLINKNAME) == 0)
         {
 #if 0
-            /* Load the terminal infos from the registry */
+            /* Load the terminal information from the registry */
             GuiConsoleReadUserSettings(&GuiInitInfo->TermInfo);
 #endif
 

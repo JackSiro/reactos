@@ -1116,7 +1116,7 @@ op_vol_accs_dnd:
             // get next path part...
             TmpBuffer = TailName.Buffer;
             TailName.Buffer = UDFDissectName(TailName.Buffer,&(CurName.Length) );
-            TailName.Length -= (USHORT)((ULONG)(TailName.Buffer) - (ULONG)TmpBuffer);
+            TailName.Length -= (USHORT)((ULONG_PTR)(TailName.Buffer) - (ULONG_PTR)TmpBuffer);
             CurName.Buffer = TailName.Buffer - CurName.Length;
             CurName.Length *= sizeof(WCHAR);
             CurName.MaximumLength = CurName.Length + sizeof(WCHAR);
@@ -1143,6 +1143,7 @@ op_vol_accs_dnd:
                     // Only say ..CK OFF !!!!
                     if(RC == STATUS_OBJECT_NAME_NOT_FOUND)
                         RC = STATUS_OBJECT_PATH_NOT_FOUND;
+                    ReturnedInformation = FILE_DOES_NOT_EXIST;
                     try_return(RC);
                 }
 
@@ -2312,7 +2313,10 @@ UDFFirstOpenFile(
             ((LocalPath->Buffer[LocalPath->Length/sizeof(WCHAR)-1] != L':') /*&&
              (LocalPath->Buffer[LocalPath->Length/sizeof(WCHAR)-1] != L'\\')*/) )) {
         RC = MyAppendUnicodeToString(&(NewFCBName->ObjectName), L"\\");
-        if(!NT_SUCCESS(RC)) return STATUS_INSUFFICIENT_RESOURCES;
+        if(!NT_SUCCESS(RC)) {
+            UDFReleaseObjectName(NewFCBName);
+            return STATUS_INSUFFICIENT_RESOURCES;
+        }
     }
 
     // Make link between Fcb and FileInfo
@@ -2321,9 +2325,11 @@ UDFFirstOpenFile(
     (*PtrNewFcb)->ParentFcb = RelatedFileInfo->Fcb;
 
     if(!((*PtrNewFcb)->NTRequiredFCB = NewFileInfo->Dloc->CommonFcb)) {
-        if(!((*PtrNewFcb)->NTRequiredFCB =
-                    (PtrUDFNTRequiredFCB)MyAllocatePool__(NonPagedPool, UDFQuadAlign(sizeof(UDFNTRequiredFCB))) ) )
+        (*PtrNewFcb)->NTRequiredFCB = (PtrUDFNTRequiredFCB)MyAllocatePool__(NonPagedPool, UDFQuadAlign(sizeof(UDFNTRequiredFCB)));
+        if(!((*PtrNewFcb)->NTRequiredFCB)) {
+            UDFReleaseObjectName(NewFCBName);
             return STATUS_INSUFFICIENT_RESOURCES;
+        }
 
         UDFPrint(("UDFAllocateNtReqFCB: %x\n", (*PtrNewFcb)->NTRequiredFCB));
         RtlZeroMemory((*PtrNewFcb)->NTRequiredFCB, UDFQuadAlign(sizeof(UDFNTRequiredFCB)));
@@ -2333,6 +2339,7 @@ UDFFirstOpenFile(
         if(!(NewFileInfo->Dloc->CommonFcb->NtReqFCBFlags & UDF_NTREQ_FCB_VALID)) {
             (*PtrNewFcb)->NTRequiredFCB = NULL;
             BrutePoint();
+            UDFReleaseObjectName(NewFCBName);
             return STATUS_ACCESS_DENIED;
         }
     }

@@ -24,18 +24,22 @@ list(APPEND SOURCE
     zippidl.cpp
     zippidl.hpp
     IZip.hpp
+    CConfirmReplace.cpp
     CExplorerCommand.cpp
     CEnumZipContents.cpp
     CFolderViewCB.cpp
+    CSendToZip.cpp
+    CZipCreator.cpp
     CZipEnumerator.hpp
     CZipExtract.cpp
     CZipFolder.hpp
+    CZipPassword.cpp
     Debug.cpp
     zipfldr.spec
     precomp.h
     resource.h)
 
-add_library(zipfldr SHARED
+add_library(zipfldr MODULE
     ${SOURCE}
     ${ZLIB_SOURCE}
     zipfldr.rc
@@ -43,7 +47,7 @@ add_library(zipfldr SHARED
 
 
 set_module_type(zipfldr win32dll UNICODE)
-target_link_libraries(zipfldr minizip zlib atlnew uuid)
+target_link_libraries(zipfldr minizip zlib uuid)
 add_importlibs(zipfldr oleaut32 ole32 shlwapi comctl32 shell32 user32 advapi32 msvcrt kernel32 ntdll)
 add_pch(zipfldr precomp.h SOURCE)
 add_cd_file(TARGET zipfldr DESTINATION reactos/system32 FOR all)

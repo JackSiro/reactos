@@ -80,7 +80,7 @@ LPCWSTR CFileVersionInfo::GetString(LPCWSTR pwszName)
     if (!VerQueryValueW(m_pInfo, wszBuf, (LPVOID *)&pwszResult, &cBytes))
         pwszResult = NULL;
 
-    if (!m_wLang && !m_wCode)
+    if (!pwszResult)
     {
         /* Try US English */
         swprintf(wszBuf, L"\\StringFileInfo\\%04x%04x\\%s", MAKELANGID(LANG_ENGLISH, SUBLANG_ENGLISH_US), 1252, pwszName);
@@ -1172,7 +1172,7 @@ CFileDefExt::~CFileDefExt()
 }
 
 HRESULT WINAPI
-CFileDefExt::Initialize(LPCITEMIDLIST pidlFolder, IDataObject *pDataObj, HKEY hkeyProgID)
+CFileDefExt::Initialize(PCIDLIST_ABSOLUTE pidlFolder, IDataObject *pDataObj, HKEY hkeyProgID)
 {
     FORMATETC format;
     STGMEDIUM stgm;
@@ -1190,7 +1190,7 @@ CFileDefExt::Initialize(LPCITEMIDLIST pidlFolder, IDataObject *pDataObj, HKEY hk
     format.tymed = TYMED_HGLOBAL;
 
     hr = pDataObj->GetData(&format, &stgm);
-    if (FAILED(hr))
+    if (FAILED_UNEXPECTEDLY(hr))
         return hr;
 
     if (!DragQueryFileW((HDROP)stgm.hGlobal, 0, m_wszPath, _countof(m_wszPath)))

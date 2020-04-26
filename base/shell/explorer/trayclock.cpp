@@ -39,7 +39,7 @@ const UINT ClockWndFormatsCount = _ARRAYSIZE(ClockWndFormats);
 
 #define CLOCKWND_FORMAT_COUNT ClockWndFormatsCount
 
-extern const WCHAR szTrayClockWndClass[];
+static const WCHAR szTrayClockWndClass[] = L"TrayClockWClass";
 
 class CTrayClockWnd :
     public CComCoClass<CTrayClockWnd>,
@@ -51,6 +51,7 @@ class CTrayClockWnd :
     COLORREF textColor;
     RECT rcText;
     SYSTEMTIME LocalTime;
+    CTooltips m_tooltip;
 
     union
     {
@@ -91,12 +92,12 @@ private:
     LRESULT OnEraseBackground(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL& bHandled);
     LRESULT OnTimer(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL& bHandled);
     LRESULT OnGetMinimumSize(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL& bHandled);
-    LRESULT OnNcHitTest(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL& bHandled);
+    LRESULT OnContextMenu(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL& bHandled);
     LRESULT OnSetFont(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL& bHandled);
     LRESULT OnCreate(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL& bHandled);
     LRESULT OnSize(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL& bHandled);
     LRESULT OnTaskbarSettingsChanged(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL& bHandled);
-    LRESULT OnNcLButtonDblClick(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL& bHandled);
+    LRESULT OnLButtonDblClick(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL& bHandled);
 
 public:
 
@@ -131,17 +132,15 @@ public:
         MESSAGE_HANDLER(WM_PRINTCLIENT, OnPaint)
         MESSAGE_HANDLER(WM_THEMECHANGED, OnThemeChanged)
         MESSAGE_HANDLER(WM_TIMER, OnTimer)
-        MESSAGE_HANDLER(WM_NCHITTEST, OnNcHitTest)
+        MESSAGE_HANDLER(WM_CONTEXTMENU, OnContextMenu)
         MESSAGE_HANDLER(WM_SETFONT, OnSetFont)
         MESSAGE_HANDLER(TNWM_GETMINIMUMSIZE, OnGetMinimumSize)
         MESSAGE_HANDLER(TWM_SETTINGSCHANGED, OnTaskbarSettingsChanged)
-        MESSAGE_HANDLER(WM_NCLBUTTONDBLCLK, OnNcLButtonDblClick)
+        MESSAGE_HANDLER(WM_LBUTTONDBLCLK, OnLButtonDblClick)
     END_MSG_MAP()
 
     HRESULT Initialize(IN HWND hWndParent);
 };
-
-const WCHAR szTrayClockWndClass[] = L"TrayClockWClass";
 
 #define ID_TRAYCLOCK_TIMER  0
 #define ID_TRAYCLOCK_TIMER_INIT 1
@@ -388,6 +387,31 @@ VOID CTrayClockWnd::UpdateWnd()
             GetParent().SendMessage(WM_NOTIFY, 0, (LPARAM) &nmh);
         }
     }
+
+    int iDateLength = GetDateFormat(LOCALE_USER_DEFAULT,
+                                          DATE_LONGDATE,
+                                          &LocalTime,
+                                          NULL,
+                                          NULL,
+                                          0);
+    if (iDateLength <= 0)
+    {
+        return;
+    }
+
+    WCHAR* szDate = new WCHAR[iDateLength];
+    if (GetDateFormat(LOCALE_USER_DEFAULT,
+                      DATE_LONGDATE,
+                      &LocalTime,
+                      NULL,
+                      szDate,
+                      iDateLength) > 0)
+    {
+        m_tooltip.UpdateTipText(m_hWnd,
+                                reinterpret_cast<UINT_PTR>(m_hWnd),
+                                szDate);
+    }
+    delete[] szDate;
 }
 
 VOID CTrayClockWnd::Update()
@@ -622,9 +646,9 @@ LRESULT CTrayClockWnd::OnGetMinimumSize(UINT uMsg, WPARAM wParam, LPARAM lParam,
     return (LRESULT) GetMinimumSize((BOOL) wParam, (PSIZE) lParam) != 0;
 }
 
-LRESULT CTrayClockWnd::OnNcHitTest(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL& bHandled)
+LRESULT CTrayClockWnd::OnContextMenu(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL& bHandled)
 {
-    return HTTRANSPARENT;
+    return GetParent().SendMessage(uMsg, wParam, lParam);
 }
 
 LRESULT CTrayClockWnd::OnSetFont(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL& bHandled)
@@ -635,6 +659,18 @@ LRESULT CTrayClockWnd::OnSetFont(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL& 
 
 LRESULT CTrayClockWnd::OnCreate(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL& bHandled)
 {
+    m_tooltip.Create(m_hWnd, WS_POPUP | TTS_NOPREFIX | TTS_ALWAYSTIP);
+
+    TOOLINFOW ti = { 0 };
+    ti.cbSize = TTTOOLINFOW_V1_SIZE;
+    ti.uFlags = TTF_IDISHWND | TTF_SUBCLASS;
+    ti.hwnd = m_hWnd;
+    ti.uId = reinterpret_cast<UINT_PTR>(m_hWnd);
+    ti.lpszText = NULL;
+    ti.lParam = NULL;
+
+    m_tooltip.AddTool(&ti);
+
     ResetTime();
     return TRUE;
 }
@@ -681,23 +717,12 @@ LRESULT CTrayClockWnd::OnTaskbarSettingsChanged(UINT uMsg, WPARAM wParam, LPARAM
     return 0;
 }
 
-LRESULT CTrayClockWnd::OnNcLButtonDblClick(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL& bHandled)
+LRESULT CTrayClockWnd::OnLButtonDblClick(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL& bHandled)
 {
     if (IsWindowVisible())
     {
-        /* We get all WM_NCLBUTTONDBLCLK for the taskbar so we need to check if it is on the clock*/
-        RECT rcClock;
-        if (GetWindowRect(&rcClock))
-        {
-            POINT ptClick;
-            ptClick.x = MAKEPOINTS(lParam).x;
-            ptClick.y = MAKEPOINTS(lParam).y;
-            if (PtInRect(&rcClock, ptClick))
-            {
-                //FIXME: use SHRunControlPanel
-                ShellExecuteW(m_hWnd, NULL, L"timedate.cpl", NULL, NULL, SW_NORMAL);
-            }
-        }
+        //FIXME: use SHRunControlPanel
+        ShellExecuteW(m_hWnd, NULL, L"timedate.cpl", NULL, NULL, SW_NORMAL);
     }
     return TRUE;
 }

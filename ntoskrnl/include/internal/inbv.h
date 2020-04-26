@@ -1,40 +1,11 @@
 #pragma once
 
-typedef struct _INBV_PROGRESS_STATE
-{
-    ULONG Floor;
-    ULONG Ceiling;
-    ULONG Bias;
-} INBV_PROGRESS_STATE;
+// Native definitions from BOOTVID (Boot Video Driver).
+#include "bootvid/bootvid.h"
 
-typedef struct _BT_PROGRESS_INDICATOR
-{
-    ULONG Count;
-    ULONG Expected;
-    ULONG Percentage;
-} BT_PROGRESS_INDICATOR, *PBT_PROGRESS_INDICATOR;
-
-typedef enum _ROT_BAR_TYPE
-{
-    RB_UNSPECIFIED,
-    RB_SQUARE_CELLS,
-    RB_PROGRESS_BAR
-} ROT_BAR_TYPE;
-
-INIT_FUNCTION
-VOID
-NTAPI
-InbvUpdateProgressBar(
-    IN ULONG Progress
-);
-
-INIT_FUNCTION
-VOID
-NTAPI
-InbvRotBarInit(
-    VOID
-);
-
+//
+// Driver Initialization
+//
 INIT_FUNCTION
 BOOLEAN
 NTAPI
@@ -43,11 +14,55 @@ InbvDriverInitialize(
     IN ULONG Count
 );
 
+extern BOOLEAN InbvBootDriverInstalled;
+
+PUCHAR
+NTAPI
+InbvGetResourceAddress(
+    IN ULONG ResourceNumber
+);
+
+VOID
+NTAPI
+InbvBitBlt(
+    IN PUCHAR Buffer,
+    IN ULONG X,
+    IN ULONG Y
+);
+
+//
+// Progress-Bar Functions
+//
 INIT_FUNCTION
 VOID
 NTAPI
-InbvEnableBootDriver(
-    IN BOOLEAN Enable
+InbvIndicateProgress(
+    VOID
+);
+
+INIT_FUNCTION
+VOID
+NTAPI
+InbvSetProgressBarSubset(
+    _In_ ULONG Floor,
+    _In_ ULONG Ceiling
+);
+
+INIT_FUNCTION
+VOID
+NTAPI
+InbvUpdateProgressBar(
+    IN ULONG Progress
+);
+
+//
+// Boot Splash-Screen Functions
+//
+INIT_FUNCTION
+VOID
+NTAPI
+InbvRotBarInit(
+    VOID
 );
 
 INIT_FUNCTION
@@ -71,32 +86,20 @@ FinalizeBootLogo(
     VOID
 );
 
-PUCHAR
-NTAPI
-InbvGetResourceAddress(
-    IN ULONG ResourceNumber
-);
-
-VOID
-NTAPI
-InbvBitBlt(
-    IN PUCHAR Buffer,
-    IN ULONG X,
-    IN ULONG Y
-);
-
-INIT_FUNCTION
-VOID
-NTAPI
-InbvIndicateProgress(
-    VOID
-);
-
+//
+// Headless Terminal Support Functions
+//
 VOID
 NTAPI
 InbvPortEnableFifo(
     IN ULONG PortId,
     IN BOOLEAN Enable
+);
+
+BOOLEAN
+NTAPI
+InbvPortPollOnly(
+    IN ULONG PortId
 );
 
 BOOLEAN
@@ -128,11 +131,3 @@ InbvPortInitialize(
     OUT PULONG PortId,
     IN BOOLEAN IsMMIODevice
 );
-
-BOOLEAN
-NTAPI
-InbvPortPollOnly(
-    IN ULONG PortId
-);
-
-extern BOOLEAN InbvBootDriverInstalled;

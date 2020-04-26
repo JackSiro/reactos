@@ -785,7 +785,11 @@ static LRESULT CALLBACK BUTTON_WindowProc(HWND hWnd, UINT uMsg, WPARAM wParam, L
                 SendMessageW( hWnd, BM_SETCHECK, !(infoPtr->state & BST_CHECKED), 0 );
                 break;
             case BS_AUTORADIOBUTTON:
+#ifdef __REACTOS__
+                BUTTON_CheckAutoRadioButton( hWnd );
+#else
                 SendMessageW( hWnd, BM_SETCHECK, TRUE, 0 );
+#endif
                 break;
             case BS_AUTO3STATE:
                 SendMessageW( hWnd, BM_SETCHECK, (infoPtr->state & BST_INDETERMINATE) ? 0 :
@@ -838,7 +842,9 @@ static LRESULT CALLBACK BUTTON_WindowProc(HWND hWnd, UINT uMsg, WPARAM wParam, L
             nmhotitem.dwFlags      = HICF_ENTERING;
             SendMessageW(GetParent(hWnd), WM_NOTIFY, nmhotitem.hdr.idFrom, (LPARAM)&nmhotitem);
 
-            InvalidateRect(hWnd, NULL, TRUE);
+            theme = GetWindowTheme( hWnd );
+            if (theme)
+                InvalidateRect(hWnd, NULL, TRUE);
         }
 
         if(!TrackMouseEvent(&mouse_event) || !(mouse_event.dwFlags&TME_LEAVE))
@@ -892,7 +898,9 @@ static LRESULT CALLBACK BUTTON_WindowProc(HWND hWnd, UINT uMsg, WPARAM wParam, L
             nmhotitem.dwFlags      = HICF_LEAVING;
             SendMessageW(GetParent(hWnd), WM_NOTIFY, nmhotitem.hdr.idFrom, (LPARAM)&nmhotitem);
 
-            InvalidateRect(hWnd, NULL, TRUE);
+            theme = GetWindowTheme( hWnd );
+            if (theme)
+                InvalidateRect(hWnd, NULL, TRUE);
         }
         break;
 #else
@@ -1118,8 +1126,10 @@ static LRESULT CALLBACK BUTTON_WindowProc(HWND hWnd, UINT uMsg, WPARAM wParam, L
             infoPtr->state = (infoPtr->state & ~3) | wParam;
             InvalidateRect( hWnd, NULL, FALSE );
         }
+#ifndef __REACTOS__
         if ((btn_type == BS_AUTORADIOBUTTON) && (wParam == BST_CHECKED) && (style & WS_CHILD))
             BUTTON_CheckAutoRadioButton( hWnd );
+#endif
         break;
 
     case BM_GETSTATE:
@@ -1201,7 +1211,11 @@ static UINT BUTTON_CalcLabelRect(const BUTTON_INFO *infoPtr, HDC hdc, RECT *rc)
           }
 
           if ((hFont = infoPtr->font)) hPrevFont = SelectObject( hdc, hFont );
+#ifdef __REACTOS__
+          DrawTextW(hdc, text, -1, &r, ((dtStyle | DT_CALCRECT) & ~(DT_VCENTER | DT_BOTTOM)));
+#else
           DrawTextW(hdc, text, -1, &r, dtStyle | DT_CALCRECT);
+#endif
           if (hPrevFont) SelectObject( hdc, hPrevFont );
           heap_free( text );
 #ifdef __REACTOS__
@@ -1645,13 +1659,22 @@ static void BUTTON_CheckAutoRadioButton( HWND hwnd )
 
     parent = GetParent(hwnd);
     /* make sure that starting control is not disabled or invisible */
+#ifdef __REACTOS__
+    start = sibling = hwnd;
+#else
     start = sibling = GetNextDlgGroupItem( parent, hwnd, TRUE );
+#endif
     do
     {
         if (!sibling) break;
+#ifdef __REACTOS__
+        if (SendMessageW( sibling, WM_GETDLGCODE, 0, 0 ) == (DLGC_BUTTON | DLGC_RADIOBUTTON))
+            SendMessageW( sibling, BM_SETCHECK, sibling == hwnd ? BST_CHECKED : BST_UNCHECKED, 0 );
+#else
         if ((hwnd != sibling) &&
             ((GetWindowLongW( sibling, GWL_STYLE) & BS_TYPEMASK) == BS_AUTORADIOBUTTON))
             SendMessageW( sibling, BM_SETCHECK, BST_UNCHECKED, 0 );
+#endif
         sibling = GetNextDlgGroupItem( parent, sibling, FALSE );
     } while (sibling != start);
 }
@@ -1883,15 +1906,15 @@ static void CB_ThemedPaint(HTHEME theme, const BUTTON_INFO *infoPtr, HDC hDC, Bu
 {
     static const int cb_states[3][5] =
     {
-        { CBS_UNCHECKEDNORMAL, CBS_UNCHECKEDHOT, CBS_UNCHECKEDPRESSED, CBS_UNCHECKEDDISABLED, CBS_UNCHECKEDNORMAL },
-        { CBS_CHECKEDNORMAL, CBS_CHECKEDHOT, CBS_CHECKEDPRESSED, CBS_CHECKEDDISABLED, CBS_CHECKEDNORMAL },
-        { CBS_MIXEDNORMAL, CBS_MIXEDHOT, CBS_MIXEDPRESSED, CBS_MIXEDDISABLED, CBS_MIXEDNORMAL }
+        { CBS_UNCHECKEDNORMAL, CBS_UNCHECKEDDISABLED, CBS_UNCHECKEDHOT, CBS_UNCHECKEDPRESSED, CBS_UNCHECKEDNORMAL },
+        { CBS_CHECKEDNORMAL, CBS_CHECKEDDISABLED, CBS_CHECKEDHOT, CBS_CHECKEDPRESSED, CBS_CHECKEDNORMAL },
+        { CBS_MIXEDNORMAL, CBS_MIXEDDISABLED, CBS_MIXEDHOT, CBS_MIXEDPRESSED, CBS_MIXEDNORMAL }
     };
 
     static const int rb_states[2][5] =
     {
-        { RBS_UNCHECKEDNORMAL, RBS_UNCHECKEDHOT, RBS_UNCHECKEDPRESSED, RBS_UNCHECKEDDISABLED, RBS_UNCHECKEDNORMAL },
-        { RBS_CHECKEDNORMAL, RBS_CHECKEDHOT, RBS_CHECKEDPRESSED, RBS_CHECKEDDISABLED, RBS_CHECKEDNORMAL }
+        { RBS_UNCHECKEDNORMAL, RBS_UNCHECKEDDISABLED, RBS_UNCHECKEDHOT, RBS_UNCHECKEDPRESSED, RBS_UNCHECKEDNORMAL },
+        { RBS_CHECKEDNORMAL, RBS_CHECKEDDISABLED, RBS_CHECKEDHOT, RBS_CHECKEDPRESSED, RBS_CHECKEDNORMAL }
     };
 
     SIZE sz;

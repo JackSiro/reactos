@@ -608,7 +608,7 @@ HRESULT WINAPI CDesktopFolder::GetUIObjectOf(
 
     if (IsEqualIID (riid, IID_IContextMenu))
     {
-        if (_ILIsSpecialFolder(apidl[0]))
+        if (cidl > 0 && _ILIsSpecialFolder(apidl[0]))
         {
             hr = m_regFolder->GetUIObjectOf(hwndOwner, cidl, apidl, riid, prgfInOut, &pObj);
         }
@@ -619,7 +619,10 @@ HRESULT WINAPI CDesktopFolder::GetUIObjectOf(
             /* Otherwise operations like that involve items from both user and shared desktop will not work */
             HKEY hKeys[16];
             UINT cKeys = 0;
-            AddFSClassKeysToArray(apidl[0], hKeys, &cKeys);
+            if (cidl > 0)
+            {
+                AddFSClassKeysToArray(apidl[0], hKeys, &cKeys);
+            }
 
             DEFCONTEXTMENU dcm;
             dcm.hwnd = hwndOwner;
@@ -636,7 +639,7 @@ HRESULT WINAPI CDesktopFolder::GetUIObjectOf(
     }
     else if (IsEqualIID (riid, IID_IDataObject) && (cidl >= 1))
     {
-        hr = IDataObject_Constructor( hwndOwner, pidlRoot, apidl, cidl, (IDataObject **)&pObj);
+        hr = IDataObject_Constructor( hwndOwner, pidlRoot, apidl, cidl, TRUE, (IDataObject **)&pObj);
     }
     else if ((IsEqualIID (riid, IID_IExtractIconA) || IsEqualIID (riid, IID_IExtractIconW)) && (cidl == 1))
     {
@@ -815,7 +818,7 @@ HRESULT WINAPI CDesktopFolder::GetClassID(CLSID *lpClassId)
     return S_OK;
 }
 
-HRESULT WINAPI CDesktopFolder::Initialize(LPCITEMIDLIST pidl)
+HRESULT WINAPI CDesktopFolder::Initialize(PCIDLIST_ABSOLUTE pidl)
 {
     TRACE ("(%p)->(%p)\n", this, pidl);
 
@@ -825,7 +828,7 @@ HRESULT WINAPI CDesktopFolder::Initialize(LPCITEMIDLIST pidl)
     return E_INVALIDARG;
 }
 
-HRESULT WINAPI CDesktopFolder::GetCurFolder(LPITEMIDLIST * pidl)
+HRESULT WINAPI CDesktopFolder::GetCurFolder(PIDLIST_ABSOLUTE * pidl)
 {
     TRACE ("(%p)->(%p)\n", this, pidl);
 
@@ -845,8 +848,11 @@ HRESULT WINAPI CDesktopFolder::CallBack(IShellFolder *psf, HWND hwndOwner, IData
     {
         if (uMsg == DFM_INVOKECOMMAND && wParam == 0)
         {
-            if (32 >= (UINT_PTR)ShellExecuteW(hwndOwner, L"open", L"rundll32.exe shell32.dll,Control_RunDLL desk.cpl", NULL, NULL, SW_SHOWNORMAL))
+            if (32 >= (UINT_PTR)ShellExecuteW(hwndOwner, L"open", L"rundll32.exe",
+                                              L"shell32.dll,Control_RunDLL desk.cpl", NULL, SW_SHOWNORMAL))
+            {
                 return E_FAIL;
+            }
             return S_OK;
         }
         else if (uMsg == DFM_MERGECONTEXTMENU)

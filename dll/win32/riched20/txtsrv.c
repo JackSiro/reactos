@@ -18,9 +18,6 @@
  * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  */
 
-#include "config.h"
-#include "wine/port.h"
-
 #define COBJMACROS
 
 #include "editor.h"
@@ -30,25 +27,9 @@
 #include "tom.h"
 #include "imm.h"
 #include "textserv.h"
+#include "wine/asm.h"
 #include "wine/debug.h"
 #include "editstr.h"
-
-#ifdef __i386__  /* thiscall functions are i386-specific */
-
-#define THISCALL(func) (void *) __thiscall_ ## func
-#define DEFINE_THISCALL_WRAPPER(func,args) \
-   extern HRESULT __thiscall_ ## func(void); \
-   __ASM_GLOBAL_FUNC(__thiscall_ ## func, \
-                   "popl %eax\n\t" \
-                   "pushl %ecx\n\t" \
-                   "pushl %eax\n\t" \
-                   "jmp " __ASM_NAME(#func) __ASM_STDCALL(args) )
-#else /* __i386__ */
-
-#define THISCALL(func) func
-#define DEFINE_THISCALL_WRAPPER(func,args) /* nothing */
-
-#endif /* __i386__ */
 
 WINE_DEFAULT_DEBUG_CHANNEL(richedit);
 
@@ -83,10 +64,7 @@ static HRESULT WINAPI ITextServicesImpl_QueryInterface(IUnknown *iface, REFIID r
       if (!This->editor->reOle)
          if (!CreateIRichEditOle(This->outer_unk, This->editor, (void **)(&This->editor->reOle)))
             return E_OUTOFMEMORY;
-      if (IsEqualIID(riid, &IID_ITextDocument) || IsEqualIID(riid, &IID_ITextDocument2Old))
-         ME_GetITextDocument2OldInterface(This->editor->reOle, ppv);
-      else
-         *ppv = This->editor->reOle;
+      return IUnknown_QueryInterface(This->editor->reOle, riid, ppv);
    } else {
       *ppv = NULL;
       FIXME("Unknown interface: %s\n", debugstr_guid(riid));
@@ -300,7 +278,7 @@ DECLSPEC_HIDDEN HRESULT WINAPI fnTextSrv_TxSetText(ITextServices *iface, LPCWSTR
    ME_InternalDeleteText(This->editor, &cursor, ME_GetTextLength(This->editor), FALSE);
    if(pszText)
        ME_InsertTextFromCursor(This->editor, 0, pszText, -1, This->editor->pBuffer->pDefaultStyle);
-   ME_SetSelection(This->editor, 0, 0);
+   set_selection_cursors(This->editor, 0, 0);
    This->editor->nModifyStep = 0;
    OleFlushClipboard();
    ME_EmptyUndoStack(This->editor);

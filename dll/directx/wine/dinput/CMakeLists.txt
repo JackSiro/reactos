@@ -1,5 +1,5 @@
 
-add_definitions(-D__WINESRC__)
+add_definitions(-D__WINESRC__ -DDIRECTINPUT_VERSION=0x0700)
 include_directories(${REACTOS_SOURCE_DIR}/sdk/include/reactos/wine)
 spec2def(dinput.dll dinput.spec ADD_IMPORTLIB)
 
@@ -16,7 +16,7 @@ list(APPEND SOURCE
     mouse.c
     precomp.h)
 
-add_library(dinput SHARED
+add_library(dinput MODULE
     ${SOURCE}
     data_formats.c
     dinput.rc

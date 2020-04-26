@@ -36,8 +36,8 @@ EnumerateGroups(VOID)
         return Status;
 
     ConPuts(StdOut, L"\n");
-    ConResPrintf(StdOut, IDS_GROUP_GROUPS, pServer->sv100_name);
-    ConPuts(StdOut, L"\n\n");
+    PrintMessageStringV(4400, pServer->sv100_name);
+    ConPuts(StdOut, L"\n");
     PrintPadding(L'-', 79);
     ConPuts(StdOut, L"\n");
 
@@ -116,16 +116,16 @@ DisplayGroup(LPWSTR lpGroupName)
         pNames[i] = pUsers[i].grui0_name;
     }
 
-    PrintPaddedResourceString(IDS_GROUP_NAME, nPaddedLength);
+    PrintPaddedMessageString(4401, nPaddedLength);
     ConPrintf(StdOut, L"%s\n", pGroupInfo->grpi1_name);
 
-    PrintPaddedResourceString(IDS_GROUP_COMMENT, nPaddedLength);
+    PrintPaddedMessageString(4402, nPaddedLength);
     ConPrintf(StdOut, L"%s\n", pGroupInfo->grpi1_comment);
 
     ConPuts(StdOut, L"\n");
 
-    ConResPuts(StdOut, IDS_GROUP_MEMBERS);
-    ConPuts(StdOut, L"\n\n");
+    PrintMessageString(4403);
+    ConPuts(StdOut, L"\n");
 
     PrintPadding(L'-', 79);
     ConPuts(StdOut, L"\n");
@@ -222,10 +222,10 @@ cmdGroup(
     {
         if (_wcsicmp(argv[i], L"/help") == 0)
         {
-            ConResPuts(StdOut, IDS_GENERIC_SYNTAX);
+            PrintMessageString(4381);
+            ConPuts(StdOut, L"\n");
             PrintNetMessage(MSG_GROUP_SYNTAX);
             PrintNetMessage(MSG_GROUP_HELP);
-            ConResPuts(StdOut, IDS_GENERIC_PAGE);
             return 0;
         }
         else if (_wcsicmp(argv[i], L"/add") == 0)
@@ -242,7 +242,7 @@ cmdGroup(
         }
         else if (_wcsicmp(argv[i], L"/domain") == 0)
         {
-            ConResPrintf(StdErr, IDS_ERROR_OPTION_NOT_SUPPORTED, L"/DOMAIN");
+            ConPuts(StdErr, L"The /DOMAIN option is not supported yet.\n");
 #if 0
             bDomain = TRUE;
 #endif
@@ -351,7 +351,8 @@ done:
 
     if (result != 0)
     {
-        ConResPuts(StdOut, IDS_GENERIC_SYNTAX);
+        PrintMessageString(4381);
+        ConPuts(StdOut, L"\n");
         PrintNetMessage(MSG_GROUP_SYNTAX);
     }
 

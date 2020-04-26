@@ -2,6 +2,8 @@
  * PROJECT:     ReactOS Zip Shell Extension
  * LICENSE:     GPL-2.0+ (https://spdx.org/licenses/GPL-2.0+)
  * PURPOSE:     Polish resource translation
+ * TRANSLATORS: 2018-2019 Adam Słaboń (asaillen456esx@gmail.com)
+ *              2020 Piotr Hetnarowicz (piotrhwz@gmail.com)
  */
 
 LANGUAGE LANG_POLISH, SUBLANG_DEFAULT
@@ -15,7 +17,7 @@ BEGIN
     EDITTEXT        IDC_DIRECTORY,6,24,222,12,ES_AUTOHSCROLL
     PUSHBUTTON      "Przeglądaj...",IDC_BROWSE,174,42,54,14
     PUSHBUTTON      "Hasło",IDC_PASSWORD,174,66,54,14
-    LTEXT           "Trwa wyodrębnianie...",IDC_STATIC,6,114,82,8
+    LTEXT           "Kliknij przycisk Dalej, aby wypakować.",IDC_STATUSTEXT,6,114,124,8
     CONTROL         "",IDC_PROGRESS,"msctls_progress32",WS_BORDER,6,126,222,6
 END
 
@@ -36,11 +38,24 @@ CAPTION "Potwierdzenie zamiany pliku"
 FONT 8, "MS Shell Dlg", 400, 0, 0x1
 BEGIN
     DEFPUSHBUTTON   "&Tak",IDYES,6,36,62,14
-    PUSHBUTTON      "Anuluj",IDCANCEL,204,36,62,14
     PUSHBUTTON      "Tak na &wszystkie",IDYESALL,72,36,62,14
     PUSHBUTTON      "&Nie",IDNO,138,36,62,14
+    PUSHBUTTON      "Anuluj",IDCANCEL,204,36,62,14
     ICON            "",IDC_EXCLAMATION_ICON,6,6,24,22
     LTEXT           "",IDC_MESSAGE,36,6,228,24
+END
+
+IDD_PASSWORD DIALOGEX 0, 0, 243, 62
+STYLE DS_SETFONT | DS_FIXEDSYS | WS_POPUP | WS_CAPTION | WS_SYSMENU
+CAPTION "Wymagane hasło"
+FONT 8, "MS Shell Dlg", 400, 0, 0x1
+BEGIN
+    EDITTEXT        IDC_PASSWORD,72,42,108,13,ES_PASSWORD | ES_AUTOHSCROLL
+    DEFPUSHBUTTON   "OK",IDOK,186,6,50,14
+    PUSHBUTTON      "Pomiń plik",IDSKIP,186,24,50,14
+    PUSHBUTTON      "Anuluj",IDCANCEL,186,42,50,14
+    LTEXT           "Static",IDC_MESSAGE,24,6,156,30
+    LTEXT           "Hasło:",IDC_STATIC,24,44,44,8
 END
 
 STRINGTABLE
@@ -54,6 +69,12 @@ BEGIN
     IDS_COL_DATE_MOD "Data modyfikacji"
     IDS_YES "Tak"
     IDS_NO "Nie"
+    IDS_ERRORTITLE "Błąd folderów skompresowanych (zip)."
+    IDS_CANTSTARTTHREAD "Nie można uruchomić wątku do kompresji plików."
+    IDS_NOFILES "Określony katalog '%s' jest pusty, dlatego foldery skompresowane (zip) nie mogą dodać go do archiwum."
+    IDS_CANTCREATEZIP "Nie można utworzyć folderu skompresowanego '%s' (kod błędu: %d)."
+    IDS_CANTREADFILE "Błąd podczas czytania pliku '%s'."
+    IDS_EXTRACTING "Trwa wyodrębnianie..."
 
     IDS_WIZ_TITLE "Kreator wyodrębniania"
     IDS_WIZ_DEST_TITLE "Wybierz miejsce docelowe"
@@ -63,6 +84,8 @@ BEGIN
     IDS_WIZ_BROWSE_TITLE "Wybierz miejsce, w którym chcesz wyodrębnić wybrane elementy."
 
     IDS_OVERWRITEFILE_TEXT "Ten folder zawiera już plik o nazwie '%1'.\nCzy chcesz zamienić istniejący plik?"
+    IDS_PASSWORD_FILE_TEXT "Plik '%1' jest chroniony hasłem. Wprowadź hasło w polu poniżej"
+    IDS_PASSWORD_ZIP_TEXT "Wprowadź hasło do użycia podczas wyodrębniania zawartości tego pliku zip."
 
     IDS_MENUITEM "Wy&odrębnij wszystkie..."
     IDS_HELPTEXT "Wyodrębnia zawartość folderów"

@@ -91,7 +91,7 @@ UserGetLanguageToggle(VOID)
     return dwValue;
 }
 
-SHORT
+USHORT
 FASTCALL
 UserGetLanguageID(VOID)
 {
@@ -137,7 +137,7 @@ UserGetLanguageID(VOID)
     ZwClose(KeyHandle);
   }
   TRACE("Language ID = %x\n",Ret);
-  return (SHORT) Ret;
+  return (USHORT) Ret;
 }
 
 HBRUSH
@@ -295,13 +295,10 @@ NtUserGetThreadState(
       case THREADSTATE_UPTIMELASTREAD:
          {
            PTHREADINFO pti;
-           LARGE_INTEGER LargeTickCount;
            pti = PsGetCurrentThreadWin32Thread();
-           KeQueryTickCount(&LargeTickCount);
-           pti->timeLast = LargeTickCount.u.LowPart;
-           pti->pcti->tickLastMsgChecked = LargeTickCount.u.LowPart;
+           pti->pcti->timeLastRead = EngGetTickCount32();
+           break;
          }
-         break;
 
       case THREADSTATE_GETINPUTSTATE:
          ret = LOWORD(IntGetQueueStatus(QS_POSTMESSAGE|QS_TIMER|QS_PAINT|QS_SENDMESSAGE|QS_INPUT)) & (QS_KEY | QS_MOUSEBUTTON);
@@ -727,8 +724,8 @@ void UserDbgAssertThreadInfo(BOOL showCaller)
     ASSERT(pci->ulClientDelta == DesktopHeapGetUserDelta());
     if (pti->pcti && pci->pDeskInfo)
         ASSERT(pci->pClientThreadInfo == (PVOID)((ULONG_PTR)pti->pcti - pci->ulClientDelta));
-    if (pti->pcti && IsListEmpty(&pti->SentMessagesListHead))
-        ASSERT((pti->pcti->fsChangeBits & QS_SENDMESSAGE) == 0);
+    //if (pti->pcti && IsListEmpty(&pti->SentMessagesListHead))
+    //    ASSERT((pti->pcti->fsChangeBits & QS_SENDMESSAGE) == 0);
     if (pti->KeyboardLayout)
         ASSERT(pci->hKL == pti->KeyboardLayout->hkl);
     if(pti->rpdesk != NULL)

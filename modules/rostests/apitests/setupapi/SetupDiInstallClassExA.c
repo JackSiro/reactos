@@ -25,6 +25,7 @@
 #include <winreg.h>
 #include <winsvc.h>
 #include <setupapi.h>
+#include <strsafe.h>
 
 static const char inffile[] = "test.inf";
 static char CURR_DIR[MAX_PATH];
@@ -38,7 +39,7 @@ static void create_inf_file(LPCSTR filename, const char *data)
     HANDLE handle = CreateFileA(filename, GENERIC_WRITE, 0, NULL,
                                 CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
     assert(handle != INVALID_HANDLE_VALUE);
-    ret = WriteFile(handle, data, strlen(data), &res, NULL);
+    ret = WriteFile(handle, data, lstrlenA(data), &res, NULL);
     assert(ret != 0);
     CloseHandle(handle);
 }
@@ -56,7 +57,7 @@ static void test_SetupDiInstallClassExA(void)
     /* [Version]:Signature */
     strcpy(inf, "[Version]\nSignature=\"$Chicago$\"\n");
     create_inf_file(inffile, inf);
-    sprintf(path, "%s\\%s", CURR_DIR, inffile);
+    StringCbPrintfA(path, sizeof(path), "%s\\%s", CURR_DIR, inffile);
 
     SetLastError(0xdeadbeef);
     ret = SetupDiInstallClassExA(NULL, path, DI_QUIETINSTALL, NULL, NULL, NULL,NULL);
@@ -68,7 +69,7 @@ static void test_SetupDiInstallClassExA(void)
     /* [Version]:Signature+Class */
     strcat(inf, "Class=MySampleClass\n");
     create_inf_file(inffile, inf);
-    sprintf(path, "%s\\%s", CURR_DIR, inffile);
+    StringCbPrintfA(path, sizeof(path), "%s\\%s", CURR_DIR, inffile);
 
     SetLastError(0xdeadbeef);
     ret = SetupDiInstallClassExA(NULL, path, DI_QUIETINSTALL, NULL, NULL, NULL,NULL);
@@ -80,7 +81,7 @@ static void test_SetupDiInstallClassExA(void)
     /* [Version]:Signature+Class+ClassGUID */
     strcat(inf, "ClassGuid={3b409830-5f9d-432a-abf5-7d2e4e102467}\n");
     create_inf_file(inffile, inf);
-    sprintf(path, "%s\\%s", CURR_DIR, inffile);
+    StringCbPrintfA(path, sizeof(path), "%s\\%s", CURR_DIR, inffile);
 
     SetLastError(0xdeadbeef);
     ret = SetupDiInstallClassExA(NULL, path, DI_QUIETINSTALL, NULL, NULL, NULL,NULL);
@@ -92,7 +93,7 @@ static void test_SetupDiInstallClassExA(void)
     /* [Version]Signature+Class+ClassGUID;[ClassInstall32.NT]Empty */
     strcat(inf, "[ClassInstall32.NT]\n");
     create_inf_file(inffile, inf);
-    sprintf(path, "%s\\%s", CURR_DIR, inffile);
+    StringCbPrintfA(path, sizeof(path), "%s\\%s", CURR_DIR, inffile);
 
     SetLastError(0xdeadbeef);
     ret = SetupDiInstallClassExA(NULL, path, DI_QUIETINSTALL, NULL, NULL, NULL,NULL);
@@ -104,13 +105,13 @@ static void test_SetupDiInstallClassExA(void)
     {
         RegOpenKeyExW(HKEY_LOCAL_MACHINE, L"SYSTEM", 0, KEY_ALL_ACCESS, &RegHandle);
         del = RegDeleteKeyW(RegHandle, L"CurrentControlSet\\Control\\Class\\{3B409830-5F9D-432A-ABF5-7D2E4E102467}");
-        ok(del == ERROR_SUCCESS, "Expected success \n"); 
+        ok(del == ERROR_SUCCESS, "Expected success \n");
     }
 
     /* [Version]Signature+Class+ClassGUID;[ClassInstall32.NT]AddReg */
     strcat(inf, "AddReg=SampleClassAddReg\n");
     create_inf_file(inffile, inf);
-    sprintf(path, "%s\\%s", CURR_DIR, inffile);
+    StringCbPrintfA(path, sizeof(path), "%s\\%s", CURR_DIR, inffile);
 
     SetLastError(0xdeadbeef);
     ret = SetupDiInstallClassExA(NULL, path, DI_QUIETINSTALL, NULL, NULL, NULL,NULL);
@@ -122,13 +123,13 @@ static void test_SetupDiInstallClassExA(void)
     {
         RegOpenKeyExW(HKEY_LOCAL_MACHINE, L"SYSTEM", 0, KEY_ALL_ACCESS, &RegHandle);
         del = RegDeleteKeyW(RegHandle, L"CurrentControlSet\\Control\\Class\\{3B409830-5F9D-432A-ABF5-7D2E4E102467}");
-        ok(del == ERROR_SUCCESS, "Expected success \n"); 
+        ok(del == ERROR_SUCCESS, "Expected success \n");
     }
 
     /* [Version]Signature+Class+ClassGUID;[ClassInstall32.NT]AddReg; [SampleClassAddReg];*/
     strcat(inf, "[SampleClassAddReg]\n");
     create_inf_file(inffile, inf);
-    sprintf(path, "%s\\%s", CURR_DIR, inffile);
+    StringCbPrintfA(path, sizeof(path), "%s\\%s", CURR_DIR, inffile);
 
     SetLastError(0xdeadbeef);
     ret = SetupDiInstallClassExA(NULL, path, DI_QUIETINSTALL, NULL, NULL, NULL,NULL);
@@ -140,13 +141,13 @@ static void test_SetupDiInstallClassExA(void)
     {
         RegOpenKeyExW(HKEY_LOCAL_MACHINE, L"SYSTEM", 0, KEY_ALL_ACCESS, &RegHandle);
         del = RegDeleteKeyW(RegHandle, L"CurrentControlSet\\Control\\Class\\{3B409830-5F9D-432A-ABF5-7D2E4E102467}");
-        ok(del == ERROR_SUCCESS, "Expected success \n"); 
+        ok(del == ERROR_SUCCESS, "Expected success \n");
     }
 
     /* [Version]Signature+Class+ClassGUID;[ClassInstall32.NT]AddReg; [SampleClassAddReg]HKR;*/
     strcat(inf, "HKR,,,,\"ReactOS Test SetupDiInstallClassExA\"\n");
     create_inf_file(inffile, inf);
-    sprintf(path, "%s\\%s", CURR_DIR, inffile);
+    StringCbPrintfA(path, sizeof(path), "%s\\%s", CURR_DIR, inffile);
 
     SetLastError(0xdeadbeef);
     ret = SetupDiInstallClassExA(NULL, path, DI_QUIETINSTALL, NULL, NULL, NULL,NULL);
@@ -158,13 +159,13 @@ static void test_SetupDiInstallClassExA(void)
     {
         RegOpenKeyExW(HKEY_LOCAL_MACHINE, L"SYSTEM", 0, KEY_ALL_ACCESS, &RegHandle);
         del = RegDeleteKeyW(RegHandle, L"CurrentControlSet\\Control\\Class\\{3B409830-5F9D-432A-ABF5-7D2E4E102467}");
-        ok(del == ERROR_SUCCESS, "Expected success \n"); 
+        ok(del == ERROR_SUCCESS, "Expected success \n");
     }
 
     /*[Version]Signature+Class+ClassGUID;[ClassInstall32.NT]AddReg;[SampleClassAddReg]HKR;[ClassInstall32.NT.Services]*/
     strcat(inf, "[ClassInstall32.NT.Services]\n");
     create_inf_file(inffile, inf);
-    sprintf(path, "%s\\%s", CURR_DIR, inffile);
+    StringCbPrintfA(path, sizeof(path), "%s\\%s", CURR_DIR, inffile);
 
     SetLastError(0xdeadbeef);
     ret = SetupDiInstallClassExA(NULL, path, DI_QUIETINSTALL, NULL, NULL, NULL,NULL);
@@ -176,7 +177,7 @@ static void test_SetupDiInstallClassExA(void)
     {
         RegOpenKeyExW(HKEY_LOCAL_MACHINE, L"SYSTEM", 0, KEY_ALL_ACCESS, &RegHandle);
         del = RegDeleteKeyW(RegHandle, L"CurrentControlSet\\Control\\Class\\{3B409830-5F9D-432A-ABF5-7D2E4E102467}");
-        ok(del == ERROR_SUCCESS, "Expected success\n"); 
+        ok(del == ERROR_SUCCESS, "Expected success\n");
     }
 
     /* Add a reference */
@@ -276,7 +277,7 @@ static void test_SetupDiInstallClassExA(void)
 START_TEST(SetupDiInstallClassExA)
 {
     char temp_path[MAX_PATH], prev_path[MAX_PATH];
-    DWORD len;
+    SIZE_T len;
 
     GetCurrentDirectoryA(MAX_PATH, prev_path);
     GetTempPathA(MAX_PATH, temp_path);

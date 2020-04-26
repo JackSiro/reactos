@@ -20,7 +20,6 @@ list(APPEND SOURCE
     unattended.cpp
     include/rapps.h
     include/available.h
-    include/gui.h
     include/dialogs.h
     include/installed.h
     include/crichedit.h
@@ -40,7 +39,7 @@ file(GLOB_RECURSE rapps_rc_deps res/*.*)
 add_rc_deps(rapps.rc ${rapps_rc_deps})
 add_executable(rapps ${SOURCE} rapps.rc)
 set_module_type(rapps win32gui UNICODE)
-target_link_libraries(rapps atlnew uuid wine)
+target_link_libraries(rapps uuid wine)
 add_importlibs(rapps advapi32 comctl32 gdi32 wininet user32 shell32 shlwapi ole32 setupapi msvcrt kernel32 ntdll)
 add_pch(rapps include/rapps.h SOURCE)
 add_dependencies(rapps rappsmsg)

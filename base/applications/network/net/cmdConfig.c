@@ -25,18 +25,18 @@ DisplayServerConfig(
     if (Status != NERR_Success)
         goto done;
 
-    PrintPaddedResourceString(IDS_CONFIG_SERVER_NAME, nPaddedLength);
+    PrintPaddedMessageString(4481, nPaddedLength);
     ConPrintf(StdOut, L"\\\\%s\n", ServerInfo->sv102_name);
 
-    PrintPaddedResourceString(IDS_CONFIG_SERVER_COMMENT, nPaddedLength);
+    PrintPaddedMessageString(4482, nPaddedLength);
     ConPrintf(StdOut, L"%s\n\n", ServerInfo->sv102_comment);
 
-    PrintPaddedResourceString(IDS_CONFIG_SERVER_VERSION, nPaddedLength);
+    PrintPaddedMessageString(4484, nPaddedLength);
     ConPrintf(StdOut, L"%lu.%lu\n",
               ServerInfo->sv102_version_major,
               ServerInfo->sv102_version_minor);
 
-    ConResPuts(StdOut, IDS_CONFIG_SERVER_ACTIVE);
+    PrintPaddedMessageString(4489, nPaddedLength);
     ConPuts(StdOut, L"\n");
     for (i = 0; i < dwRead; i++)
     {
@@ -46,19 +46,19 @@ DisplayServerConfig(
     }
     ConPuts(StdOut, L"\n");
 
-    PrintPaddedResourceString(IDS_CONFIG_SERVER_HIDDEN, nPaddedLength);
-    ConResPuts(StdOut, (ServerInfo->sv102_hidden == SV_HIDDEN) ? IDS_GENERIC_YES : IDS_GENERIC_NO);
+    PrintPaddedMessageString(4492, nPaddedLength);
+    PrintMessageString((ServerInfo->sv102_hidden == SV_HIDDEN) ? 4300 : 4301);
     ConPuts(StdOut, L"\n");
 
-    PrintPaddedResourceString(IDS_CONFIG_SERVER_USERS, nPaddedLength);
+    PrintPaddedMessageString(4506, nPaddedLength);
     ConPrintf(StdOut, L"%lu\n", ServerInfo->sv102_users);
 
-    PrintPaddedResourceString(IDS_CONFIG_SERVER_FILES, nPaddedLength);
+    PrintPaddedMessageString(4511, nPaddedLength);
     ConPuts(StdOut, L"...\n\n");
 
-    PrintPaddedResourceString(IDS_CONFIG_SERVER_IDLE, nPaddedLength);
+    PrintPaddedMessageString(4520, nPaddedLength);
     if (ServerInfo->sv102_disc == SV_NODISC)
-        ConResPuts(StdOut, IDS_GENERIC_UNLIMITED);
+        PrintMessageString(4306);
     else
         ConPrintf(StdOut, L"%lu\n", ServerInfo->sv102_disc);
 
@@ -99,18 +99,18 @@ DisplayWorkstationConfig(VOID)
     if (Status != NERR_Success)
         goto done;
 
-    PrintPaddedResourceString(IDS_CONFIG_WORKSTATION_NAME, nPaddedLength);
+    PrintPaddedMessageString(4450, nPaddedLength);
     ConPrintf(StdOut, L"\\\\%s\n", WorkstationInfo->wki100_computername);
 
-    PrintPaddedResourceString(IDS_CONFIG_WORKSTATION_FULLNAME, nPaddedLength);
+    PrintPaddedMessageString(4468, nPaddedLength);
     ConPuts(StdOut, L"...\n");
 
-    PrintPaddedResourceString(IDS_CONFIG_WORKSTATION_USERNAME, nPaddedLength);
+    PrintPaddedMessageString(4451, nPaddedLength);
     ConPrintf(StdOut, L"%s\n", UserInfo->wkui1_username);
 
     ConPuts(StdOut, L"\n");
 
-    ConResPuts(StdOut, IDS_CONFIG_WORKSTATION_ACTIVE);
+    PrintPaddedMessageString(4453, nPaddedLength);
     ConPuts(StdOut, L"\n");
     for (i = 0; i < dwRead; i++)
     {
@@ -120,18 +120,32 @@ DisplayWorkstationConfig(VOID)
     }
     ConPuts(StdOut, L"\n");
 
-    PrintPaddedResourceString(IDS_CONFIG_WORKSTATION_VERSION, nPaddedLength);
+    PrintPaddedMessageString(4452, nPaddedLength);
     ConPrintf(StdOut, L"%lu.%lu\n",
               WorkstationInfo->wki100_ver_major,
               WorkstationInfo->wki100_ver_minor);
 
     ConPuts(StdOut, L"\n");
 
-    PrintPaddedResourceString(IDS_CONFIG_WORKSTATION_DOMAIN, nPaddedLength);
+    PrintPaddedMessageString(4455, nPaddedLength);
     ConPrintf(StdOut, L"%s\n", WorkstationInfo->wki100_langroup);
 
-    PrintPaddedResourceString(IDS_CONFIG_WORKSTATION_LOGON, nPaddedLength);
+    PrintPaddedMessageString(4469, nPaddedLength);
+    ConPuts(StdOut, L"...\n");
+
+    PrintPaddedMessageString(4456, nPaddedLength);
     ConPrintf(StdOut, L"%s\n", UserInfo->wkui1_logon_domain);
+
+    ConPuts(StdOut, L"\n");
+
+    PrintPaddedMessageString(4458, nPaddedLength);
+    ConPuts(StdOut, L"...\n");
+
+    PrintPaddedMessageString(4459, nPaddedLength);
+    ConPuts(StdOut, L"...\n");
+
+    PrintPaddedMessageString(4460, nPaddedLength);
+    ConPuts(StdOut, L"...\n");
 
 done:
     if (TransportInfo != NULL)
@@ -182,12 +196,14 @@ cmdConfig(
             /* Print short syntax help */
             if (bServer == TRUE)
             {
-                ConResPuts(StdOut, IDS_GENERIC_SYNTAX);
+                PrintMessageString(4381);
+                ConPuts(StdOut, L"\n");
                 PrintNetMessage(MSG_CONFIG_SERVER_SYNTAX);
             }
             else
             {
-                ConResPuts(StdOut, IDS_GENERIC_SYNTAX);
+                PrintMessageString(4381);
+                ConPuts(StdOut, L"\n");
                 PrintNetMessage(MSG_CONFIG_SYNTAX);
             }
             return 0;
@@ -198,14 +214,15 @@ cmdConfig(
             /* Print full help text*/
             if (bServer == TRUE)
             {
-                ConResPuts(StdOut, IDS_GENERIC_SYNTAX);
+                PrintMessageString(4381);
+                ConPuts(StdOut, L"\n");
                 PrintNetMessage(MSG_CONFIG_SERVER_SYNTAX);
                 PrintNetMessage(MSG_CONFIG_SERVER_HELP);
-                ConResPuts(StdOut, IDS_GENERIC_PAGE);
             }
             else
             {
-                ConResPuts(StdOut, IDS_GENERIC_SYNTAX);
+                PrintMessageString(4381);
+                ConPuts(StdOut, L"\n");
                 PrintNetMessage(MSG_CONFIG_SYNTAX);
                 PrintNetMessage(MSG_CONFIG_HELP);
             }
@@ -230,14 +247,14 @@ cmdConfig(
                 lValue = wcstol(p, &endptr, 10);
                 if (*endptr != 0)
                 {
-                    ConResPrintf(StdErr, IDS_ERROR_INVALID_OPTION_VALUE, L"/AUTODISCONNECT");
+                    PrintMessageStringV(3952, L"/AUTODISCONNECT");
                     result = 1;
                     goto done;
                 }
 
                 if (lValue < -1 || lValue > 65535)
                 {
-                    ConResPrintf(StdErr, IDS_ERROR_INVALID_OPTION_VALUE, L"/AUTODISCONNECT");
+                    PrintMessageStringV(3952, L"/AUTODISCONNECT");
                     result = 1;
                     goto done;
                 }
@@ -255,7 +272,7 @@ cmdConfig(
                 p = &argv[i][8];
                 if (_wcsicmp(p, L"yes") != 0 && _wcsicmp(p, L"no") != 0)
                 {
-                    ConResPrintf(StdErr, IDS_ERROR_INVALID_OPTION_VALUE, L"/HIDDEN");
+                    PrintMessageStringV(3952, L"/HIDDEN");
                     result = 1;
                     goto done;
                 }
@@ -265,7 +282,8 @@ cmdConfig(
             }
             else
             {
-                ConResPuts(StdOut, IDS_GENERIC_SYNTAX);
+                PrintMessageString(4381);
+                ConPuts(StdOut, L"\n");
                 PrintNetMessage(MSG_CONFIG_SERVER_SYNTAX);
                 result = 1;
                 goto done;
@@ -289,7 +307,11 @@ cmdConfig(
     }
     else
     {
-        ConResPuts(StdOut, IDS_CONFIG_TEXT);
+        PrintMessageString(4378);
+        ConPuts(StdOut, L"\n");
+        ConPuts(StdOut, L"   Server\n");
+        ConPuts(StdOut, L"   Workstation\n");
+        ConPuts(StdOut, L"\n");
     }
 
 done:

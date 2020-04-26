@@ -59,8 +59,10 @@ wmain(int argc, wchar_t* argv[])
         Configuration.GetSystemInformation();
         Configuration.GetConfigurationFromFile();
 
-        ss << "\n\nSystem uptime " << setprecision(2) << fixed ;
-        ss << ((float)GetTickCount()/1000) << " seconds\n";
+        ss << endl
+           << endl
+           << "[ROSAUTOTEST] System uptime " << setprecision(2) << fixed;
+        ss << ((float)GetTickCount()/1000) << " seconds" << endl;
         StringOut(ss.str());
         
         /* Report tests startup */
@@ -89,14 +91,19 @@ wmain(int argc, wchar_t* argv[])
     }
     catch(CSimpleException& e)
     {
-        StringOut(e.GetMessage());
+        stringstream ss;
+
+        // e.GetMessage() must include ending '\n'.
+        ss << "[ROSAUTOTEST] " << e.GetMessage();
+        StringOut(ss.str());
     }
     catch(CFatalException& e)
     {
         stringstream ss;
 
+        // e.GetMessage() must include ending '\n'.
         ss << "An exception occured in rosautotest." << endl
-           << "Message: " << e.GetMessage() << endl
+           << "Message: " << e.GetMessage()
            << "File: " << e.GetFile() << endl
            << "Line: " << e.GetLine() << endl
            << "Last Win32 Error: " << GetLastError() << endl;

@@ -28,7 +28,7 @@ BEGIN
     LTEXT "", IDC_MACHINELINE4, 130, 155, 118, 9
     LTEXT "", IDC_MACHINELINE5, 130, 164, 118, 9
     LTEXT "", IDC_MACHINELINE6, 130, 173, 118, 9
-    CONTROL "<A HREF=""http://www.reactos.org/"">ReactOS-Homepage</A> besuchen", IDC_ROSHOMEPAGE_LINK, "SysLink", WS_CHILD | WS_VISIBLE | WS_TABSTOP, 10, 200, 140, 10
+    CONTROL "<A HREF=""https://reactos.org/"">ReactOS-Homepage</A> besuchen", IDC_ROSHOMEPAGE_LINK, "SysLink", WS_CHILD | WS_VISIBLE | WS_TABSTOP, 10, 200, 140, 10
     PUSHBUTTON "&Lizenz anzeigen...", IDC_LICENCE, 170, 198, 78, 15
 END
 
@@ -174,6 +174,33 @@ BEGIN
     PUSHBUTTON "Abbrechen", IDCANCEL, 196, 198, 54, 15
 END
 
+IDD_USERPROFILE_TYPE DIALOGEX 6, 18, 225, 103
+STYLE DS_SHELLFONT | DS_MODALFRAME | DS_CONTEXTHELP | WS_POPUP | WS_VISIBLE | WS_CAPTION | WS_SYSMENU
+CAPTION "Profiltyp ändern"
+FONT 8, "MS Shell Dlg"
+BEGIN
+    LTEXT "", IDC_USERPROFILE_TYPE_TEXT, 7, 11, 206, 28
+    AUTORADIOBUTTON "&Servergespeichertes Profil", IDC_USERPROFILE_TYPE_ROAMING, 60, 49, 145, 10
+    AUTORADIOBUTTON "&Lokales Profil", IDC_USERPROFILE_TYPE_LOCAL, 60, 63, 145, 10
+    DEFPUSHBUTTON "OK", IDOK, 60, 82, 50, 14
+    PUSHBUTTON "Abbrechen", IDCANCEL, 122, 82, 50, 14
+END
+
+IDD_USERPROFILE_COPY DIALOGEX 6, 18, 261, 133
+STYLE DS_SHELLFONT | DS_MODALFRAME | DS_CONTEXTHELP | WS_POPUP | WS_VISIBLE | WS_CAPTION | WS_SYSMENU
+CAPTION "Kopieren nach"
+FONT 8, "MS Shell Dlg"
+BEGIN
+    GROUPBOX "&Profil kopieren nach", -1, 8, 9, 185, 52
+    EDITTEXT IDC_USERPROFILE_COPY_PATH, 15, 23, 167, 12, ES_AUTOHSCROLL
+    PUSHBUTTON "&Durchsuchen", IDC_USERPROFILE_COPY_BROWSE, 15, 41, 50, 14
+    GROUPBOX "Benutzer", -1, 8, 77, 185, 48
+    LTEXT "", IDC_USERPROFILE_COPY_USER, 15, 91, 167, 8
+    PUSHBUTTON "Ä&ndern", IDC_USERPROFILE_COPY_CHANGE, 15, 105, 50, 14
+    DEFPUSHBUTTON "OK", IDOK, 204, 13, 50, 14
+    PUSHBUTTON "Abbrechen", IDCANCEL, 204, 30, 50, 14
+END
+
 IDD_STARTUPRECOVERY DIALOGEX 6, 18, 252, 280
 STYLE DS_SHELLFONT | DS_MODALFRAME | DS_CONTEXTHELP | WS_POPUP | WS_VISIBLE | WS_CAPTION | WS_SYSMENU
 CAPTION "Starten und Wiederherstellen"
@@ -276,7 +303,7 @@ END
 IDD_LICENCE DIALOGEX 6, 5, 267, 159
 CAPTION "Lizenz"
 FONT 8, "MS Shell Dlg", 0, 0, 0x0
-STYLE DS_SHELLFONT | WS_BORDER | WS_THICKFRAME | WS_POPUP | WS_VISIBLE | WS_CAPTION | WS_SYSMENU
+STYLE DS_SHELLFONT | WS_BORDER | WS_POPUP | WS_VISIBLE | WS_CAPTION | WS_SYSMENU
 BEGIN
     EDITTEXT IDC_LICENCEEDIT, 6, 3, 255, 131, WS_VSCROLL | ES_READONLY | ES_MULTILINE
     DEFPUSHBUTTON "OK", IDOK, 106, 140, 54, 15
@@ -304,6 +331,14 @@ BEGIN
     IDS_USERPROFILE_TYPE "Typ"
     IDS_USERPROFILE_STATUS "Status"
     IDS_USERPROFILE_MODIFIED "Geändert"
+    IDS_USERPROFILE_LOCAL "Lokal"
+    IDS_USERPROFILE_ROAMING "Servergespeichert"
+    IDS_USERPROFILE_MANDATORY "Obligatorisch"
+    IDS_USERPROFILE_CONFIRM_DELETE "Soll das Profil für folgenden Benutzer gelöscht werden: %s?"
+    IDS_USERPROFILE_CONFIRM_DELETE_TITLE "Löschen bestätigen"
+    IDS_USERPROFILE_ACCOUNT_UNKNOWN "Konto unbekannt"
+    IDS_USERPROFILE_ACCOUNT_DELETED "Konto gelöscht"
+    IDS_USERPROFILE_TYPE_TEXT "Soll das servergespeicherte Profil oder die lokal gespeicherte Kopie davon vom Betriebssystem verwendet werden, wenn sich %s am Computer anmeldet?"
     IDS_MESSAGEBOXTITLE "Systemsteuerungsoption ""System"""
     IDS_WARNINITIALSIZE "Geben Sie einen numerischen Wert für die Anfangsgröße der Auslagerungsdatei an."
     IDS_WARNMAXIMUMSIZE "Geben Sie einen numerischen Wert für die Maximalgröße der Auslagerungsdatei an."
@@ -312,7 +347,7 @@ BEGIN
     IDS_PAGEFILE_NONE "Keine"
     IDS_PAGEFILE_SYSTEM "Systemverwaltet"
     IDS_INFOREBOOT "Sie müssen den Computer neu starten, damit die Änderung wirksam wird."
-    IDS_DEVS "\nReactOS Team\n\nProjektkoordinator\n\nAleksey Bragin\n\nEntwicklerteam\n\nAleksandar Andrejevic\nAleksey Bragin\nAlexander Shaposhnikov\nAmine Khaldi\nAndrew Greenwood\nAndrey Korotaev\nArt Yerkes\nBenedikt Freisen\nCameron Gutman\nChristoph von Wittich\nColin Finck\nDaniel Reimer\nDavid Quintana\nDmitry Chapyshev\nEric Kohl\nGed Murphy\nGiannis Adamopoulos\nGregor Brunmar\nHermès Bélusca-Maïto\nHervé Poussineau\nJames Tabor\nJeffrey Morlan\nJérôme Gardou\nJohannes Anderwald\nKamil Hornícek\nKatayama Hirofumi MZ\nKJK::Hyperion\nMaarten Bosma\nMagnus Olsen\nMarc Piulachs\nMark Jansen\nMatthias Kupfer\nMike Nordell\nPeter Hater\nPeter Ward\nPierre Schweitzer\nSaveliy Tretiakov\nStanislav Motylkov\nStefan Ginsberg\nSylvain Petreolle\nThomas Blümel\nThomas Faber\nTimo Kreuzer\nVadim Galyant\n\nAlex Ionescu\nFilip Navara\nGunnar Dalsnes\nMartin Fuchs\nRoyce Mitchell III\nBrandon Turner\nBrian Palmer\nCasper Hornstrup\nDavid Welch\nEmanuele Aliberti\nGé van Geldorp\nGregor Anich\nJason Filby\nJens Collin\nMichael Wirth\nNathan Woods\nRobert Dickenson\nRex Jolliff\nVizzini \n\nRelease Verantwortliche\n\nAmine Khaldi\nColin Finck\nJoachim Henze\nThomas Faber\nZ98\n\nWebseitenteam\n\nColin Finck\nJaix Bly\nKlemens Friedl\nZ98\n\nMedienteam\n\nMindflyer\nWierd_W\n\nweiterer Dank geht an\n\nalle Mitwirkenden\nWine Team\n\n"
+    IDS_DEVS "\nReactOS Team\n\nProjektkoordinator\n\nAleksey Bragin\n\nEntwicklerteam\n\nAleksandar Andrejevic\nAleksey Bragin\nAlexander Shaposhnikov\nAmine Khaldi\nAndrew Greenwood\nAndrey Korotaev\nArt Yerkes\nBenedikt Freisen\nCameron Gutman\nChristoph von Wittich\nColin Finck\nDaniel Reimer\nDavid Quintana\nDmitry Chapyshev\nEric Kohl\nGed Murphy\nGiannis Adamopoulos\nGregor Brunmar\nHermès Bélusca-Maïto\nHervé Poussineau\nJames Tabor\nJeffrey Morlan\nJérôme Gardou\nJohannes Anderwald\nKamil Hornícek\nKatayama Hirofumi MZ\nKJK::Hyperion\nMaarten Bosma\nMagnus Olsen\nMarc Piulachs\nMark Jansen\nMatthias Kupfer\nMike Nordell\nPeter Hater\nPeter Ward\nPierre Schweitzer\nSaveliy Tretiakov\nStanislav Motylkov\nStefan Ginsberg\nSylvain Petreolle\nThomas Blümel\nThomas Faber\nTimo Kreuzer\nVadim Galyant\n\nAlex Ionescu\nFilip Navara\nGunnar Dalsnes\nMartin Fuchs\nRoyce Mitchell III\nBrandon Turner\nBrian Palmer\nCasper Hornstrup\nDavid Welch\nEmanuele Aliberti\nGé van Geldorp\nGregor Anich\nJason Filby\nJens Collin\nMichael Wirth\nNathan Woods\nRobert Dickenson\nRex Jolliff\nVizzini\n\nRelease Verantwortliche\n\nAmine Khaldi\nColin Finck\nJoachim Henze\nThomas Faber\nZ98\n\nWebseitenteam\n\nColin Finck\nJaix Bly\nKlemens Friedl\nZ98\n\nMedienteam\n\nMindflyer\nWierd_W\n\nweiterer Dank geht an\n\nalle Mitwirkenden\nWine Team\n\n"
     IDS_HWPROFILE_CONFIRM_DELETE_TITLE "Löschen bestätigen"
     IDS_HWPROFILE_CONFIRM_DELETE "Sind Sie sicher, dass das Hardwareprofil ""%s"" gelöscht werden soll?"
     IDS_HWPROFILE_ALREADY_IN_USE "Der Profilname wird bereits verwendet."

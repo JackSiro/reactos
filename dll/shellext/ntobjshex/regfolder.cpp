@@ -136,21 +136,21 @@ HRESULT STDMETHODCALLTYPE CRegistryFolder::InternalBindToObject(
     return ShellObjectCreatorInit<CRegistryFolder>(fullPidl, path, m_hRoot, IID_PPV_ARG(IShellFolder, ppsfChild));
 }
 
-HRESULT STDMETHODCALLTYPE CRegistryFolder::Initialize(LPCITEMIDLIST pidl)
+HRESULT STDMETHODCALLTYPE CRegistryFolder::Initialize(PCIDLIST_ABSOLUTE pidl)
 {
     m_shellPidl = ILClone(pidl);
     m_hRoot = NULL;
 
-    StringCbCopy(m_NtPath, _countof(m_NtPath), L"");
+    StringCbCopyW(m_NtPath, sizeof(m_NtPath), L"");
     return S_OK;
 }
 
-HRESULT STDMETHODCALLTYPE CRegistryFolder::Initialize(LPCITEMIDLIST pidl, PCWSTR ntPath, HKEY hRoot)
+HRESULT STDMETHODCALLTYPE CRegistryFolder::Initialize(PCIDLIST_ABSOLUTE pidl, PCWSTR ntPath, HKEY hRoot)
 {
     m_shellPidl = ILClone(pidl);
     m_hRoot = hRoot;
 
-    StringCbCopy(m_NtPath, _countof(m_NtPath), ntPath);
+    StringCbCopyW(m_NtPath, sizeof(m_NtPath), ntPath);
     return S_OK;
 }
 

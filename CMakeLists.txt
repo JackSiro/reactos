@@ -6,12 +6,6 @@ if(NOT CMAKE_VERSION MATCHES "ReactOS")
     message(WARNING "Building with \"${CMAKE_COMMAND}\", which is not the custom CMake included in RosBE, might cause build issues...")
 endif()
 
-# Don't escape preprocessor definition values added via add_definitions
-cmake_policy(SET CMP0005 OLD)
-
-# Honor CMAKE_SHARED_LIBRARY_<Lang>_FLAGS variable.
-cmake_policy(SET CMP0018 OLD)
-
 if(POLICY CMP0058)
     # Ninja requires custom command byproducts to be explicit
     cmake_policy(SET CMP0058 OLD)
@@ -30,14 +24,12 @@ include(sdk/include/reactos/version.cmake)
 set(CMAKE_INCLUDE_CURRENT_DIR ON)
 set(CMAKE_INCLUDE_DIRECTORIES_PROJECT_BEFORE ON)
 set(CMAKE_SHARED_LIBRARY_PREFIX "")
+set(CMAKE_SHARED_MODULE_PREFIX "")
 set(CMAKE_SKIP_PREPROCESSED_SOURCE_RULES TRUE)
 set(CMAKE_SKIP_ASSEMBLY_SOURCE_RULES TRUE)
 set(CMAKE_COLOR_MAKEFILE OFF)
+set(CMAKE_POSITION_INDEPENDENT_CODE OFF)
 #set_property(GLOBAL PROPERTY RULE_MESSAGES OFF)
-
-if(NOT DEFINED NEW_STYLE_BUILD)
-    set(NEW_STYLE_BUILD TRUE)
-endif()
 
 if(NOT ARCH)
     set(ARCH i386)
@@ -64,8 +56,8 @@ include(sdk/cmake/compilerflags.cmake)
 add_definitions(-D__REACTOS__)
 
 # Double escape, since CMake unescapes before putting it on the command-line, where it's unescaped again by GCC/CL.
-add_definitions(-DREACTOS_SOURCE_DIR="\\\"${REACTOS_SOURCE_DIR}\\\"")
-add_definitions(-DREACTOS_BINARY_DIR="\\\"${REACTOS_BINARY_DIR}\\\"")
+add_definitions(-DREACTOS_SOURCE_DIR="${REACTOS_SOURCE_DIR}")
+add_definitions(-DREACTOS_BINARY_DIR="${REACTOS_BINARY_DIR}")
 
 # There doesn't seem to be a standard for __FILE__ being relative or absolute, so detect it at runtime.
 file(RELATIVE_PATH _PATH_PREFIX ${REACTOS_BINARY_DIR} ${REACTOS_SOURCE_DIR})
@@ -79,11 +71,7 @@ endif()
 # include(sdk/cmake/bison-flex.cmake)
 
 if(NOT CMAKE_CROSSCOMPILING)
-
-    if(NEW_STYLE_BUILD)
-        set(TOOLS_FOLDER ${CMAKE_CURRENT_BINARY_DIR})
-    endif()
-
+    set(TOOLS_FOLDER ${CMAKE_CURRENT_BINARY_DIR})
     add_definitions(-DTARGET_${ARCH})
 
     if(MSVC)
@@ -100,8 +88,7 @@ if(NOT CMAKE_CROSSCOMPILING)
             add_definitions(/Dinline=__inline)
         endif()
     endif()
-
-    include_directories(sdk/include/host)
+    add_subdirectory(sdk/include/host)
 
     if(NOT MSVC)
         add_subdirectory(dll/win32/dbghelp)
@@ -109,21 +96,21 @@ if(NOT CMAKE_CROSSCOMPILING)
     add_subdirectory(sdk/tools)
     add_subdirectory(sdk/lib)
 
-    if(NOT NEW_STYLE_BUILD)
-        if(NOT MSVC)
-            export(TARGETS bin2c widl gendib cabman fatten hpp isohybrid mkhive mkisofs obj2bin spec2def geninc rsym mkshelllink utf16le xml2sdb FILE ${CMAKE_BINARY_DIR}/ImportExecutables.cmake NAMESPACE native- )
-        else()
-            export(TARGETS bin2c widl gendib cabman fatten hpp isohybrid mkhive mkisofs obj2bin spec2def geninc mkshelllink utf16le xml2sdb FILE ${CMAKE_BINARY_DIR}/ImportExecutables.cmake NAMESPACE native- )
-        endif()
+    set(NATIVE_TARGETS bin2c widl gendib cabman fatten hpp isohybrid mkhive mkisofs obj2bin spec2def geninc mkshelllink utf16le xml2sdb)
+    if(NOT MSVC)
+        list(APPEND NATIVE_TARGETS rsym pefixup)
     endif()
+
+    export(TARGETS ${NATIVE_TARGETS} FILE ${CMAKE_BINARY_DIR}/ImportExecutables.cmake NAMESPACE native- )
+    configure_file(sdk/cmake/host-tools.in ${CMAKE_BINARY_DIR}/TargetList.cmake)
 
 else()
+    # Add host tools target
+    include(sdk/cmake/host-tools.cmake)
+    setup_host_tools()
+
     # We don't need CMake importlib handling.
     unset(CMAKE_IMPORT_LIBRARY_SUFFIX)
-
-    if(NEW_STYLE_BUILD)
-        include(sdk/cmake/host-tools.cmake)
-    endif()
 
     # Print build type
     message("-- Build Type: ${CMAKE_BUILD_TYPE}")
@@ -138,14 +125,6 @@ else()
     #useful stuff!
     include(CMakeParseArguments)
 
-    if(NOT NEW_STYLE_BUILD)
-        if(NOT DEFINED REACTOS_BUILD_TOOLS_DIR)
-            set(REACTOS_BUILD_TOOLS_DIR ${REACTOS_SOURCE_DIR}/build)
-        endif()
-        set(IMPORT_EXECUTABLES "${REACTOS_BUILD_TOOLS_DIR}/ImportExecutables.cmake" CACHE FILEPATH "Host executables")
-        include(${IMPORT_EXECUTABLES})
-    endif()
-
     if(DBG)
         add_definitions(-DDBG=1 -D_SEH_ENABLE_TRACE)
     else()
@@ -153,11 +132,11 @@ else()
     endif()
 
     if(KDBG)
-        add_definitions(-DKDBG=1)
+        add_definitions(-DKDBG)
     endif()
 
     if(_WINKD_)
-        add_definitions(-D_WINKD_=1)
+        add_definitions(-D_WINKD_)
     endif()
 
     if(CMAKE_VERSION MATCHES "ReactOS")
@@ -171,7 +150,8 @@ else()
                     -D_WIN32_IE=0x600
                     -D_WIN32_WINNT=0x502
                     -D_WIN32_WINDOWS=0x502
-                    -D_SETUPAPI_VER=0x502)
+                    -D_SETUPAPI_VER=0x502
+                    -DMINGW_HAS_SECURE_API=1)
 
     # Arch Options
     if(ARCH STREQUAL "i386")
@@ -179,6 +159,11 @@ else()
             add_definitions(-D_M_IX86)
         endif()
         add_definitions(-D_X86_ -D__i386__ -Di386)
+        if(SARCH STREQUAL "xbox")
+            add_definitions(-DSARCH_XBOX)
+        elseif(SARCH STREQUAL "pc98")
+            add_definitions(-DSARCH_PC98)
+        endif()
     elseif(ARCH STREQUAL "amd64")
         add_definitions(-D_M_AMD64 -D_AMD64_ -D__x86_64__ -D_WIN64)
     elseif(ARCH STREQUAL "arm")
@@ -190,6 +175,7 @@ else()
     endif()
 
     # Other
+    add_definitions(-D_NEW_DELETE_OPERATORS_)
     if(ARCH STREQUAL "i386")
         add_definitions(-DUSE_COMPILER_EXCEPTIONS -D_USE_32BIT_TIME_T)
     elseif(ARCH STREQUAL "amd64")
@@ -263,7 +249,11 @@ else()
     endif()
 
     # For MSVC builds, this puts all debug symbols file in the same directory.
-    set(CMAKE_PDB_OUTPUT_DIRECTORY "${REACTOS_BINARY_DIR}/msvc_pdb")
+    if (MSVC)
+        set(CMAKE_PDB_OUTPUT_DIRECTORY "${REACTOS_BINARY_DIR}/msvc_pdb")
+    elseif(SEPARATE_DBG)
+        set(CMAKE_PDB_OUTPUT_DIRECTORY "${REACTOS_BINARY_DIR}/symbols")
+    endif()
 
     #begin with boot so reactos_cab target is defined before all other modules
     add_subdirectory(boot)

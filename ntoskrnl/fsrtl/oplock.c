@@ -454,7 +454,7 @@ FsRtlAcknowledgeOplockBreak(IN PINTERNAL_OPLOCK Oplock,
     /* If we dropped oplock, remove our extra ref */
     if (Deref)
     {
-        ObfDereferenceObject(Oplock->FileObject);
+        ObDereferenceObject(Oplock->FileObject);
     }
     /* And unset FO: no oplock left or shared */
     Oplock->FileObject = NULL;
@@ -566,7 +566,7 @@ FsRtlAllocateOplock(VOID)
     _SEH2_FINALLY
     {
         /* In case of abnormal termination, it means either OPLOCK or FAST_MUTEX allocation failed */
-        if (_abnormal_termination())
+        if (_SEH2_AbnormalTermination())
         {
             /* That FAST_MUTEX, free OPLOCK */
             if (Oplock != NULL)

@@ -18,7 +18,8 @@ list(APPEND SOURCE
     ntgdi/NtGdiDoPalette.c
     ntgdi/NtGdiEngCreatePalette.c
     ntgdi/NtGdiEnumFontOpen.c
-    #ntgdi/NtGdiExtSelectClipRgn.c
+    ntgdi/NtGdiExcludeClipRect.c
+    ntgdi/NtGdiExtSelectClipRgn.c
     ntgdi/NtGdiExtTextOutW.c
     #ntgdi/NtGdiFlushUserBatch.c
     ntgdi/NtGdiGetBitmapBits.c
@@ -26,6 +27,8 @@ list(APPEND SOURCE
     ntgdi/NtGdiGetFontResourceInfoInternalW.c
     ntgdi/NtGdiGetRandomRgn.c
     ntgdi/NtGdiGetStockObject.c
+    ntgdi/NtGdiIntersectClipRect.c
+    ntgdi/NtGdiOffsetClipRgn.c
     ntgdi/NtGdiPolyPolyDraw.c
     ntgdi/NtGdiRestoreDC.c
     ntgdi/NtGdiSaveDC.c
@@ -35,6 +38,7 @@ list(APPEND SOURCE
     ntgdi/NtGdiSelectPen.c
     ntgdi/NtGdiSetBitmapBits.c
     ntgdi/NtGdiSetDIBitsToDeviceInternal.c
+    ntgdi/NtGdiTransformPoints.c
 
 #    ntuser/NtUserCallHwnd.c
 #    ntuser/NtUserCallHwndLock.c
@@ -71,7 +75,6 @@ add_executable(win32knt_apitest
 target_link_libraries(win32knt_apitest ${PSEH_LIB} gditools)
 set_module_type(win32knt_apitest win32cui)
 add_importlibs(win32knt_apitest
-    win32u # win32u_2ksp4 win32u_xpsp2 win32u_2k3sp2 win32u_vista
     gdi32
     user32
     shell32
@@ -79,7 +82,7 @@ add_importlibs(win32knt_apitest
     msvcrt
     kernel32
     ntdll)
-
+add_delay_importlibs(win32knt_apitest win32u)
 add_dependencies(win32knt_apitest xdk)
 add_pch(win32knt_apitest win32nt.h SOURCE)
 add_rostests_file(TARGET win32knt_apitest)

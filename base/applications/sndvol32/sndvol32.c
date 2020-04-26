@@ -880,6 +880,7 @@ MainWindowProc(HWND hwnd,
 {
     PMIXER_WINDOW MixerWindow;
     DWORD CtrlID, LineOffset;
+    BOOL bRet;
     LRESULT Result = 0;
     SET_VOLUME_CONTEXT Context;
 
@@ -1000,16 +1001,28 @@ MainWindowProc(HWND hwnd,
                             /* compute window id of line name static control */
                             CtrlID = LineOffset * IDC_LINE_NAME;
 
-                            /* get line name */
-                            if (GetDlgItemTextW(hwnd, CtrlID, Context.LineName, MIXER_LONG_NAME_CHARS) != 0)
+                            if (Preferences.MixerWindow->Mixer->MixerId == PLAY_MIXER)
                             {
-                                /* setup context */
-                                Context.SliderPos = SendMessage((HWND)lParam, BM_GETCHECK, 0, 0);
-                                Context.bVertical = FALSE;
-                                Context.bSwitch = TRUE;
+                                /* get line name */
+                                if (GetDlgItemTextW(hwnd, CtrlID, Context.LineName, MIXER_LONG_NAME_CHARS) != 0)
+                                {
+                                    /* setup context */
+                                    Context.SliderPos = SendMessage((HWND)lParam, BM_GETCHECK, 0, 0);
+                                    Context.bVertical = FALSE;
+                                    Context.bSwitch = TRUE;
 
-                                /* set volume */
-                                SndMixerEnumConnections(Preferences.MixerWindow->Mixer, Preferences.SelectedLine, SetVolumeCallback, (LPVOID)&Context);
+                                    /* set volume */
+                                    SndMixerEnumConnections(Preferences.MixerWindow->Mixer, Preferences.SelectedLine, SetVolumeCallback, (LPVOID)&Context);
+                                }
+                            }
+                            else if (Preferences.MixerWindow->Mixer->MixerId == RECORD_MIXER)
+                            {
+                                UINT i;
+
+                                for (i = 0; i < Preferences.MixerWindow->DialogCount; i++)
+                                {
+                                    SendDlgItemMessageW(hwnd, (i + 1) * IDC_LINE_SWITCH, BM_SETCHECK, (WPARAM)((i + 1) == LineOffset), 0);
+                                }
                             }
                         }
                         else if (CtrlID % IDC_LINE_ADVANCED == 0)
@@ -1199,6 +1212,18 @@ MainWindowProc(HWND hwnd,
                 /* Disable the 'Advanced Controls' menu item */
                 EnableMenuItem(GetMenu(hwnd), IDM_ADVANCED_CONTROLS, MF_BYCOMMAND | MF_GRAYED);
 
+                /* Load the placement coordinate data of the window */
+                bRet = LoadXYCoordWnd(&Preferences);
+                if (bRet)
+                {
+                    /*
+                     * LoadXYCoordWnd() might fail for the first time of opening the application which is normal as
+                     * the Sound Control's applet settings haven't been saved yet to the Registry. At this point SetWindowPos()
+                     * call is skipped.
+                     */
+                    SetWindowPos(hwnd, NULL, MixerWindow->WndPosX, MixerWindow->WndPosY, 0, 0, SWP_NOSIZE | SWP_NOZORDER);
+                }
+
                 /* create status window */
                 if (MixerWindow->Mode == NORMAL_MODE)
                 {
@@ -1245,6 +1270,7 @@ MainWindowProc(HWND hwnd,
 
         case WM_CLOSE:
         {
+            SaveXYCoordWnd(hwnd, &Preferences);
             PostQuitMessage(0);
             break;
         }

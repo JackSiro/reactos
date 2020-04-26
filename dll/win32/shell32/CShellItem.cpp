@@ -24,8 +24,8 @@
 
 WINE_DEFAULT_DEBUG_CHANNEL(shell);
 
-EXTERN_C HRESULT WINAPI SHCreateShellItem(LPCITEMIDLIST pidlParent,
-    IShellFolder *psfParent, LPCITEMIDLIST pidl, IShellItem **ppsi);
+EXTERN_C HRESULT WINAPI SHCreateShellItem(PCIDLIST_ABSOLUTE pidlParent,
+    IShellFolder *psfParent, PCUITEMID_CHILD pidl, IShellItem **ppsi);
 
 CShellItem::CShellItem() :
     m_pidl(NULL)
@@ -233,7 +233,7 @@ HRESULT WINAPI CShellItem::GetClassID(CLSID *pClassID)
     return S_OK;
 }
 
-HRESULT WINAPI CShellItem::SetIDList(LPCITEMIDLIST pidlx)
+HRESULT WINAPI CShellItem::SetIDList(PCIDLIST_ABSOLUTE pidlx)
 {
     LPITEMIDLIST new_pidl;
 
@@ -250,7 +250,7 @@ HRESULT WINAPI CShellItem::SetIDList(LPCITEMIDLIST pidlx)
         return E_OUTOFMEMORY;
 }
 
-HRESULT WINAPI CShellItem::GetIDList(LPITEMIDLIST *ppidl)
+HRESULT WINAPI CShellItem::GetIDList(PIDLIST_ABSOLUTE *ppidl)
 {
     TRACE("(%p,%p)\n", this, ppidl);
 
@@ -261,8 +261,8 @@ HRESULT WINAPI CShellItem::GetIDList(LPITEMIDLIST *ppidl)
         return E_OUTOFMEMORY;
 }
 
-HRESULT WINAPI SHCreateShellItem(LPCITEMIDLIST pidlParent,
-    IShellFolder *psfParent, LPCITEMIDLIST pidl, IShellItem **ppsi)
+HRESULT WINAPI SHCreateShellItem(PCIDLIST_ABSOLUTE pidlParent,
+    IShellFolder *psfParent, PCUITEMID_CHILD pidl, IShellItem **ppsi)
 {
     HRESULT hr;
     CComPtr<IShellItem> newShellItem;

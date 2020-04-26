@@ -23,8 +23,16 @@
 
 #include <dbt.h>
 #include <pnp_c.h>
+#include <winsvc.h>
 
 #include "rpc_private.h"
+
+DWORD
+WINAPI
+I_ScPnPGetServiceName(IN SERVICE_STATUS_HANDLE hServiceStatus,
+                      OUT LPWSTR lpServiceName,
+                      IN DWORD cchServiceName);
+
 
 /* Registry key and value names */
 static const WCHAR Backslash[] = {'\\', 0};
@@ -72,6 +80,7 @@ typedef struct _NOTIFY_DATA
 typedef struct _INTERNAL_RANGE
 {
     LIST_ENTRY ListEntry;
+    struct _INTERNAL_RANGE_LIST *pRangeList;
     DWORDLONG ullStart;
     DWORDLONG ullEnd;
 } INTERNAL_RANGE, *PINTERNAL_RANGE;
@@ -238,18 +247,43 @@ GetDeviceInstanceKeyPath(
 
         ulTransferLength = 300 * sizeof(WCHAR);
         ulLength = 300 * sizeof(WCHAR);
-        ret = PNP_GetDeviceRegProp(BindingHandle,
-                                   pszDeviceInst,
-                                   CM_DRP_DRIVER,
-                                   &ulType,
-                                   (PVOID)pszBuffer,
-                                   &ulTransferLength,
-                                   &ulLength,
-                                   0);
+
+        RpcTryExcept
+        {
+            ret = PNP_GetDeviceRegProp(BindingHandle,
+                                       pszDeviceInst,
+                                       CM_DRP_DRIVER,
+                                       &ulType,
+                                       (PVOID)pszBuffer,
+                                       &ulTransferLength,
+                                       &ulLength,
+                                       0);
+        }
+        RpcExcept(EXCEPTION_EXECUTE_HANDLER)
+        {
+            ret = RpcStatusToCmStatus(RpcExceptionCode());
+        }
+        RpcEndExcept;
+
         if (ret != CR_SUCCESS)
         {
-            ERR("PNP_GetDeviceRegProp() failed (Error %lu)\n", ret);
-            goto done;
+            RpcTryExcept
+            {
+                ret = PNP_GetClassInstance(BindingHandle,
+                                           pszDeviceInst,
+                                           (PVOID)pszBuffer,
+                                           300);
+            }
+            RpcExcept(EXCEPTION_EXECUTE_HANDLER)
+            {
+                ret = RpcStatusToCmStatus(RpcExceptionCode());
+            }
+            RpcEndExcept;
+
+            if (ret != CR_SUCCESS)
+            {
+                goto done;
+            }
         }
 
         TRACE("szBuffer: %S\n", pszBuffer);
@@ -567,9 +601,13 @@ CMP_RegisterNotification(
 {
     RPC_BINDING_HANDLE BindingHandle = NULL;
     PNOTIFY_DATA pNotifyData = NULL;
+    WCHAR szNameBuffer[256];
+    INT nLength;
+    DWORD ulUnknown9 = 0;
+    DWORD dwError;
     CONFIGRET ret = CR_SUCCESS;
 
-    TRACE("CMP_RegisterNotification(%p %p %lu %p)\n",
+    FIXME("CMP_RegisterNotification(%p %p %lu %p)\n",
           hRecipient, lpvNotificationFilter, ulFlags, phDevNotify);
 
     if ((hRecipient == NULL) ||
@@ -594,22 +632,48 @@ CMP_RegisterNotification(
 
     pNotifyData->ulMagic = NOTIFY_MAGIC;
 
-/*
-    if (dwFlags & DEVICE_NOTIFY_SERVICE_HANDLE == DEVICE_NOTYFY_WINDOW_HANDLE)
+    if ((ulFlags & DEVICE_NOTIFY_SERVICE_HANDLE) == DEVICE_NOTIFY_WINDOW_HANDLE)
     {
+        FIXME("Register a window\n");
 
+        nLength = GetWindowTextW((HWND)hRecipient,
+                                 szNameBuffer,
+                                 ARRAYSIZE(szNameBuffer));
+        if (nLength == 0)
+        {
+            HeapFree(GetProcessHeap(), 0, pNotifyData);
+            return CR_INVALID_DATA;
+        }
+
+        FIXME("Register window: %S\n", szNameBuffer);
     }
-    else if (dwFlags & DEVICE_NOTIFY_SERVICE_HANDLE == DEVICE_NOTYFY_SERVICE_HANDLE)
+    else if ((ulFlags & DEVICE_NOTIFY_SERVICE_HANDLE) == DEVICE_NOTIFY_SERVICE_HANDLE)
     {
+        FIXME("Register a service\n");
 
+        dwError = I_ScPnPGetServiceName((SERVICE_STATUS_HANDLE)hRecipient,
+                                        szNameBuffer,
+                                        ARRAYSIZE(szNameBuffer));
+        if (dwError != ERROR_SUCCESS)
+        {
+            HeapFree(GetProcessHeap(), 0, pNotifyData);
+            return CR_INVALID_DATA;
+        }
+
+        FIXME("Register service: %S\n", szNameBuffer);
     }
-*/
 
     RpcTryExcept
     {
         ret = PNP_RegisterNotification(BindingHandle,
+                                       0,            /* ??? */
+                                       szNameBuffer,
+                                       (BYTE*)lpvNotificationFilter,
+                                       ((DEV_BROADCAST_HDR*)lpvNotificationFilter)->dbch_size,
                                        ulFlags,
-                                       &pNotifyData->ulNotifyData);
+                                       &pNotifyData->ulNotifyData,
+                                       0,            /* ??? */
+                                       &ulUnknown9); /* ??? */
     }
     RpcExcept(EXCEPTION_EXECUTE_HANDLER)
     {
@@ -808,7 +872,8 @@ CM_Add_Empty_Log_Conf(
  * CM_Add_Empty_Log_Conf_Ex [SETUPAPI.@]
  */
 CONFIGRET
-WINAPI CM_Add_Empty_Log_Conf_Ex(
+WINAPI
+CM_Add_Empty_Log_Conf_Ex(
     _Out_ PLOG_CONF plcLogConf,
     _In_ DEVINST dnDevInst,
     _In_ PRIORITY Priority,
@@ -1065,6 +1130,7 @@ CM_Add_Range(
         goto done;
     }
 
+    pRange->pRangeList = pRangeList;
     pRange->ullStart = ullStartValue;
     pRange->ullEnd = ullEndValue;
 
@@ -1075,7 +1141,8 @@ CM_Add_Range(
     }
     else
     {
-
+        HeapFree(GetProcessHeap(), 0, pRange);
+        UNIMPLEMENTED;
     }
 
 done:
@@ -1500,14 +1567,14 @@ CM_Delete_Class_Key_Ex(
 CONFIGRET
 WINAPI
 CM_Delete_DevNode_Key(
-    _In_ DEVNODE dnDevNode,
+    _In_ DEVINST dnDevInst,
     _In_ ULONG ulHardwareProfile,
     _In_ ULONG ulFlags)
 {
     TRACE("CM_Delete_DevNode_Key(%p %lu %lx)\n",
-          dnDevNode, ulHardwareProfile, ulFlags);
+          dnDevInst, ulHardwareProfile, ulFlags);
 
-    return CM_Delete_DevNode_Key_Ex(dnDevNode, ulHardwareProfile, ulFlags,
+    return CM_Delete_DevNode_Key_Ex(dnDevInst, ulHardwareProfile, ulFlags,
                                     NULL);
 }
 
@@ -1518,15 +1585,116 @@ CM_Delete_DevNode_Key(
 CONFIGRET
 WINAPI
 CM_Delete_DevNode_Key_Ex(
-    _In_ DEVNODE dnDevNode,
+    _In_ DEVINST dnDevInst,
     _In_ ULONG ulHardwareProfile,
     _In_ ULONG ulFlags,
     _In_opt_ HANDLE hMachine)
 {
-    FIXME("CM_Delete_DevNode_Key_Ex(%p %lu %lx %p)\n",
-          dnDevNode, ulHardwareProfile, ulFlags, hMachine);
+    RPC_BINDING_HANDLE BindingHandle = NULL;
+    HSTRING_TABLE StringTable = NULL;
+    PWSTR pszDevInst, pszKeyPath = NULL, pszInstancePath = NULL;
+    CONFIGRET ret;
 
-    return CR_CALL_NOT_IMPLEMENTED;
+    FIXME("CM_Delete_DevNode_Key_Ex(%p %lu %lx %p)\n",
+          dnDevInst, ulHardwareProfile, ulFlags, hMachine);
+
+    if (dnDevInst == 0)
+        return CR_INVALID_DEVINST;
+
+    if (ulFlags & ~CM_REGISTRY_BITS)
+        return CR_INVALID_FLAG;
+
+    if ((ulFlags & CM_REGISTRY_USER) && (ulFlags & CM_REGISTRY_CONFIG))
+        return CR_INVALID_FLAG;
+
+    if (hMachine != NULL)
+    {
+        BindingHandle = ((PMACHINE_INFO)hMachine)->BindingHandle;
+        if (BindingHandle == NULL)
+            return CR_FAILURE;
+
+        StringTable = ((PMACHINE_INFO)hMachine)->StringTable;
+        if (StringTable == 0)
+            return CR_FAILURE;
+    }
+    else
+    {
+        if (!PnpGetLocalHandles(&BindingHandle, &StringTable))
+            return CR_FAILURE;
+    }
+
+    pszDevInst = pSetupStringTableStringFromId(StringTable, dnDevInst);
+    if (pszDevInst == NULL)
+        return CR_INVALID_DEVNODE;
+
+    TRACE("pszDevInst: %S\n", pszDevInst);
+
+    pszKeyPath = MyMalloc(512 * sizeof(WCHAR));
+    if (pszKeyPath == NULL)
+    {
+        ret = CR_OUT_OF_MEMORY;
+        goto done;
+    }
+
+    pszInstancePath = MyMalloc(512 * sizeof(WCHAR));
+    if (pszInstancePath == NULL)
+    {
+        ret = CR_OUT_OF_MEMORY;
+        goto done;
+    }
+
+    ret = GetDeviceInstanceKeyPath(BindingHandle,
+                                   pszDevInst,
+                                   pszKeyPath,
+                                   pszInstancePath,
+                                   ulHardwareProfile,
+                                   ulFlags);
+    if (ret != CR_SUCCESS)
+        goto done;
+
+    TRACE("pszKeyPath: %S\n", pszKeyPath);
+    TRACE("pszInstancePath: %S\n", pszInstancePath);
+
+    if (ulFlags & CM_REGISTRY_USER)
+    {
+        FIXME("The CM_REGISTRY_USER flag is not supported yet!\n");
+    }
+    else
+    {
+#if 0
+        if (!pSetupIsUserAdmin())
+        {
+            ret = CR_ACCESS_DENIED;
+            goto done;
+        }
+#endif
+
+        if (!(ulFlags & CM_REGISTRY_CONFIG))
+            ulHardwareProfile = 0;
+
+        RpcTryExcept
+        {
+            ret = PNP_DeleteRegistryKey(BindingHandle,
+                                        pszDevInst,
+                                        pszKeyPath,
+                                        pszInstancePath,
+                                        ulHardwareProfile);
+        }
+        RpcExcept(EXCEPTION_EXECUTE_HANDLER)
+        {
+            ret = RpcStatusToCmStatus(RpcExceptionCode());
+        }
+        RpcEndExcept;
+    }
+
+done:
+    if (pszInstancePath != NULL)
+        MyFree(pszInstancePath);
+
+    if (pszKeyPath != NULL)
+        MyFree(pszKeyPath);
+
+    return ret;
 }
 
 
@@ -1628,7 +1796,7 @@ CM_Disable_DevNode_Ex(
     LPWSTR lpDevInst;
     CONFIGRET ret;
 
-    FIXME("CM_Disable_DevNode_Ex(%p %lx %p)\n",
+    TRACE("CM_Disable_DevNode_Ex(%p %lx %p)\n",
           dnDevInst, ulFlags, hMachine);
 
     if (!pSetupIsUserAdmin())
@@ -1662,11 +1830,12 @@ CM_Disable_DevNode_Ex(
 
     RpcTryExcept
     {
-        ret = PNP_DeviceInstanceAction(BindingHandle,
-                                       PNP_DEVINST_DISABLE,
-                                       ulFlags,
-                                       lpDevInst,
-                                       NULL);
+        ret = PNP_DisableDevInst(BindingHandle,
+                                 lpDevInst,
+                                 NULL,
+                                 NULL,
+                                 0,
+                                 ulFlags);
     }
     RpcExcept(EXCEPTION_EXECUTE_HANDLER)
     {
@@ -5899,10 +6068,51 @@ CM_Next_Range(
     _Out_ PDWORDLONG pullEnd,
     _In_ ULONG ulFlags)
 {
+    PINTERNAL_RANGE_LIST pRangeList;
+    PINTERNAL_RANGE pRange;
+    PLIST_ENTRY ListEntry;
+    CONFIGRET ret = CR_SUCCESS;
+
     FIXME("CM_Next_Range(%p %p %p %lx)\n",
           preElement, pullStart, pullEnd, ulFlags);
 
-    return CR_CALL_NOT_IMPLEMENTED;
+    pRange = (PINTERNAL_RANGE)preElement;
+
+    if (pRange == NULL || pRange->pRangeList == NULL)
+        return CR_FAILURE;
+
+    if (pullStart == NULL || pullEnd == NULL)
+        return CR_INVALID_POINTER;
+
+    if (ulFlags != 0)
+        return CR_INVALID_FLAG;
+
+    pRangeList = pRange->pRangeList;
+
+    /* Lock the range list */
+    WaitForSingleObject(pRangeList->hMutex, INFINITE);
+
+    /* Fail, if we reached the end of the list */
+    if (pRange->ListEntry.Flink == &pRangeList->ListHead)
+    {
+        ret = CR_FAILURE;
+        goto done;
+    }
+
+    /* Get the next range */
+    ListEntry = pRangeList->ListHead.Flink;
+    pRange = CONTAINING_RECORD(ListEntry, INTERNAL_RANGE, ListEntry);
+
+    /* Return the range data */
+    *pullStart = pRange->ullStart;
+    *pullEnd = pRange->ullEnd;
+    *preElement = (RANGE_ELEMENT)pRange;
+
+done:
+    /* Unlock the range list */
+    ReleaseMutex(pRangeList->hMutex);
+
+    return ret;
 }
 
 

@@ -148,6 +148,34 @@ RtlFreeLargeString(
     }
 }
 
+DWORD
+FASTCALL
+RtlGetExpWinVer( HMODULE hModule )
+{
+    DWORD dwMajorVersion = 3;  // Set default to Windows 3.10.
+    DWORD dwMinorVersion = 10;
+    PIMAGE_NT_HEADERS pinth;
+
+    if ( hModule && !((ULONG_PTR)hModule >> 16))
+    {
+        pinth = RtlImageNtHeader( hModule );
+        if ( pinth )
+        {
+            dwMajorVersion = pinth->OptionalHeader.MajorSubsystemVersion;
+
+            if ( dwMajorVersion == 1 )
+            {
+                dwMajorVersion = 3;
+            }
+            else
+            {
+                dwMinorVersion = pinth->OptionalHeader.MinorSubsystemVersion;
+            }
+        }
+    }
+    return MAKELONG(MAKEWORD(dwMinorVersion, dwMajorVersion), 0);
+}
+
 HWND WINAPI
 User32CreateWindowEx(DWORD dwExStyle,
                      LPCSTR lpClassName,
@@ -177,10 +205,14 @@ User32CreateWindowEx(DWORD dwExStyle,
     LPCWSTR lpszClsVersion;
     LPCWSTR lpLibFileName = NULL;
     HANDLE pCtx = NULL;
+    DWORD dwFlagsVer;
 
 #if 0
     DbgPrint("[window] User32CreateWindowEx style %d, exstyle %d, parent %d\n", dwStyle, dwExStyle, hWndParent);
 #endif
+
+    dwFlagsVer = RtlGetExpWinVer( hInstance ? hInstance : GetModuleHandleW(NULL) );
+    TRACE("Module Version %x\n",dwFlagsVer);
 
     if (!RegisterDefaultClasses)
     {
@@ -299,8 +331,8 @@ User32CreateWindowEx(DWORD dwExStyle,
                                       hMenu,
                                       hInstance,
                                       lpParam,
-                                      dwFlags,
-                                      NULL);
+                                      dwFlagsVer,
+                                      pCtx );
         if (Handle) break;
         if (!lpLibFileName) break;
         if (!ClassFound)
@@ -381,7 +413,7 @@ CreateWindowExA(DWORD dwExStyle,
         if (pWndParent->fnid != FNID_MDICLIENT) // wine uses WIN_ISMDICLIENT
         {
            WARN("WS_EX_MDICHILD, but parent %p is not MDIClient\n", hWndParent);
-           return NULL;
+           goto skip_mdi;
         }
 
         /* lpParams of WM_[NC]CREATE is different for MDI children.
@@ -447,6 +479,7 @@ CreateWindowExA(DWORD dwExStyle,
         }
     }
 
+skip_mdi:
     hwnd = User32CreateWindowEx(dwExStyle,
                                 lpClassName,
                                 lpWindowName,
@@ -506,7 +539,7 @@ CreateWindowExW(DWORD dwExStyle,
         if (pWndParent->fnid != FNID_MDICLIENT)
         {
            WARN("WS_EX_MDICHILD, but parent %p is not MDIClient\n", hWndParent);
-           return NULL;
+           goto skip_mdi;
         }
 
         /* lpParams of WM_[NC]CREATE is different for MDI children.
@@ -572,6 +605,7 @@ CreateWindowExW(DWORD dwExStyle,
         }
     }
 
+skip_mdi:
     hwnd = User32CreateWindowEx(dwExStyle,
                                 (LPCSTR)lpClassName,
                                 (LPCSTR)lpWindowName,

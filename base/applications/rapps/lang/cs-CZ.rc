@@ -183,6 +183,7 @@ BEGIN
     IDS_CAT_SCIENCE "Věda"
     IDS_CAT_TOOLS "Nástroje"
     IDS_CAT_VIDEO "Video"
+    IDS_CAT_THEMES "Themes"
 END
 
 STRINGTABLE
@@ -195,7 +196,7 @@ BEGIN
     IDS_APPS_COUNT "Počet aplikací: %d; Selected: %d"
     IDS_WELCOME_TITLE "Vítejte v ReactOS Správci aplikací!\n\n"
     IDS_WELCOME_TEXT "Na levé straně zvolte kategorii, pak vpravo zvolte aplikaci, která bude nainstalována nebo odinstalována.\nWebová stránka ReactOS: "
-    IDS_WELCOME_URL "http://www.reactos.org"
+    IDS_WELCOME_URL "https://reactos.org/"
     IDS_INSTALLED "Nainstalováno"
     IDS_AVAILABLEFORINST "Lze instalovat"
     IDS_UPDATES "Aktualizace"

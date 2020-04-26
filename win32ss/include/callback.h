@@ -18,7 +18,8 @@
 #define USER32_CALLBACK_DDEGET                (14)
 #define USER32_CALLBACK_SETOBM                (15)
 #define USER32_CALLBACK_LPK                   (16)
-#define USER32_CALLBACK_MAXIMUM               (16)
+#define USER32_CALLBACK_UMPD                  (17)
+#define USER32_CALLBACK_MAXIMUM               (17)
 
 typedef struct _WINDOWPROC_CALLBACK_ARGUMENTS
 {
@@ -60,6 +61,7 @@ typedef struct _HOOKPROC_CALLBACK_ARGUMENTS
   ULONG_PTR offPfn;
   BOOLEAN Ansi;
   LRESULT Result;
+  UINT lParamSize;
   WCHAR ModuleName[512];
 } HOOKPROC_CALLBACK_ARGUMENTS, *PHOOKPROC_CALLBACK_ARGUMENTS;
 
@@ -70,6 +72,20 @@ typedef struct _HOOKPROC_CBT_CREATEWND_EXTRA_ARGUMENTS
   /* WCHAR szName[] */
   /* WCHAR szClass[] */
 } HOOKPROC_CBT_CREATEWND_EXTRA_ARGUMENTS, *PHOOKPROC_CBT_CREATEWND_EXTRA_ARGUMENTS;
+
+typedef struct tagCWP_Struct
+{
+   HOOKPROC_CALLBACK_ARGUMENTS hpca;
+   CWPSTRUCT cwps;
+   PBYTE Extra[4];
+} CWP_Struct, *PCWP_Struct;
+
+typedef struct tagCWPR_Struct
+{
+   HOOKPROC_CALLBACK_ARGUMENTS hpca;
+   CWPRETSTRUCT cwprs;
+   PBYTE Extra[4];
+} CWPR_Struct, *PCWPR_Struct;
 
 typedef struct _EVENTPROC_CALLBACK_ARGUMENTS
 {
@@ -186,4 +202,6 @@ NTSTATUS WINAPI
 User32CallOBMFromKernel(PVOID Arguments, ULONG ArgumentLength);
 NTSTATUS WINAPI
 User32CallLPKFromKernel(PVOID Arguments, ULONG ArgumentLength);
+NTSTATUS WINAPI
+User32CallUMPDFromKernel(PVOID Arguments, ULONG ArgumentLength);
 #endif /* __INCLUDE_USER32_CALLBACK_H */

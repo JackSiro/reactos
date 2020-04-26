@@ -1,5 +1,8 @@
 PROJECT(SHELL)
 
+add_definitions(
+    -D_ATL_NO_EXCEPTIONS)
+
 set_cpp(WITH_RUNTIME)
 
 include_directories(
@@ -12,7 +15,7 @@ list(APPEND SOURCE
     misc.cpp
     ${CMAKE_CURRENT_BINARY_DIR}/rshell.def)
 
-add_library(rshell SHARED ${SOURCE})
+add_library(rshell MODULE ${SOURCE})
 
 set_module_type(rshell win32dll UNICODE)
 
@@ -20,7 +23,6 @@ target_link_libraries(rshell
     shellbars
     shellmenu
     shelldesktop
-    atlnew
     uuid
     wine)
 

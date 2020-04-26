@@ -200,6 +200,33 @@
                 <EXCLUDE MODULE="oleaut32.dll" />
                 <DLLFILE>aclayers.dll</DLLFILE>
             </SHIM>
+            <SHIM NAME="Win10RTMVersionLie">
+                <INCLUDE MODULE="shell32.dll" />
+                <INCLUDE MODULE="msi.dll" />
+                <EXCLUDE MODULE="kernel32.dll" />
+                <EXCLUDE MODULE="msvcrt.dll" />
+                <EXCLUDE MODULE="ole32.dll" />
+                <EXCLUDE MODULE="oleaut32.dll" />
+                <DLLFILE>aclayers.dll</DLLFILE>
+            </SHIM>
+            <SHIM NAME="Win2k16RTMVersionLie">
+                <INCLUDE MODULE="shell32.dll" />
+                <INCLUDE MODULE="msi.dll" />
+                <EXCLUDE MODULE="kernel32.dll" />
+                <EXCLUDE MODULE="msvcrt.dll" />
+                <EXCLUDE MODULE="ole32.dll" />
+                <EXCLUDE MODULE="oleaut32.dll" />
+                <DLLFILE>aclayers.dll</DLLFILE>
+            </SHIM>
+            <SHIM NAME="Win2k19RTMVersionLie">
+                <INCLUDE MODULE="shell32.dll" />
+                <INCLUDE MODULE="msi.dll" />
+                <EXCLUDE MODULE="kernel32.dll" />
+                <EXCLUDE MODULE="msvcrt.dll" />
+                <EXCLUDE MODULE="ole32.dll" />
+                <EXCLUDE MODULE="oleaut32.dll" />
+                <DLLFILE>aclayers.dll</DLLFILE>
+            </SHIM>
 
             <!-- Display mode shims -->
 
@@ -215,16 +242,27 @@
             <SHIM NAME="DisableThemes">
                 <DLLFILE>acgenral.dll</DLLFILE>
             </SHIM>
+            <SHIM NAME="ForceDXSetupSuccess">
+                <DLLFILE>aclayers.dll</DLLFILE>
+                <DESCRIPTION>Some application using an older version of DirectX may encounter problems when calling LoadLibrary or GetProcAddress to use DSETUP.DLL or DSETUP32.DLL</DESCRIPTION>
+            </SHIM>
             <SHIM NAME="IgnoreFreeLibrary">
                 <DLLFILE>acgenral.dll</DLLFILE>
+            </SHIM>
+            <SHIM NAME="IgnoreLoadLibrary">
+                <DLLFILE>aclayers.dll</DLLFILE>
+            </SHIM>
+            <SHIM NAME="ShimTest">
+                <DLLFILE>acgenral.dll</DLLFILE>
+                <DESCRIPTION>Shim used to test ReactOS shim engine functionality</DESCRIPTION>
             </SHIM>
             <SHIM NAME="VMHorizonSetup">
                 <DLLFILE>aclayers.dll</DLLFILE>
             </SHIM>
 
-            <SHIM NAME="HideShimEnv">
+            <!--<SHIM NAME="HideShimEnv">
                 <DLLFILE>aclayers.dll</DLLFILE>
-            </SHIM>
+            </SHIM>-->
 
             <FLAG NAME="GetShortPathNameNT4">
                 <FLAG_MASK_KERNEL>1</FLAG_MASK_KERNEL>
@@ -237,12 +275,20 @@
 
         <!-- Backwards compatibility layers, incomplete! -->
 
+        <LAYER NAME="IgnoreManifestCompatVersion">
+            <DATA NAME="SHIMVERSIONNT" DATA_DWORD="0xffffffff" />   <!-- REACTOS_COMPATVERSION_IGNOREMANIFEST -->
+        </LAYER>
+
         <LAYER NAME="WIN95">
             <SHIM_REF NAME="Win95VersionLie" />
+            <SHIM_REF NAME="ForceDXSetupSuccess" />
+            <SHIM_REF NAME="IgnoreLoadLibrary" />
             <!-- TODO: Add more fixes! -->
         </LAYER>
         <LAYER NAME="WIN98">
             <SHIM_REF NAME="Win98VersionLie" />
+            <SHIM_REF NAME="ForceDXSetupSuccess" />
+            <SHIM_REF NAME="IgnoreLoadLibrary" />
             <!-- TODO: Add more fixes! -->
         </LAYER>
         <LAYER NAME="NT4SP5">
@@ -344,6 +390,24 @@
             <DATA NAME="SHIMVERSIONNT" DATA_DWORD="603" />
             <!-- TODO: Add more fixes! -->
         </LAYER>
+        <LAYER NAME="WIN10RTM">
+            <!-- ReactOS specific. Windows does not have this version lie -->
+            <SHIM_REF NAME="Win10RTMVersionLie" />
+            <DATA NAME="SHIMVERSIONNT" DATA_DWORD="1000" />
+            <!-- TODO: Add more fixes! -->
+        </LAYER>
+        <LAYER NAME="WINSRV16RTM">
+            <!-- ReactOS specific. Windows does not have this version lie -->
+            <SHIM_REF NAME="Win2k16RTMVersionLie" />
+            <DATA NAME="SHIMVERSIONNT" DATA_DWORD="1000" />
+            <!-- TODO: Add more fixes! -->
+        </LAYER>
+        <LAYER NAME="WINSRV19RTM">
+            <!-- ReactOS specific. Windows does not have this version lie -->
+            <SHIM_REF NAME="Win2k19RTMVersionLie" />
+            <DATA NAME="SHIMVERSIONNT" DATA_DWORD="1000" />
+            <!-- TODO: Add more fixes! -->
+        </LAYER>
 
 
 
@@ -362,6 +426,9 @@
 
         <LAYER NAME="DisableThemes">
             <SHIM_REF NAME="DisableThemes" />
+        </LAYER>
+        <LAYER NAME="ForceDXSetupSuccess">
+            <SHIM_REF NAME="ForceDXSetupSuccess" />
         </LAYER>
         <LAYER NAME="VMHorizonSetup">
             <!-- ProductId: {7051C96D-AA61-4D83-AF37-646E82D616ED} -->
@@ -391,5 +458,15 @@
             <SHIM_REF NAME="IgnoreFreeLibrary" COMMAND_LINE="libpng12.dll" />
         </EXE>
 
+        <!-- ReactOS shim used to test the shim engine -->
+        <EXE NAME="shimtest_ros.exe" APP_NAME="Shim test application" VENDOR="ReactOS">
+            <MATCHING_FILE NAME="*">
+                <FILE_DESCRIPTION>ReactOS Shim Engine test utility</FILE_DESCRIPTION>
+                <ORIGINAL_FILENAME>shimtest_ros.exe</ORIGINAL_FILENAME>
+                <INTERNAL_NAME>shimtest_ros</INTERNAL_NAME>
+                <COMPANY_NAME>ReactOS - test</COMPANY_NAME>
+            </MATCHING_FILE>
+            <SHIM_REF NAME="ShimTest" />
+        </EXE>
     </DATABASE>
 </SDB>

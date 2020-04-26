@@ -1,7 +1,15 @@
 #ifndef _PCBIOS_H_
 #define _PCBIOS_H_
 
+#ifdef __ASM__
+#define EFLAGS_CF HEX(01)
+#define EFLAGS_ZF HEX(40)
+#define EFLAGS_SF HEX(80)
+#endif
+
 #ifndef __ASM__
+
+#define MAX_BIOS_DESCRIPTORS 80
 
 typedef enum
 {
@@ -38,13 +46,19 @@ typedef struct
 
         struct
         {
-            // Bit 0. ACPI 3.0. As of ACPI 4.0, became "Reserved -> must be 1".
+            // Bit 0. ACPI 3.0.
+            // As of ACPI 4.0, became "Reserved -> must be 1".
             ULONG Enabled_Reserved : 1;
-            // Bit 1. ACPI 3.0. As of ACPI 6.1, became "Unimplemented -> Deprecated".
-            ULONG NonVolatile_Deprecated : 1;
-            // Bit 2. ACPI 4.0. As of ACPI 6.1, became "Unimplemented -> Deprecated".
-            ULONG SlowAccess_Deprecated : 1;
-            // Bit 3. ACPI 4.0. ACPI 5.0-A added "Used only on PC-AT BIOS" (not UEFI).
+            // Bit 1. ACPI 3.0.
+            // As of ACPI 6.1, became "Unimplemented -> Deprecated".
+            // As of ACPI 6.3, became "Reserved -> must be 0".
+            ULONG NonVolatile_Deprecated_Reserved : 1;
+            // Bit 2. ACPI 4.0.
+            // As of ACPI 6.1, became "Unimplemented -> Deprecated".
+            // As of ACPI 6.3, became "Reserved -> must be 0".
+            ULONG SlowAccess_Deprecated_Reserved : 1;
+            // Bit 3. ACPI 4.0.
+            // ACPI 5.0-A added "Used only on PC-AT BIOS" (not UEFI).
             ULONG ErrorLog : 1;
             // Bits 4-31. ACPI 3.0.
             ULONG Reserved : 28;
@@ -158,10 +172,19 @@ int __cdecl Int386(int ivec, REGS* in, REGS* out);
 // If CF is set then the call failed (usually)
 #define INT386_SUCCESS(regs)    ((regs.x.eflags & EFLAGS_CF) == 0)
 
-void    EnableA20(void);
-VOID __cdecl ChainLoadBiosBootSectorCode(VOID);    // Implemented in boot.S
-VOID __cdecl Reboot(VOID);                    // Implemented in boot.S
-VOID    DetectHardware(VOID);                 // Implemented in hardware.c
+VOID __cdecl ChainLoadBiosBootSectorCode(
+    IN UCHAR BootDrive OPTIONAL,
+    IN ULONG BootPartition OPTIONAL);
+
+VOID __cdecl Relocator16Boot(
+    IN REGS*  In,
+    IN USHORT StackSegment,
+    IN USHORT StackPointer,
+    IN USHORT CodeSegment,
+    IN USHORT CodePointer);
+
+VOID __cdecl Reboot(VOID);
+VOID DetectHardware(VOID);
 
 #endif /* ! __ASM__ */
 

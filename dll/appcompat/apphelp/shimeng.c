@@ -20,6 +20,9 @@
 FARPROC WINAPI StubGetProcAddress(HINSTANCE hModule, LPCSTR lpProcName);
 BOOL WINAPI SE_IsShimDll(PVOID BaseAddress);
 
+static const UNICODE_STRING Ntdll = RTL_CONSTANT_STRING(L"ntdll.dll");
+static const UNICODE_STRING Kernel32 = RTL_CONSTANT_STRING(L"kernel32.dll");
+static const UNICODE_STRING Verifier = RTL_CONSTANT_STRING(L"verifier.dll");
 
 extern HMODULE g_hInstance;
 static UNICODE_STRING g_WindowsDirectory;
@@ -34,6 +37,7 @@ static ARRAY g_pShimInfo;   /* PSHIMMODULE */
 static ARRAY g_pHookArray;  /* HOOKMODULEINFO */
 static ARRAY g_InExclude;   /* INEXCLUDE */
 
+typedef FARPROC(WINAPI* GETPROCADDRESSPROC)(HINSTANCE, LPCSTR);
 /* If we have setup a hook for a function, we should also redirect GetProcAddress for this function */
 HOOKAPIEX g_IntHookEx[] =
 {
@@ -43,7 +47,7 @@ HOOKAPIEX g_IntHookEx[] =
         StubGetProcAddress, /* ReplacementFunction*/
         NULL,               /* OriginalFunction */
         NULL,               /* pShimInfo */
-        NULL                /* Unused */
+        NULL                /* ApiLink */
     },
 };
 
@@ -204,6 +208,39 @@ BOOL WINAPIV SeiDbgPrint(SEI_LOG_LEVEL Level, PCSTR Function, PCSTR Format, ...)
     return TRUE;
 }
 
+static
+BOOL SeiIsOrdinalName(LPCSTR lpProcName)
+{
+    return (ULONG_PTR)lpProcName <= MAXUSHORT;
+}
+
+LPCSTR SeiPrintFunctionName(LPCSTR lpProcName, char szOrdProcFmt[10])
+{
+    if (SeiIsOrdinalName(lpProcName))
+    {
+        StringCchPrintfA(szOrdProcFmt, 10, "#%Iu", (ULONG_PTR)lpProcName);
+        return szOrdProcFmt;
+    }
+    return lpProcName;
+}
+
+int SeiCompareFunctionName(LPCSTR lpProcName1, LPCSTR lpProcName2)
+{
+    BOOL Ord1 = SeiIsOrdinalName(lpProcName1);
+    BOOL Ord2 = SeiIsOrdinalName(lpProcName2);
+
+    /* One is an ordinal, the other not */
+    if (Ord1 != Ord2)
+        return 1;
+
+    /* Compare ordinals */
+    if (Ord1)
+        return (ULONG_PTR)lpProcName1 != (ULONG_PTR)lpProcName2;
+
+    /* Compare names */
+    return strcmp(lpProcName1, lpProcName2);
+}
+
 
 PVOID SeiGetModuleFromAddress(PVOID addr)
 {
@@ -211,7 +248,6 @@ PVOID SeiGetModuleFromAddress(PVOID addr)
     RtlPcToFileHeader(addr, &hModule);
     return hModule;
 }
-
 
 
 /* TODO: Guard against recursive calling / calling init multiple times! */
@@ -426,7 +462,7 @@ static VOID SeiSetLayerEnvVar(LPCWSTR wszLayer)
 
     Status = RtlSetEnvironmentVariable(NULL, &VarName, &Value);
     if (NT_SUCCESS(Status))
-        SHIMENG_INFO("Set env var %wZ=%wZ\n", &VarName, &Value);
+        SHIMENG_INFO("%wZ=%wZ\n", &VarName, &Value);
     else
         SHIMENG_FAIL("Failed to set %wZ: 0x%x\n", &VarName, Status);
 }
@@ -539,20 +575,9 @@ VOID SeiAddHooks(PHOOKAPIEX hooks, DWORD dwHookCount, PSHIMINFO pShim)
             continue;
         }
 
-        RtlInitAnsiString(&AnsiString, hook->FunctionName);
         if (NT_SUCCESS(LdrGetDllHandle(NULL, 0, &UnicodeModName, &DllHandle)))
         {
-            PVOID ProcAddress;
-
-
-            if (!NT_SUCCESS(LdrGetProcedureAddress(DllHandle, &AnsiString, 0, &ProcAddress)))
-            {
-                SHIMENG_FAIL("Unable to retrieve %s!%s\n", hook->LibraryName, hook->FunctionName);
-                continue;
-            }
-
             HookModuleInfo = SeiFindHookModuleInfo(NULL, DllHandle);
-            hook->OriginalFunction = ProcAddress;
         }
         else
         {
@@ -576,56 +601,54 @@ VOID SeiAddHooks(PHOOKAPIEX hooks, DWORD dwHookCount, PSHIMINFO pShim)
         for (j = 0; j < ARRAY_Size(&HookModuleInfo->HookApis); ++j)
         {
             PHOOKAPIEX HookApi = *ARRAY_At(&HookModuleInfo->HookApis, PHOOKAPIEX, j);
-            int CmpResult = strcmp(hook->FunctionName, HookApi->FunctionName);
+            int CmpResult = SeiCompareFunctionName(hook->FunctionName, HookApi->FunctionName);
             if (CmpResult == 0)
             {
-                /* Multiple hooks on one function? --> use ApiLink */
-                SHIMENG_FAIL("Multiple hooks on one API is not yet supported!\n");
-                ASSERT(0);
+                while (HookApi->ApiLink)
+                {
+                    HookApi = HookApi->ApiLink;
+                }
+                HookApi->ApiLink = hook;
+                hook = NULL;
+                break;
             }
         }
-        pHookApi = ARRAY_Append(&HookModuleInfo->HookApis, PHOOKAPIEX);
-        if (pHookApi)
-            *pHookApi = hook;
+        /* No place found yet, append it */
+        if (hook)
+        {
+            pHookApi = ARRAY_Append(&HookModuleInfo->HookApis, PHOOKAPIEX);
+            if (pHookApi)
+                *pHookApi = hook;
+        }
     }
 }
-
-typedef FARPROC(WINAPI* GETPROCADDRESSPROC)(HINSTANCE, LPCSTR);
 
 /* Check if we should fake the return from GetProcAddress (because we also redirected the iat for this module) */
 FARPROC WINAPI StubGetProcAddress(HINSTANCE hModule, LPCSTR lpProcName)
 {
-    char szOrdProcName[10] = "";
-    LPCSTR lpPrintName = lpProcName;
     PVOID Addr = _ReturnAddress();
     PHOOKMODULEINFO HookModuleInfo;
     FARPROC proc = ((GETPROCADDRESSPROC)g_IntHookEx[0].OriginalFunction)(hModule, lpProcName);
-
-    if ((DWORD_PTR)lpProcName <= MAXUSHORT)
-    {
-        sprintf(szOrdProcName, "#%Iu", (DWORD_PTR)lpProcName);
-        lpPrintName = szOrdProcName;
-    }
+    char szOrdProcFmt[10];
 
     Addr = SeiGetModuleFromAddress(Addr);
     if (SE_IsShimDll(Addr))
     {
-        SHIMENG_MSG("Not touching GetProcAddress for shim dll (%p!%s)", hModule, lpPrintName);
+        SHIMENG_MSG("Not touching GetProcAddress for shim dll (%p!%s)", hModule, SeiPrintFunctionName(lpProcName, szOrdProcFmt));
         return proc;
     }
 
-    SHIMENG_INFO("(GetProcAddress(%p!%s) => %p\n", hModule, lpPrintName, proc);
+    SHIMENG_INFO("(GetProcAddress(%p!%s) => %p\n", hModule, SeiPrintFunctionName(lpProcName, szOrdProcFmt), proc);
 
     HookModuleInfo = SeiFindHookModuleInfo(NULL, hModule);
 
-    /* FIXME: Ordinal not yet supported */
-    if (HookModuleInfo && HIWORD(lpProcName))
+    if (HookModuleInfo)
     {
         DWORD n;
         for (n = 0; n < ARRAY_Size(&HookModuleInfo->HookApis); ++n)
         {
             PHOOKAPIEX HookApi = *ARRAY_At(&HookModuleInfo->HookApis, PHOOKAPIEX, n);
-            int CmpResult = strcmp(lpProcName, HookApi->FunctionName);
+            int CmpResult = SeiCompareFunctionName(lpProcName, HookApi->FunctionName);
             if (CmpResult == 0)
             {
                 SHIMENG_MSG("Redirecting %p to %p\n", proc, HookApi->ReplacementFunction);
@@ -638,8 +661,69 @@ FARPROC WINAPI StubGetProcAddress(HINSTANCE hModule, LPCSTR lpProcName)
     return proc;
 }
 
+VOID SeiResolveAPI(PHOOKMODULEINFO HookModuleInfo)
+{
+    DWORD n;
+    ANSI_STRING AnsiString;
+
+    ASSERT(HookModuleInfo->BaseAddress != NULL);
+
+    for (n = 0; n < ARRAY_Size(&HookModuleInfo->HookApis); ++n)
+    {
+        NTSTATUS Status;
+        PVOID ProcAddress;
+        PHOOKAPIEX HookApi = *ARRAY_At(&HookModuleInfo->HookApis, PHOOKAPIEX, n);
+
+        if (!SeiIsOrdinalName(HookApi->FunctionName))
+        {
+            RtlInitAnsiString(&AnsiString, HookApi->FunctionName);
+            Status = LdrGetProcedureAddress(HookModuleInfo->BaseAddress, &AnsiString, 0, &ProcAddress);
+        }
+        else
+        {
+            Status = LdrGetProcedureAddress(HookModuleInfo->BaseAddress, NULL, (ULONG_PTR)HookApi->FunctionName, &ProcAddress);
+        }
+
+        if (!NT_SUCCESS(Status))
+        {
+            char szOrdProcFmt[10];
+            LPCSTR lpFunctionName = SeiPrintFunctionName(HookApi->FunctionName, szOrdProcFmt);
+            SHIMENG_FAIL("Unable to retrieve %s!%s\n", HookApi->LibraryName, lpFunctionName);
+            continue;
+        }
+
+        HookApi->OriginalFunction = ProcAddress;
+        if (HookApi->ApiLink)
+        {
+            SHIMENG_MSG("TODO: Figure out how to handle conflicting In/Exports with ApiLink!\n");
+        }
+        while (HookApi->ApiLink)
+        {
+            HookApi->ApiLink->OriginalFunction = HookApi->OriginalFunction;
+            HookApi->OriginalFunction = HookApi->ApiLink->ReplacementFunction;
+            HookApi = HookApi->ApiLink;
+        }
+    }
+}
+
 /* Walk all shim modules / enabled shims, and add their hooks */
 VOID SeiResolveAPIs(VOID)
+{
+    DWORD n;
+
+    for (n = 0; n < ARRAY_Size(&g_pHookArray); ++n)
+    {
+        PHOOKMODULEINFO pModuleInfo = ARRAY_At(&g_pHookArray, HOOKMODULEINFO, n);
+
+        /* Is this module loaded? */
+        if (pModuleInfo->BaseAddress)
+        {
+            SeiResolveAPI(pModuleInfo);
+        }
+    }
+}
+
+VOID SeiCombineHookInfo(VOID)
 {
     DWORD mod, n;
 
@@ -682,8 +766,9 @@ VOID SeiPatchNewImport(PIMAGE_THUNK_DATA FirstThunk, PHOOKAPIEX HookApi, PLDR_DA
     PVOID Ptr;
     SIZE_T Size;
     NTSTATUS Status;
+    char szOrdProcFmt[10];
 
-    SHIMENG_INFO("Hooking API \"%s!%s\" for DLL \"%wZ\"\n", HookApi->LibraryName, HookApi->FunctionName, &LdrEntry->BaseDllName);
+    SHIMENG_INFO("Hooking API \"%s!%s\" for DLL \"%wZ\"\n", HookApi->LibraryName, SeiPrintFunctionName(HookApi->FunctionName, szOrdProcFmt), &LdrEntry->BaseDllName);
 
     Ptr = &FirstThunk->u1.Function;
     Size = sizeof(FirstThunk->u1.Function);
@@ -696,11 +781,7 @@ VOID SeiPatchNewImport(PIMAGE_THUNK_DATA FirstThunk, PHOOKAPIEX HookApi, PLDR_DA
     }
 
     SHIMENG_INFO("changing 0x%p to 0x%p\n", FirstThunk->u1.Function, HookApi->ReplacementFunction);
-#ifdef _WIN64
-    FirstThunk->u1.Function = (ULONGLONG)HookApi->ReplacementFunction;
-#else
-    FirstThunk->u1.Function = (DWORD)HookApi->ReplacementFunction;
-#endif
+    FirstThunk->u1.Function = (ULONG_PTR)HookApi->ReplacementFunction;
 
     Size = sizeof(FirstThunk->u1.Function);
     Status = NtProtectVirtualMemory(NtCurrentProcess(), &Ptr, &Size, OldProtection, &OldProtection);
@@ -732,6 +813,7 @@ BOOL SeiIsExcluded(PLDR_DATA_TABLE_ENTRY LdrEntry, PHOOKAPIEX HookApi)
     PSHIMINFO pShimInfo = HookApi->pShimInfo;
     PINEXCLUDE InExclude;
     BOOL IsExcluded = FALSE;
+    char szOrdProcFmt[10];
 
     if (!pShimInfo)
     {
@@ -751,7 +833,7 @@ BOOL SeiIsExcluded(PLDR_DATA_TABLE_ENTRY LdrEntry, PHOOKAPIEX HookApi)
         if (!InExclude->Include)
         {
             SHIMENG_INFO("Module '%wZ' excluded for shim %S, API '%s!%s', because it on in the exclude list.\n",
-                         &LdrEntry->BaseDllName, pShimInfo->ShimName, HookApi->LibraryName, HookApi->FunctionName);
+                         &LdrEntry->BaseDllName, pShimInfo->ShimName, HookApi->LibraryName, SeiPrintFunctionName(HookApi->FunctionName, szOrdProcFmt));
 
             return TRUE;
         }
@@ -759,7 +841,7 @@ BOOL SeiIsExcluded(PLDR_DATA_TABLE_ENTRY LdrEntry, PHOOKAPIEX HookApi)
         if (IsExcluded)
         {
             SHIMENG_INFO("Module '%wZ' included for shim %S, API '%s!%s', because it is on the include list.\n",
-                         &LdrEntry->BaseDllName, pShimInfo->ShimName, HookApi->LibraryName, HookApi->FunctionName);
+                         &LdrEntry->BaseDllName, pShimInfo->ShimName, HookApi->LibraryName, SeiPrintFunctionName(HookApi->FunctionName, szOrdProcFmt));
 
         }
         IsExcluded = FALSE;
@@ -768,7 +850,7 @@ BOOL SeiIsExcluded(PLDR_DATA_TABLE_ENTRY LdrEntry, PHOOKAPIEX HookApi)
     if (IsExcluded)
     {
         SHIMENG_INFO("Module '%wZ' excluded for shim %S, API '%s!%s', because it is in System32/WinSXS.\n",
-                     &LdrEntry->BaseDllName, pShimInfo->ShimName, HookApi->LibraryName, HookApi->FunctionName);
+                     &LdrEntry->BaseDllName, pShimInfo->ShimName, HookApi->LibraryName, SeiPrintFunctionName(HookApi->FunctionName, szOrdProcFmt));
     }
 
     return IsExcluded;
@@ -872,8 +954,9 @@ VOID SeiHookImports(PLDR_DATA_TABLE_ENTRY LdrEntry)
     PIMAGE_IMPORT_DESCRIPTOR ImportDescriptor;
     PBYTE DllBase = LdrEntry->DllBase;
 
-    if (SE_IsShimDll(DllBase) || g_hInstance == LdrEntry->DllBase ||
-        (g_LoadingShimDll.Buffer && RtlEqualUnicodeString(&g_LoadingShimDll, &LdrEntry->BaseDllName, TRUE)))
+    if (SE_IsShimDll(DllBase) ||
+        g_hInstance == LdrEntry->DllBase ||
+        RtlEqualUnicodeString(&g_LoadingShimDll, &LdrEntry->BaseDllName, TRUE))
     {
         SHIMENG_INFO("Skipping shim module 0x%p \"%wZ\"\n", LdrEntry->DllBase, &LdrEntry->BaseDllName);
         return;
@@ -923,33 +1006,45 @@ VOID SeiHookImports(PLDR_DATA_TABLE_ENTRY LdrEntry)
                 /* Walk all imports */
                 for (;OriginalThunk->u1.AddressOfData && FirstThunk->u1.Function; OriginalThunk++, FirstThunk++)
                 {
-                    if (!IMAGE_SNAP_BY_ORDINAL32(OriginalThunk->u1.AddressOfData))
+                    if (!IMAGE_SNAP_BY_ORDINAL(OriginalThunk->u1.Function))
                     {
-                        PIMAGE_IMPORT_BY_NAME ImportName;
-
-                        ImportName = (PIMAGE_IMPORT_BY_NAME)(DllBase + OriginalThunk->u1.AddressOfData);
-                        if (!strcmp((PCSTR)ImportName->Name, HookApi->FunctionName))
+                        if (!SeiIsOrdinalName(HookApi->FunctionName))
                         {
-                            SeiPatchNewImport(FirstThunk, HookApi, LdrEntry);
+                            PIMAGE_IMPORT_BY_NAME ImportName;
 
-                            /* Sadly, iat does not have to be sorted, and can even contain duplicate entries. */
-                            dwFound++;
+                            ImportName = (PIMAGE_IMPORT_BY_NAME)(DllBase + OriginalThunk->u1.Function);
+                            if (!strcmp((PCSTR)ImportName->Name, HookApi->FunctionName))
+                            {
+                                SeiPatchNewImport(FirstThunk, HookApi, LdrEntry);
+
+                                /* Sadly, iat does not have to be sorted, and can even contain duplicate entries. */
+                                dwFound++;
+                            }
                         }
                     }
                     else
                     {
-                        SHIMENG_FAIL("Ordinals not yet supported\n");
-                        ASSERT(0);
+                        if (SeiIsOrdinalName(HookApi->FunctionName))
+                        {
+                            if ((PCSTR)IMAGE_ORDINAL(OriginalThunk->u1.Function) == HookApi->FunctionName)
+                            {
+                                SeiPatchNewImport(FirstThunk, HookApi, LdrEntry);
+                                dwFound++;
+                            }
+                        }
                     }
                 }
 
                 if (dwFound != 1)
                 {
+                    char szOrdProcFmt[10];
+                    LPCSTR FuncName = SeiPrintFunctionName(HookApi->FunctionName, szOrdProcFmt);
+
                     /* One entry not found. */
                     if (!dwFound)
-                        SHIMENG_INFO("Entry \"%s!%s\" not found for \"%wZ\"\n", HookApi->LibraryName, HookApi->FunctionName, &LdrEntry->BaseDllName);
+                        SHIMENG_INFO("Entry \"%s!%s\" not found for \"%wZ\"\n", HookApi->LibraryName, FuncName, &LdrEntry->BaseDllName);
                     else
-                        SHIMENG_INFO("Entry \"%s!%s\" found %d times for \"%wZ\"\n", HookApi->LibraryName, HookApi->FunctionName, dwFound, &LdrEntry->BaseDllName);
+                        SHIMENG_INFO("Entry \"%s!%s\" found %d times for \"%wZ\"\n", HookApi->LibraryName, FuncName, dwFound, &LdrEntry->BaseDllName);
                 }
             }
         }
@@ -1000,6 +1095,86 @@ VOID SeiInitPaths(VOID)
 #undef WINSXS
 }
 
+VOID SeiSetEntryProcessed(PPEB Peb)
+{
+    PLIST_ENTRY ListHead, Entry;
+    PLDR_DATA_TABLE_ENTRY LdrEntry;
+
+    ListHead = &NtCurrentPeb()->Ldr->InInitializationOrderModuleList;
+    Entry = ListHead->Flink;
+    while (Entry != ListHead)
+    {
+        LdrEntry = CONTAINING_RECORD(Entry, LDR_DATA_TABLE_ENTRY, InInitializationOrderLinks);
+        Entry = Entry->Flink;
+
+        if (RtlEqualUnicodeString(&LdrEntry->BaseDllName, &Ntdll, TRUE) ||
+            RtlEqualUnicodeString(&LdrEntry->BaseDllName, &Kernel32, TRUE) ||
+            RtlEqualUnicodeString(&LdrEntry->BaseDllName, &Verifier, TRUE) ||
+            RtlEqualUnicodeString(&LdrEntry->BaseDllName, &g_LoadingShimDll, TRUE) ||
+            SE_IsShimDll(LdrEntry->DllBase) ||
+            (LdrEntry->Flags & LDRP_ENTRY_PROCESSED))
+        {
+            SHIMENG_WARN("Don't mess with 0x%p '%wZ'\n", LdrEntry->DllBase, &LdrEntry->BaseDllName);
+        }
+        else
+        {
+            SHIMENG_WARN("Touching        0x%p '%wZ'\n", LdrEntry->DllBase, &LdrEntry->BaseDllName);
+            LdrEntry->Flags |= (LDRP_ENTRY_PROCESSED | LDRP_SHIMENG_SUPPRESSED_ENTRY);
+        }
+    }
+
+    ListHead = &NtCurrentPeb()->Ldr->InMemoryOrderModuleList;
+    Entry = ListHead->Flink;
+    SHIMENG_INFO("In memory:\n");
+    while (Entry != ListHead)
+    {
+        LdrEntry = CONTAINING_RECORD(Entry, LDR_DATA_TABLE_ENTRY, InMemoryOrderLinks);
+        Entry = Entry->Flink;
+
+        SHIMENG_INFO("    0x%p '%wZ'\n", LdrEntry->DllBase, &LdrEntry->BaseDllName);
+    }
+
+    ListHead = &NtCurrentPeb()->Ldr->InLoadOrderModuleList;
+    Entry = ListHead->Flink;
+    SHIMENG_INFO("In load:\n");
+    while (Entry != ListHead)
+    {
+        LdrEntry = CONTAINING_RECORD(Entry, LDR_DATA_TABLE_ENTRY, InLoadOrderLinks);
+        Entry = Entry->Flink;
+
+        SHIMENG_INFO("    0x%p '%wZ'\n", LdrEntry->DllBase, &LdrEntry->BaseDllName);
+    }
+}
+
+VOID SeiResetEntryProcessed(PPEB Peb)
+{
+    PLIST_ENTRY ListHead, Entry;
+    PLDR_DATA_TABLE_ENTRY LdrEntry;
+
+    ListHead = &NtCurrentPeb()->Ldr->InInitializationOrderModuleList;
+    Entry = ListHead->Flink;
+    while (Entry != ListHead)
+    {
+        LdrEntry = CONTAINING_RECORD(Entry, LDR_DATA_TABLE_ENTRY, InInitializationOrderLinks);
+        Entry = Entry->Flink;
+
+        if (SE_IsShimDll(LdrEntry->DllBase) ||
+            g_hInstance == LdrEntry->DllBase ||
+            RtlEqualUnicodeString(&LdrEntry->BaseDllName, &Ntdll, TRUE) ||
+            RtlEqualUnicodeString(&LdrEntry->BaseDllName, &Kernel32, TRUE) ||
+            RtlEqualUnicodeString(&LdrEntry->BaseDllName, &Verifier, TRUE) ||
+            !(LdrEntry->Flags & LDRP_SHIMENG_SUPPRESSED_ENTRY))
+        {
+            SHIMENG_WARN("Don't mess with 0x%p '%wZ'\n", LdrEntry->DllBase, &LdrEntry->BaseDllName);
+        }
+        else
+        {
+            SHIMENG_WARN("Resetting       0x%p '%wZ'\n", LdrEntry->DllBase, &LdrEntry->BaseDllName);
+            LdrEntry->Flags &= ~(LDRP_ENTRY_PROCESSED | LDRP_SHIMENG_SUPPRESSED_ENTRY);
+        }
+    }
+}
+
 VOID SeiInit(PUNICODE_STRING ProcessImage, HSDB hsdb, SDBQUERYRESULT* pQuery)
 {
     DWORD n;
@@ -1021,6 +1196,9 @@ VOID SeiInit(PUNICODE_STRING ProcessImage, HSDB hsdb, SDBQUERYRESULT* pQuery)
     SeiInitPaths();
 
     SeiCheckComPlusImage(Peb->ImageBaseAddress);
+
+    /* Mark all modules loaded until now as 'LDRP_ENTRY_PROCESSED' so that their entrypoint is not called while we are loading shims */
+    SeiSetEntryProcessed(Peb);
 
     /* TODO:
     if (pQuery->trApphelp)
@@ -1142,10 +1320,13 @@ VOID SeiInit(PUNICODE_STRING ProcessImage, HSDB hsdb, SDBQUERYRESULT* pQuery)
             SHIMENG_INFO("Using SHIM \"%S!%S\"\n", DllName, ShimName);
 
             /* Ask this shim what hooks it needs (and pass along the commandline) */
+            dwHookCount = 0;
             pHookApi = pShimModuleInfo->pGetHookAPIs(AnsiCommandLine.Buffer, ShimName, &dwHookCount);
             SHIMENG_INFO("GetHookAPIs returns %d hooks for DLL \"%wZ\" SHIM \"%S\"\n", dwHookCount, &UnicodeDllName, ShimName);
-            if (dwHookCount)
+            if (dwHookCount && pHookApi)
                 pShimInfo = SeiAppendHookInfo(pShimModuleInfo, pHookApi, dwHookCount, ShimName);
+            else
+                dwHookCount = 0;
 
             /* If this shim has hooks, create the include / exclude lists */
             if (pShimInfo)
@@ -1159,8 +1340,12 @@ VOID SeiInit(PUNICODE_STRING ProcessImage, HSDB hsdb, SDBQUERYRESULT* pQuery)
     }
 
     SeiAddInternalHooks(dwTotalHooks);
+    SeiCombineHookInfo();
     SeiResolveAPIs();
     PatchNewModules(Peb);
+
+    /* Remove the 'LDRP_ENTRY_PROCESSED' flag from entries we modified, so that the loader can continue to process them */
+    SeiResetEntryProcessed(Peb);
 }
 
 
@@ -1174,28 +1359,21 @@ BOOL SeiGetShimData(PUNICODE_STRING ProcessImage, PVOID pShimData, HSDB* pHsdb, 
         RTL_CONSTANT_STRING(L"slsvc.exe"),
 #endif
     };
-    static const UNICODE_STRING BackSlash = RTL_CONSTANT_STRING(L"\\");
-    static const UNICODE_STRING ForwdSlash = RTL_CONSTANT_STRING(L"/");
+    static const UNICODE_STRING PathDividerFind = RTL_CONSTANT_STRING(L"\\/");
     UNICODE_STRING ProcessName;
-    USHORT Back, Forward;
+    USHORT PathDivider;
     HSDB hsdb;
     DWORD n;
 
-    if (!NT_SUCCESS(RtlFindCharInUnicodeString(RTL_FIND_CHAR_IN_UNICODE_STRING_START_AT_END, ProcessImage, &BackSlash, &Back)))
-        Back = 0;
+    if (!NT_SUCCESS(RtlFindCharInUnicodeString(RTL_FIND_CHAR_IN_UNICODE_STRING_START_AT_END, ProcessImage, &PathDividerFind, &PathDivider)))
+        PathDivider = 0;
 
-    if (!NT_SUCCESS(RtlFindCharInUnicodeString(RTL_FIND_CHAR_IN_UNICODE_STRING_START_AT_END, ProcessImage, &ForwdSlash, &Forward)))
-        Forward = 0;
+    if (PathDivider)
+        PathDivider += sizeof(WCHAR);
 
-    if (Back < Forward)
-        Back = Forward;
-
-    if (Back)
-        Back += sizeof(WCHAR);
-
-    ProcessName.Buffer = ProcessImage->Buffer + Back / sizeof(WCHAR);
-    ProcessName.Length = ProcessImage->Length - Back;
-    ProcessName.MaximumLength = ProcessImage->MaximumLength - Back;
+    ProcessName.Buffer = ProcessImage->Buffer + PathDivider / sizeof(WCHAR);
+    ProcessName.Length = ProcessImage->Length - PathDivider;
+    ProcessName.MaximumLength = ProcessImage->MaximumLength - PathDivider;
 
     for (n = 0; n < ARRAYSIZE(ForbiddenShimmingApps); ++n)
     {
@@ -1254,7 +1432,16 @@ VOID NTAPI SE_ProcessDying(VOID)
 
 VOID WINAPI SE_DllLoaded(PLDR_DATA_TABLE_ENTRY LdrEntry)
 {
+    PHOOKMODULEINFO HookModuleInfo;
     SHIMENG_INFO("%sINIT. loading DLL \"%wZ\"\n", g_bShimDuringInit ? "" : "AFTER ", &LdrEntry->BaseDllName);
+
+    HookModuleInfo = SeiFindHookModuleInfo(&LdrEntry->BaseDllName, NULL);
+    if (HookModuleInfo)
+    {
+        ASSERT(HookModuleInfo->BaseAddress == NULL);
+        HookModuleInfo->BaseAddress = LdrEntry->DllBase;
+        SeiResolveAPI(HookModuleInfo);
+    }
 
     SeiHookImports(LdrEntry);
 

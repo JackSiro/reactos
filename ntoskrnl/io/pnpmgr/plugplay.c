@@ -91,30 +91,6 @@ IopQueueTargetDeviceEvent(const GUID *Guid,
 }
 
 
-/*
- * Remove the current PnP event from the tail of the event queue
- * and signal IopPnpNotifyEvent if there is yet another event in the queue.
- */
-static NTSTATUS
-IopRemovePlugPlayEvent(VOID)
-{
-    /* Remove a pnp event entry from the tail of the queue */
-    if (!IsListEmpty(&IopPnpEventQueueHead))
-    {
-        ExFreePool(CONTAINING_RECORD(RemoveTailList(&IopPnpEventQueueHead), PNP_EVENT_ENTRY, ListEntry));
-    }
-
-    /* Signal the next pnp event in the queue */
-    if (!IsListEmpty(&IopPnpEventQueueHead))
-    {
-        KeSetEvent(&IopPnpNotifyEvent,
-                   0,
-                   FALSE);
-    }
-
-    return STATUS_SUCCESS;
-}
-
 static PDEVICE_OBJECT
 IopTraverseDeviceNode(PDEVICE_NODE Node, PUNICODE_STRING DeviceInstance)
 {
@@ -211,6 +187,67 @@ IopCaptureUnicodeString(PUNICODE_STRING DstName, PUNICODE_STRING SrcName)
 
     return Status;
 }
+
+static NTSTATUS
+IopPnpEnumerateDevice(PPLUGPLAY_CONTROL_ENUMERATE_DEVICE_DATA DeviceData)
+{
+    PDEVICE_OBJECT DeviceObject;
+    UNICODE_STRING DeviceInstance;
+    NTSTATUS Status = STATUS_SUCCESS;
+
+    Status = IopCaptureUnicodeString(&DeviceInstance, &DeviceData->DeviceInstance);
+    if (!NT_SUCCESS(Status))
+    {
+        return Status;
+    }
+
+    DPRINT("IopPnpEnumerateDevice(%wZ)\n", &DeviceInstance);
+
+    /* Get the device object */
+    DeviceObject = IopGetDeviceObjectFromDeviceInstance(&DeviceInstance);
+    if (DeviceInstance.Buffer != NULL)
+    {
+        ExFreePool(DeviceInstance.Buffer);
+    }
+    if (DeviceObject == NULL)
+    {
+        return STATUS_NO_SUCH_DEVICE;
+    }
+
+    Status = IopEnumerateDevice(DeviceObject);
+
+    ObDereferenceObject(DeviceObject);
+
+    return Status;
+}
+
+
+/*
+ * Remove the current PnP event from the tail of the event queue
+ * and signal IopPnpNotifyEvent if there is yet another event in the queue.
+ */
+static
+NTSTATUS
+IopRemovePlugPlayEvent(
+    _In_ PPLUGPLAY_CONTROL_USER_RESPONSE_DATA ResponseData)
+{
+    /* Remove a pnp event entry from the tail of the queue */
+    if (!IsListEmpty(&IopPnpEventQueueHead))
+    {
+        ExFreePool(CONTAINING_RECORD(RemoveTailList(&IopPnpEventQueueHead), PNP_EVENT_ENTRY, ListEntry));
+    }
+
+    /* Signal the next pnp event in the queue */
+    if (!IsListEmpty(&IopPnpEventQueueHead))
+    {
+        KeSetEvent(&IopPnpNotifyEvent,
+                   0,
+                   FALSE);
+    }
+
+    return STATUS_SUCCESS;
+}
+
 
 static NTSTATUS
 IopGetInterfaceDeviceList(PPLUGPLAY_CONTROL_INTERFACE_DEVICE_LIST_DATA DeviceList)
@@ -1044,7 +1081,7 @@ IopResetDevice(PPLUGPLAY_CONTROL_RESET_DEVICE_DATA ResetDeviceData)
 #endif
         {
             /* A driver has already been loaded for this device */
-            DPRINT1("A reboot is required for the current driver for '%wZ' to be replaced\n", &DeviceNode->InstancePath);
+            DPRINT("A reboot is required for the current driver for '%wZ' to be replaced\n", &DeviceNode->InstancePath);
             DeviceNode->Problem = CM_PROB_NEED_RESTART;
         }
     }
@@ -1060,7 +1097,7 @@ IopResetDevice(PPLUGPLAY_CONTROL_RESET_DEVICE_DATA ResetDeviceData)
         if (NT_SUCCESS(Status))
         {
             /* Start the service and begin PnP initialization of the device again */
-            DPRINT1("A new driver will be loaded for '%wZ' (no FDO above)\n", &DeviceNode->InstancePath);
+            DPRINT("A new driver will be loaded for '%wZ' (no FDO above)\n", &DeviceNode->InstancePath);
             Status = IopActionInitChildServices(DeviceNode, DeviceNode->Parent);
         }
     }
@@ -1300,7 +1337,11 @@ NtPlugPlayControl(IN PLUGPLAY_CONTROL_CLASS PlugPlayControlClass,
 
     switch (PlugPlayControlClass)
     {
-//        case PlugPlayControlEnumerateDevice:
+        case PlugPlayControlEnumerateDevice:
+            if (!Buffer || BufferLength < sizeof(PLUGPLAY_CONTROL_ENUMERATE_DEVICE_DATA))
+                return STATUS_INVALID_PARAMETER;
+            return IopPnpEnumerateDevice((PPLUGPLAY_CONTROL_ENUMERATE_DEVICE_DATA)Buffer);
+
 //        case PlugPlayControlRegisterNewDevice:
 //        case PlugPlayControlDeregisterDevice:
 //        case PlugPlayControlInitializeDevice:
@@ -1309,9 +1350,9 @@ NtPlugPlayControl(IN PLUGPLAY_CONTROL_CLASS PlugPlayControlClass,
 //        case PlugPlayControlQueryAndRemoveDevice:
 
         case PlugPlayControlUserResponse:
-            if (Buffer || BufferLength != 0)
+            if (!Buffer || BufferLength < sizeof(PLUGPLAY_CONTROL_USER_RESPONSE_DATA))
                 return STATUS_INVALID_PARAMETER;
-            return IopRemovePlugPlayEvent();
+            return IopRemovePlugPlayEvent((PPLUGPLAY_CONTROL_USER_RESPONSE_DATA)Buffer);
 
 //        case PlugPlayControlGenerateLegacyDevice:
 

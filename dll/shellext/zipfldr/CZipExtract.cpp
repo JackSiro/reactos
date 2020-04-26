@@ -2,7 +2,7 @@
  * PROJECT:     ReactOS Zip Shell Extension
  * LICENSE:     GPL-2.0+ (https://spdx.org/licenses/GPL-2.0+)
  * PURPOSE:     Zip extraction
- * COPYRIGHT:   Copyright 2017 Mark Jansen (mark.jansen@reactos.org)
+ * COPYRIGHT:   Copyright 2017-2019 Mark Jansen (mark.jansen@reactos.org)
  */
 
 #include "precomp.h"
@@ -12,6 +12,7 @@ class CZipExtract :
 {
     CStringW m_Filename;
     CStringW m_Directory;
+    CStringA m_Password;
     bool m_DirectoryChanged;
     unzFile uf;
 public:
@@ -66,91 +67,22 @@ public:
         return uf;
     }
 
-    class CConfirmReplace : public CDialogImpl<CConfirmReplace>
-    {
-    private:
-        CStringA m_Filename;
-    public:
-        enum DialogResult
-        {
-            Yes,
-            YesToAll,
-            No,
-            Cancel
-        };
-
-        static DialogResult ShowDlg(HWND hDlg, PCSTR FullPath)
-        {
-            PCSTR Filename = PathFindFileNameA(FullPath);
-            CConfirmReplace confirm(Filename);
-            INT_PTR Result = confirm.DoModal(hDlg);
-            switch (Result)
-            {
-            case IDYES: return Yes;
-            case IDYESALL: return YesToAll;
-            default:
-            case IDNO: return No;
-            case IDCANCEL: return Cancel;
-            }
-        }
-
-        CConfirmReplace(const char* filename)
-        {
-            m_Filename = filename;
-        }
-
-        LRESULT OnInitDialog(UINT nMsg, WPARAM wParam, LPARAM lParam, BOOL& bHandled)
-        {
-            CenterWindow(GetParent());
-
-            HICON hIcon = LoadIcon(NULL, IDI_EXCLAMATION);
-            SendDlgItemMessage(IDC_EXCLAMATION_ICON, STM_SETICON, (WPARAM)hIcon);
-
-            /* Our CString does not support FormatMessage yet */
-            CStringA message(MAKEINTRESOURCE(IDS_OVERWRITEFILE_TEXT));
-            CHeapPtr<CHAR, CLocalAllocator> formatted;
-
-            DWORD_PTR args[2] =
-            {
-                (DWORD_PTR)m_Filename.GetString(),
-                NULL
-            };
-
-            ::FormatMessageA(FORMAT_MESSAGE_FROM_STRING | FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_ARGUMENT_ARRAY,
-                             message, 0, 0, (LPSTR)&formatted, 0, (va_list*)args);
-
-            ::SetDlgItemTextA(m_hWnd, IDC_MESSAGE, formatted);
-            return 0;
-        }
-
-        LRESULT OnButton(WORD wNotifyCode, WORD wID, HWND hWndCtl, BOOL& bHandled)
-        {
-            EndDialog(wID);
-            return 0;
-        }
-
-    public:
-        enum { IDD = IDD_CONFIRM_FILE_REPLACE };
-
-        BEGIN_MSG_MAP(CConfirmReplace)
-            MESSAGE_HANDLER(WM_INITDIALOG, OnInitDialog)
-            COMMAND_ID_HANDLER(IDYES, OnButton)
-            COMMAND_ID_HANDLER(IDYESALL, OnButton)
-            COMMAND_ID_HANDLER(IDNO, OnButton)
-            COMMAND_ID_HANDLER(IDCANCEL, OnButton)
-        END_MSG_MAP()
-    };
-
-
     class CExtractSettingsPage : public CPropertyPageImpl<CExtractSettingsPage>
     {
     private:
+        HANDLE m_hExtractionThread;
+        bool m_bExtractionThreadCancel;
+
         CZipExtract* m_pExtract;
+        CStringA* m_pPassword;
 
     public:
-        CExtractSettingsPage(CZipExtract* extract)
+        CExtractSettingsPage(CZipExtract* extract, CStringA* password)
             :CPropertyPageImpl<CExtractSettingsPage>(MAKEINTRESOURCE(IDS_WIZ_TITLE))
+            ,m_hExtractionThread(NULL)
+            ,m_bExtractionThreadCancel(false)
             ,m_pExtract(extract)
+            ,m_pPassword(password)
         {
             m_psp.pszHeaderTitle = MAKEINTRESOURCE(IDS_WIZ_DEST_TITLE);
             m_psp.pszHeaderSubTitle = MAKEINTRESOURCE(IDS_WIZ_DEST_SUBTITLE);
@@ -161,7 +93,6 @@ public:
         {
             SetDlgItemTextW(IDC_DIRECTORY, m_pExtract->m_Directory);
             m_pExtract->m_DirectoryChanged = false;
-            ::EnableWindow(GetDlgItem(IDC_PASSWORD), FALSE);    /* Not supported for now */
             GetParent().CenterWindow(::GetDesktopWindow());
             SetWizardButtons(PSWIZB_NEXT);
             return 0;
@@ -169,27 +100,96 @@ public:
 
         int OnWizardNext()
         {
+            if (m_hExtractionThread != NULL)
+            {
+                /* We enter here when extraction has finished, and go to next page if it succeeded */
+                WaitForSingleObject(m_hExtractionThread, INFINITE);
+                CloseHandle(m_hExtractionThread);
+                m_hExtractionThread = NULL;
+                m_pExtract->Release();
+                if (!m_bExtractionThreadCancel)
+                {
+                    return 0;
+                }
+                else
+                {
+                    SetWindowLongPtr(DWLP_MSGRESULT, -1);
+                    return TRUE;
+                }
+            }
+
+            /* We end up here if the user manually clicks Next: start extraction */
+            m_bExtractionThreadCancel = false;
+
+            /* Grey out every control during extraction to prevent user interaction */
             ::EnableWindow(GetDlgItem(IDC_BROWSE), FALSE);
             ::EnableWindow(GetDlgItem(IDC_DIRECTORY), FALSE);
             ::EnableWindow(GetDlgItem(IDC_PASSWORD), FALSE);
             SetWizardButtons(0);
 
+            CStringW strExtracting(MAKEINTRESOURCEW(IDS_EXTRACTING));
+            SetDlgItemTextW(IDC_STATUSTEXT, strExtracting);
+
             if (m_pExtract->m_DirectoryChanged)
                 UpdateDirectory();
 
-            if (!m_pExtract->Extract(m_hWnd, GetDlgItem(IDC_PROGRESS)))
+            m_pExtract->AddRef();
+
+            m_hExtractionThread = CreateThread(NULL, 0,
+                                               &CExtractSettingsPage::ExtractEntry,
+                                               this,
+                                               0, NULL);
+            if (!m_hExtractionThread)
             {
-                /* Extraction failed, do not go to the next page */
+                /* Extraction thread creation failed, do not go to the next page */
+                DWORD err = GetLastError();
+                DPRINT1("ERROR, m_hExtractionThread: CreateThread failed: 0x%x\n", err);
+                m_pExtract->Release();
+
                 SetWindowLongPtr(DWLP_MSGRESULT, -1);
 
                 ::EnableWindow(GetDlgItem(IDC_BROWSE), TRUE);
                 ::EnableWindow(GetDlgItem(IDC_DIRECTORY), TRUE);
-                ::EnableWindow(GetDlgItem(IDC_PASSWORD), FALSE);    /* Not supported for now */
+                ::EnableWindow(GetDlgItem(IDC_PASSWORD), TRUE);
                 SetWizardButtons(PSWIZB_NEXT);
+            }
+            return TRUE;
+        }
 
+        static DWORD WINAPI ExtractEntry(LPVOID lpParam)
+        {
+            CExtractSettingsPage* pPage = (CExtractSettingsPage*)lpParam;
+            bool res = pPage->m_pExtract->Extract(pPage->m_hWnd, pPage->GetDlgItem(IDC_PROGRESS), &(pPage->m_bExtractionThreadCancel));
+            /* Failing and cancelling extraction both mean we stay on the same property page */
+            pPage->m_bExtractionThreadCancel = !res;
+
+            pPage->SetWizardButtons(PSWIZB_NEXT);
+            if (!res)
+            {
+                /* Extraction failed/cancelled: the page becomes interactive again */
+                ::EnableWindow(pPage->GetDlgItem(IDC_BROWSE), TRUE);
+                ::EnableWindow(pPage->GetDlgItem(IDC_DIRECTORY), TRUE);
+                ::EnableWindow(pPage->GetDlgItem(IDC_PASSWORD), TRUE);
+
+                /* Reset the progress bar's appearance */
+                CWindow Progress(pPage->GetDlgItem(IDC_PROGRESS));
+                Progress.SendMessage(PBM_SETRANGE32, 0, 1);
+                Progress.SendMessage(PBM_SETPOS, 0, 0);
+            }
+            SendMessageCallback(pPage->GetParent().m_hWnd, PSM_PRESSBUTTON, PSBTN_NEXT, 0, NULL, NULL);
+
+            return 0;
+        }
+		
+        BOOL OnQueryCancel()
+        {
+            if (m_hExtractionThread != NULL)
+            {
+                /* Extraction will check the value of m_bExtractionThreadCancel between each file in the archive */
+                m_bExtractionThreadCancel = true;
                 return TRUE;
             }
-            return 0;
+            return FALSE;
         }
 
         struct browse_info
@@ -247,6 +247,11 @@ public:
 
         LRESULT OnPassword(WORD wNotifyCode, WORD wID, HWND hWndCtl, BOOL& bHandled)
         {
+            CStringA Password;
+            if (_CZipAskPassword(m_hWnd, NULL, Password) == eAccept)
+            {
+                *m_pPassword = Password;
+            }
             return 0;
         }
 
@@ -323,7 +328,7 @@ public:
         psh.dwFlags = PSH_WIZARD97 | PSH_HEADER;
         psh.hInstance = _AtlBaseModule.GetResourceInstance();
 
-        CExtractSettingsPage extractPage(this);
+        CExtractSettingsPage extractPage(this, &m_Password);
         CCompleteSettingsPage completePage(this);
         HPROPSHEETPAGE hpsp[] =
         {
@@ -337,7 +342,7 @@ public:
         PropertySheetW(&psh);
     }
 
-    bool Extract(HWND hDlg, HWND hProgress)
+    bool Extract(HWND hDlg, HWND hProgress, const bool* bCancel)
     {
         unz_global_info64 gi;
         uf = unzOpen2_64(m_Filename.GetString(), &g_FFunc);
@@ -364,11 +369,18 @@ public:
         BYTE Buffer[2048];
         CStringA BaseDirectory = m_Directory;
         CStringA Name;
+        CStringA Password = m_Password;
         unz_file_info64 Info;
         int CurrentFile = 0;
         bool bOverwriteAll = false;
         while (zipEnum.next(Name, Info))
         {
+            if (*bCancel)
+            {
+                Close();
+                return false;
+            }
+
             bool is_dir = Name.GetLength() > 0 && Name[Name.GetLength()-1] == '/';
 
             char CombinedPath[MAX_PATH * 2] = { 0 };
@@ -386,9 +398,48 @@ public:
             if (is_dir)
                 continue;
 
-            const char* password = NULL;
-            /* FIXME: Process password, if required and not specified, prompt the user */
-            err = unzOpenCurrentFilePassword(uf, password);
+            if (Info.flag & MINIZIP_PASSWORD_FLAG)
+            {
+                eZipPasswordResponse Response = eAccept;
+                do
+                {
+                    /* If there is a password set, try it */
+                    if (!Password.IsEmpty())
+                    {
+                        err = unzOpenCurrentFilePassword(uf, Password);
+                        if (err == UNZ_OK)
+                        {
+                            /* Try to read some bytes, because unzOpenCurrentFilePassword does not return failure */
+                            char Buf[10];
+                            err = unzReadCurrentFile(uf, Buf, sizeof(Buf));
+                            unzCloseCurrentFile(uf);
+                            if (err >= UNZ_OK)
+                            {
+                                /* 're'-open the file so that we can begin to extract */
+                                err = unzOpenCurrentFilePassword(uf, Password);
+                                break;
+                            }
+                        }
+                    }
+                    Response = _CZipAskPassword(hDlg, Name, Password);
+                } while (Response == eAccept);
+
+                if (Response == eSkip)
+                {
+                    Progress.SendMessage(PBM_SETPOS, CurrentFile, 0);
+                    continue;
+                }
+                else if (Response == eAbort)
+                {
+                    Close();
+                    return false;
+                }
+            }
+            else
+            {
+                err = unzOpenCurrentFile(uf);
+            }
+
             if (err != UNZ_OK)
             {
                 DPRINT1("ERROR, unzOpenCurrentFilePassword: 0x%x\n", err);
@@ -405,17 +456,17 @@ public:
                     bool bOverwrite = bOverwriteAll;
                     if (!bOverwriteAll)
                     {
-                        CConfirmReplace::DialogResult Result = CConfirmReplace::ShowDlg(hDlg, FullPath);
+                        eZipConfirmResponse Result = _CZipAskReplace(hDlg, FullPath);
                         switch (Result)
                         {
-                        case CConfirmReplace::YesToAll:
+                        case eYesToAll:
                             bOverwriteAll = true;
-                        case CConfirmReplace::Yes:
+                        case eYes:
                             bOverwrite = true;
                             break;
-                        case CConfirmReplace::No:
+                        case eNo:
                             break;
-                        case CConfirmReplace::Cancel:
+                        case eCancel:
                             unzCloseCurrentFile(uf);
                             Close();
                             return false;
@@ -447,6 +498,16 @@ public:
 
             do
             {
+                if (*bCancel)
+                {
+                    CloseHandle(hFile);
+                    BOOL deleteResult = DeleteFileA(FullPath);
+                    if (deleteResult == 0)
+                        DPRINT1("ERROR, DeleteFileA: 0x%x\n", GetLastError());
+                    Close();
+                    return false;
+                }
+
                 err = unzReadCurrentFile(uf, Buffer, sizeof(Buffer));
 
                 if (err < 0)
@@ -480,7 +541,7 @@ public:
             LocalFileTimeToFileTime(&LocalFileTime, &FileTime);
             SetFileTime(hFile, &FileTime, &LastAccessTime, &FileTime);
 
-            /* Done.. */
+            /* Done */
             CloseHandle(hFile);
 
             if (err)

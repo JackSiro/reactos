@@ -512,7 +512,7 @@ MiFillSystemPageDirectory(IN PVOID Base,
             TempPde.u.Hard.PageFrameNumber = PageFrameIndex;
 
 #if (_MI_PAGING_LEVELS == 2)
-            ParentPage = MmSystemPageDirectory[(PointerPde - MiAddressToPde(NULL)) / PDE_COUNT];
+            ParentPage = MmSystemPageDirectory[(PointerPde - MiAddressToPde(NULL)) / PDE_PER_PAGE];
 #else
             ParentPage = MiPdeToPpe(PointerPde)->u.Hard.PageFrameNumber;
 #endif
@@ -647,7 +647,7 @@ MiSegmentDelete(IN PSEGMENT Segment)
     while (PointerPte < LastPte)
     {
         /* Check if it's time to switch master PTEs if we passed a PDE boundary */
-        if (!((ULONG_PTR)PointerPte & (PD_SIZE - 1)) &&
+        if (MiIsPteOnPdeBoundary(PointerPte) &&
             (PointerPte != Subsection->SubsectionBase))
         {
             /* Check if the master PTE is invalid */
@@ -1897,7 +1897,6 @@ MiQueryMemorySectionName(IN HANDLE ProcessHandle,
 {
     PEPROCESS Process;
     NTSTATUS Status;
-    WCHAR ModuleFileNameBuffer[MAX_PATH] = {0};
     UNICODE_STRING ModuleFileName;
     PMEMORY_SECTION_NAME SectionName = NULL;
     KPROCESSOR_MODE PreviousMode = ExGetPreviousMode();
@@ -1915,7 +1914,6 @@ MiQueryMemorySectionName(IN HANDLE ProcessHandle,
         return Status;
     }
 
-    RtlInitEmptyUnicodeString(&ModuleFileName, ModuleFileNameBuffer, sizeof(ModuleFileNameBuffer));
     Status = MmGetFileNameForAddress(BaseAddress, &ModuleFileName);
 
     if (NT_SUCCESS(Status))
@@ -1925,11 +1923,12 @@ MiQueryMemorySectionName(IN HANDLE ProcessHandle,
         {
             _SEH2_TRY
             {
-                RtlInitUnicodeString(&SectionName->SectionFileName, SectionName->NameBuffer);
-                SectionName->SectionFileName.MaximumLength = (USHORT)MemoryInformationLength;
+                RtlInitEmptyUnicodeString(&SectionName->SectionFileName,
+                                          (PWSTR)(SectionName + 1),
+                                          MemoryInformationLength - sizeof(MEMORY_SECTION_NAME));
                 RtlCopyUnicodeString(&SectionName->SectionFileName, &ModuleFileName);
 
-                if (ReturnLength) *ReturnLength = ModuleFileName.Length;
+                if (ReturnLength) *ReturnLength = ModuleFileName.Length + sizeof(MEMORY_SECTION_NAME);
 
             }
             _SEH2_EXCEPT(EXCEPTION_EXECUTE_HANDLER)
@@ -1940,13 +1939,16 @@ MiQueryMemorySectionName(IN HANDLE ProcessHandle,
         }
         else
         {
-            RtlInitUnicodeString(&SectionName->SectionFileName, SectionName->NameBuffer);
-            SectionName->SectionFileName.MaximumLength = (USHORT)MemoryInformationLength;
+            RtlInitEmptyUnicodeString(&SectionName->SectionFileName,
+                                      (PWSTR)(SectionName + 1),
+                                      MemoryInformationLength - sizeof(MEMORY_SECTION_NAME));
             RtlCopyUnicodeString(&SectionName->SectionFileName, &ModuleFileName);
 
-            if (ReturnLength) *ReturnLength = ModuleFileName.Length;
+            if (ReturnLength) *ReturnLength = ModuleFileName.Length + sizeof(MEMORY_SECTION_NAME);
 
         }
+
+        RtlFreeUnicodeString(&ModuleFileName);
     }
     ObDereferenceObject(Process);
     return Status;
@@ -2148,7 +2150,7 @@ MiSetProtectionOnSection(IN PEPROCESS Process,
         //
         // Check if we've crossed a PDE boundary and make the new PDE valid too
         //
-        if ((((ULONG_PTR)PointerPte) & (SYSTEM_PD_SIZE - 1)) == 0)
+        if (MiIsPteOnPdeBoundary(PointerPte))
         {
             PointerPde = MiPteToPde(PointerPte);
             MiMakePdeExistAndMakeValid(PointerPde, Process, MM_NOIRQL);

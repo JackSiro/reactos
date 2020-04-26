@@ -201,12 +201,17 @@ STATUSBAR_DrawPart (const STATUS_INFO *infoPtr, HDC hdc, const STATUSWINDOWPART 
     } else {
         r.left += x;
 #ifdef __REACTOS__
-        r.left += 3;
-        r.right -= 3;
         if (!theme)
+        {
+            r.left -= 2;
             DrawStatusTextW (hdc, &r, part->text, SBT_NOBORDERS);
+        }
         else
+        {
+            r.left += 2;
+            r.right -= 2;
             DrawThemeText(theme, hdc, SP_PANE, 0, part->text, -1, DT_VCENTER|DT_SINGLELINE|DT_NOPREFIX, 0, &r);
+        }
 #else
         DrawStatusTextW (hdc, &r, part->text, SBT_NOBORDERS);
 #endif
@@ -293,7 +298,8 @@ STATUSBAR_Refresh (STATUS_INFO *infoPtr, HDC hdc)
 
     SelectObject (hdc, hOldFont);
 
-    if (GetWindowLongW (infoPtr->Self, GWL_STYLE) & SBARS_SIZEGRIP)
+    if ((GetWindowLongW (infoPtr->Self, GWL_STYLE) & SBARS_SIZEGRIP)
+            && !(GetWindowLongW (infoPtr->Notify, GWL_STYLE) & WS_MAXIMIZE))
 	    STATUSBAR_DrawSizeGrip (theme, hdc, &rect);
 
     return 0;
@@ -1006,7 +1012,8 @@ STATUSBAR_WMGetText (const STATUS_INFO *infoPtr, INT size, LPWSTR buf)
 static BOOL
 STATUSBAR_WMNCHitTest (const STATUS_INFO *infoPtr, INT x, INT y)
 {
-    if (GetWindowLongW (infoPtr->Self, GWL_STYLE) & SBARS_SIZEGRIP) {
+    if ((GetWindowLongW (infoPtr->Self, GWL_STYLE) & SBARS_SIZEGRIP)
+            && !(GetWindowLongW (infoPtr->Notify, GWL_STYLE) & WS_MAXIMIZE)) {
 	RECT  rect;
 	POINT pt;
 
@@ -1016,10 +1023,7 @@ STATUSBAR_WMNCHitTest (const STATUS_INFO *infoPtr, INT x, INT y)
 	pt.y = y;
 	ScreenToClient (infoPtr->Self, &pt);
 
-	rect.left = rect.right - 13;
-	rect.top += 2;
-
-	if (PtInRect (&rect, pt))
+	if (pt.x >= rect.right - GetSystemMetrics(SM_CXVSCROLL))
         {
             if (GetWindowLongW( infoPtr->Self, GWL_EXSTYLE ) & WS_EX_LAYOUTRTL) return HTBOTTOMLEFT;
 	    else return HTBOTTOMRIGHT;

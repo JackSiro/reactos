@@ -218,6 +218,13 @@ IntFontFamilyCompareEx(const FONTFAMILYINFO *ffi1,
     int cmp = _wcsicmp(plf1->lfFaceName, plf2->lfFaceName);
     if (cmp)
         return cmp;
+    if (dwCompareFlags & IFFCX_CHARSET)
+    {
+        if (plf1->lfCharSet < plf2->lfCharSet)
+            return -1;
+        if (plf1->lfCharSet > plf2->lfCharSet)
+            return 1;
+    }
     if (dwCompareFlags & IFFCX_STYLE)
     {
         WeightDiff1 = labs(plf1->lfWeight - FW_NORMAL);
@@ -229,13 +236,6 @@ IntFontFamilyCompareEx(const FONTFAMILYINFO *ffi1,
         if (plf1->lfItalic < plf2->lfItalic)
             return -1;
         if (plf1->lfItalic > plf2->lfItalic)
-            return 1;
-    }
-    if (dwCompareFlags & IFFCX_CHARSET)
-    {
-        if (plf1->lfCharSet < plf2->lfCharSet)
-            return -1;
-        if (plf1->lfCharSet > plf2->lfCharSet)
             return 1;
     }
     return 0;
@@ -264,18 +264,19 @@ IntFontFamilyListUnique(FONTFAMILYINFO *InfoList, INT nCount,
     if ((dwFlags & IEFF_EXTENDED) && plf->lfCharSet == DEFAULT_CHARSET)
         dwCompareFlags |= IFFCX_CHARSET;
 
-    // std::unique(first, last, IntFontFamilyCompareEx);
-    if (nCount == 0)
+    first = InfoList;
+    last = &InfoList[nCount];
+
+    /* std::unique(first, last, IntFontFamilyCompareEx); */
+    if (first == last)
         return 0;
 
-    result = first = InfoList;
-    last = &InfoList[nCount];
+    result = first;
     while (++first != last)
     {
-        if (IntFontFamilyCompareEx(result, first, dwCompareFlags) != 0 &&
-            ++result != first)
+        if (IntFontFamilyCompareEx(result, first, dwCompareFlags) != 0)
         {
-            *result = *first;
+            *(++result) = *first;
         }
     }
     nCount = (int)(++result - InfoList);
@@ -284,63 +285,78 @@ IntFontFamilyListUnique(FONTFAMILYINFO *InfoList, INT nCount,
 }
 
 static int FASTCALL
-IntEnumFontFamilies(HDC Dc, LPLOGFONTW LogFont, PVOID EnumProc, LPARAM lParam,
+IntEnumFontFamilies(HDC Dc, const LOGFONTW *LogFont, PVOID EnumProc, LPARAM lParam,
                     DWORD dwFlags)
 {
     int FontFamilyCount;
-    int FontFamilySize;
     PFONTFAMILYINFO Info;
     int Ret = 1;
     int i;
     ENUMLOGFONTEXA EnumLogFontExA;
     NEWTEXTMETRICEXA NewTextMetricExA;
     LOGFONTW lfW;
+    LONG InfoCount;
+    ULONG DataSize;
+    NTSTATUS Status;
 
-    Info = RtlAllocateHeap(GetProcessHeap(), 0,
-                           INITIAL_FAMILY_COUNT * sizeof(FONTFAMILYINFO));
-    if (NULL == Info)
+    DataSize = INITIAL_FAMILY_COUNT * sizeof(FONTFAMILYINFO);
+    Info = RtlAllocateHeap(GetProcessHeap(), 0, DataSize);
+    if (Info == NULL)
     {
         return 1;
     }
 
+    /* Initialize the LOGFONT structure */
+    ZeroMemory(&lfW, sizeof(lfW));
     if (!LogFont)
     {
         lfW.lfCharSet = DEFAULT_CHARSET;
-        lfW.lfPitchAndFamily = 0;
-        lfW.lfFaceName[0] = 0;
-        LogFont = &lfW;
+    }
+    else
+    {
+        lfW.lfCharSet = LogFont->lfCharSet;
+        lfW.lfPitchAndFamily = LogFont->lfPitchAndFamily;
+        StringCbCopyW(lfW.lfFaceName, sizeof(lfW.lfFaceName), LogFont->lfFaceName);
     }
 
-    FontFamilyCount = NtGdiGetFontFamilyInfo(Dc, LogFont, Info, INITIAL_FAMILY_COUNT);
+    /* Retrieve the font information */
+    InfoCount = INITIAL_FAMILY_COUNT;
+    FontFamilyCount = NtGdiGetFontFamilyInfo(Dc, &lfW, Info, &InfoCount);
     if (FontFamilyCount < 0)
     {
         RtlFreeHeap(GetProcessHeap(), 0, Info);
         return 1;
     }
-    if (INITIAL_FAMILY_COUNT < FontFamilyCount)
+
+    /* Resize the buffer if the buffer is too small */
+    if (INITIAL_FAMILY_COUNT < InfoCount)
     {
-        FontFamilySize = FontFamilyCount;
         RtlFreeHeap(GetProcessHeap(), 0, Info);
-        Info = RtlAllocateHeap(GetProcessHeap(), 0,
-                               FontFamilyCount * sizeof(FONTFAMILYINFO));
-        if (NULL == Info)
+
+        Status = RtlULongMult(InfoCount, sizeof(FONTFAMILYINFO), &DataSize);
+        if (!NT_SUCCESS(Status) || DataSize > LONG_MAX)
+        {
+            DPRINT1("Overflowed.\n");
+            return 1;
+        }
+        Info = RtlAllocateHeap(GetProcessHeap(), 0, DataSize);
+        if (Info == NULL)
         {
             return 1;
         }
-        FontFamilyCount = NtGdiGetFontFamilyInfo(Dc, LogFont, Info, FontFamilySize);
-        if (FontFamilyCount < 0 || FontFamilySize < FontFamilyCount)
+        FontFamilyCount = NtGdiGetFontFamilyInfo(Dc, &lfW, Info, &InfoCount);
+        if (FontFamilyCount < 0 || FontFamilyCount < InfoCount)
         {
             RtlFreeHeap(GetProcessHeap(), 0, Info);
             return 1;
         }
     }
 
-    DPRINT("qsort\n");
+    /* Sort and remove redundant information */
     qsort(Info, FontFamilyCount, sizeof(*Info), IntFontFamilyCompare);
-    DPRINT("qsort done\n");
-    FontFamilyCount = IntFontFamilyListUnique(Info, FontFamilyCount, LogFont, dwFlags);
-    DPRINT("unique done\n");
+    FontFamilyCount = IntFontFamilyListUnique(Info, FontFamilyCount, &lfW, dwFlags);
 
+    /* call the callback */
     for (i = 0; i < FontFamilyCount; i++)
     {
         if (dwFlags & IEFF_UNICODE)
@@ -384,6 +400,17 @@ int WINAPI
 EnumFontFamiliesExW(HDC hdc, LPLOGFONTW lpLogfont, FONTENUMPROCW lpEnumFontFamExProc,
                     LPARAM lParam, DWORD dwFlags)
 {
+    if (lpLogfont)
+    {
+        DPRINT("EnumFontFamiliesExW(%p, %p(%S, %u, %u), %p, %p, 0x%08lX)\n",
+               hdc, lpLogfont, lpLogfont->lfFaceName, lpLogfont->lfCharSet,
+               lpLogfont->lfPitchAndFamily, lpEnumFontFamExProc, lParam, dwFlags);
+    }
+    else
+    {
+        DPRINT("EnumFontFamiliesExW(%p, NULL, %p, %p, 0x%08lX)\n",
+               hdc, lpEnumFontFamExProc, lParam, dwFlags);
+    }
     return IntEnumFontFamilies(hdc, lpLogfont, lpEnumFontFamExProc, lParam,
                                IEFF_UNICODE | IEFF_EXTENDED);
 }
@@ -397,6 +424,9 @@ EnumFontFamiliesW(HDC hdc, LPCWSTR lpszFamily, FONTENUMPROCW lpEnumFontFamProc,
                   LPARAM lParam)
 {
     LOGFONTW LogFont;
+
+    DPRINT("EnumFontFamiliesW(%p, %S, %p, %p)\n",
+           hdc, lpszFamily, lpEnumFontFamProc, lParam);
 
     ZeroMemory(&LogFont, sizeof(LOGFONTW));
     LogFont.lfCharSet = DEFAULT_CHARSET;
@@ -421,6 +451,18 @@ EnumFontFamiliesExA (HDC hdc, LPLOGFONTA lpLogfont, FONTENUMPROCA lpEnumFontFamE
 
     if (lpLogfont)
     {
+        DPRINT("EnumFontFamiliesExA(%p, %p(%s, %u, %u), %p, %p, 0x%08lX)\n",
+               hdc, lpLogfont, lpLogfont->lfFaceName, lpLogfont->lfCharSet,
+               lpLogfont->lfPitchAndFamily, lpEnumFontFamExProc, lParam, dwFlags);
+    }
+    else
+    {
+        DPRINT("EnumFontFamiliesExA(%p, NULL, %p, %p, 0x%08lX)\n",
+               hdc, lpEnumFontFamExProc, lParam, dwFlags);
+    }
+
+    if (lpLogfont)
+    {
         LogFontA2W(&LogFontW,lpLogfont);
         pLogFontW = &LogFontW;
     }
@@ -439,6 +481,9 @@ EnumFontFamiliesA(HDC hdc, LPCSTR lpszFamily, FONTENUMPROCA lpEnumFontFamProc,
                   LPARAM lParam)
 {
     LOGFONTW LogFont;
+
+    DPRINT("EnumFontFamiliesA(%p, %s, %p, %p)\n",
+           hdc, lpszFamily, lpEnumFontFamProc, lParam);
 
     ZeroMemory(&LogFont, sizeof(LOGFONTW));
     LogFont.lfCharSet = DEFAULT_CHARSET;
@@ -1295,7 +1340,7 @@ GetOutlineTextMetricsA(
     else
         output->otmpFullName = 0;
 
-    assert(left == 0);
+    ASSERT(left == 0);
 
     if(output != lpOTM)
     {
@@ -1666,6 +1711,90 @@ CreateFontIndirectA(
 }
 
 
+#if DBG
+VOID DumpFamilyInfo(const FONTFAMILYINFO *Info, LONG Count)
+{
+    LONG i;
+    const LOGFONTW *plf;
+
+    DPRINT1("---\n");
+    DPRINT1("Count: %d\n", Count);
+    for (i = 0; i < Count; ++i)
+    {
+        plf = &Info[i].EnumLogFontEx.elfLogFont;
+        DPRINT1("%d: '%S',%u,'%S', %ld:%ld, %ld, %d, %d\n", i,
+            plf->lfFaceName, plf->lfCharSet, Info[i].EnumLogFontEx.elfFullName,
+            plf->lfHeight, plf->lfWidth, plf->lfWeight, plf->lfItalic, plf->lfPitchAndFamily);
+    }
+}
+
+VOID DoFontSystemUnittest(VOID)
+{
+#ifndef RTL_SOFT_ASSERT
+#define RTL_SOFT_ASSERT(exp) \
+  (void)((!(exp)) ? \
+    DbgPrint("%s(%d): Soft assertion failed\n Expression: %s\n", __FILE__, __LINE__, #exp), FALSE : TRUE)
+#define RTL_SOFT_ASSERT_defined
+#endif
+
+    LOGFONTW LogFont;
+    FONTFAMILYINFO Info[4];
+    UNICODE_STRING Str1, Str2;
+    LONG ret, InfoCount;
+
+    //DumpFontInfo(TRUE);
+
+    /* L"" DEFAULT_CHARSET */
+    RtlZeroMemory(&LogFont, sizeof(LogFont));
+    LogFont.lfCharSet = DEFAULT_CHARSET;
+    InfoCount = RTL_NUMBER_OF(Info);
+    ret = NtGdiGetFontFamilyInfo(NULL, &LogFont, Info, &InfoCount);
+    DPRINT1("ret: %ld, InfoCount: %ld\n", ret, InfoCount);
+    DumpFamilyInfo(Info, ret);
+    RTL_SOFT_ASSERT(ret == RTL_NUMBER_OF(Info));
+    RTL_SOFT_ASSERT(InfoCount > 32);
+
+    /* L"Microsoft Sans Serif" ANSI_CHARSET */
+    RtlZeroMemory(&LogFont, sizeof(LogFont));
+    LogFont.lfCharSet = ANSI_CHARSET;
+    StringCbCopyW(LogFont.lfFaceName, sizeof(LogFont.lfFaceName), L"Microsoft Sans Serif");
+    InfoCount = RTL_NUMBER_OF(Info);
+    ret = NtGdiGetFontFamilyInfo(NULL, &LogFont, Info, &InfoCount);
+    DPRINT1("ret: %ld, InfoCount: %ld\n", ret, InfoCount);
+    DumpFamilyInfo(Info, ret);
+    RTL_SOFT_ASSERT(ret != -1);
+    RTL_SOFT_ASSERT(InfoCount > 0);
+    RTL_SOFT_ASSERT(InfoCount < 16);
+
+    RtlInitUnicodeString(&Str1, Info[0].EnumLogFontEx.elfLogFont.lfFaceName);
+    RtlInitUnicodeString(&Str2, L"Microsoft Sans Serif");
+    ret = RtlCompareUnicodeString(&Str1, &Str2, TRUE);
+    RTL_SOFT_ASSERT(ret == 0);
+
+    RtlInitUnicodeString(&Str1, Info[0].EnumLogFontEx.elfFullName);
+    RtlInitUnicodeString(&Str2, L"Tahoma");
+    ret = RtlCompareUnicodeString(&Str1, &Str2, TRUE);
+    RTL_SOFT_ASSERT(ret == 0);
+
+    /* L"Non-Existent" DEFAULT_CHARSET */
+    RtlZeroMemory(&LogFont, sizeof(LogFont));
+    LogFont.lfCharSet = ANSI_CHARSET;
+    StringCbCopyW(LogFont.lfFaceName, sizeof(LogFont.lfFaceName), L"Non-Existent");
+    InfoCount = RTL_NUMBER_OF(Info);
+    ret = NtGdiGetFontFamilyInfo(NULL, &LogFont, Info, &InfoCount);
+    DPRINT1("ret: %ld, InfoCount: %ld\n", ret, InfoCount);
+    DumpFamilyInfo(Info, ret);
+    RTL_SOFT_ASSERT(ret == 0);
+    RTL_SOFT_ASSERT(InfoCount == 0);
+
+#ifdef RTL_SOFT_ASSERT_defined
+#undef RTL_SOFT_ASSERT_defined
+#undef RTL_SOFT_ASSERT
+#endif
+}
+#endif
+
+/* EOF */
 /*
  * @implemented
  */
@@ -1675,6 +1804,14 @@ CreateFontIndirectW(
     CONST LOGFONTW		*lplf
 )
 {
+#if 0
+    static BOOL bDidTest = FALSE;
+    if (!bDidTest)
+    {
+        bDidTest = TRUE;
+        DoFontSystemUnittest();
+    }
+#endif
     if (lplf)
     {
         ENUMLOGFONTEXDVW Logfont;
@@ -2102,27 +2239,14 @@ SetMapperFlags(
 {
     DWORD Ret = GDI_ERROR;
     PDC_ATTR Dc_Attr;
-#if 0
-    if (GDI_HANDLE_GET_TYPE(hDC) != GDI_OBJECT_TYPE_DC)
+
+    /* Get the DC attribute */
+    Dc_Attr = GdiGetDcAttr(hDC);
+    if (Dc_Attr == NULL)
     {
-        if (GDI_HANDLE_GET_TYPE(hDC) == GDI_OBJECT_TYPE_METADC)
-            return MFDRV_SetMapperFlags( hDC, flags);
-        else
-        {
-            PLDC pLDC = Dc_Attr->pvLDC;
-            if ( !pLDC )
-            {
-                SetLastError(ERROR_INVALID_HANDLE);
-                return GDI_ERROR;
-            }
-            if (pLDC->iType == LDC_EMFLDC)
-            {
-                return EMFDRV_SetMapperFlags( hDC, flags);
-            }
-        }
+        SetLastError(ERROR_INVALID_PARAMETER);
+        return GDI_ERROR;
     }
-#endif
-    if (!GdiGetHandleUserData((HGDIOBJ) hDC, GDI_OBJECT_TYPE_DC, (PVOID) &Dc_Attr)) return GDI_ERROR;
 
     if (NtCurrentTeb()->GdiTebBatch.HDC == hDC)
     {

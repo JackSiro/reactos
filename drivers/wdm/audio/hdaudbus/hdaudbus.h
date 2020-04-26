@@ -6,6 +6,7 @@
 #include <initguid.h>
 #include <hdaudio.h>
 #include <stdio.h>
+#include <ntstrsafe.h>
 
 #define TAG_HDA 'bADH'
 
@@ -53,6 +54,7 @@ typedef struct
 
 	ULONG Responses[MAX_CODEC_RESPONSES];
 	ULONG ResponseCount;
+	KSEMAPHORE ResponseSemaphore;
 
 	PHDA_CODEC_AUDIO_GROUP AudioGroups[HDA_MAX_AUDIO_GROUPS];
 	ULONG AudioGroupCount;
@@ -116,11 +118,8 @@ FreeItem(
     IN PVOID Item);
 
 /* fdo.cpp */
-BOOLEAN
-NTAPI
-HDA_InterruptService(
-    IN PKINTERRUPT  Interrupt,
-    IN PVOID  ServiceContext);
+KSERVICE_ROUTINE HDA_InterruptService;
+IO_DPC_ROUTINE HDA_DpcForIsr;
 
 NTSTATUS
 NTAPI

@@ -16,24 +16,25 @@
  * along with WinBtrfs.  If not, see <http://www.gnu.org/licenses/>. */
 
 #include "btrfs_drv.h"
+#include "crc32c.h"
 
 typedef struct send_dir {
     LIST_ENTRY list_entry;
-    UINT64 inode;
-    BOOL dummy;
+    uint64_t inode;
+    bool dummy;
     BTRFS_TIME atime;
     BTRFS_TIME mtime;
     BTRFS_TIME ctime;
     struct send_dir* parent;
-    UINT16 namelen;
+    uint16_t namelen;
     char* name;
     LIST_ENTRY deleted_children;
 } send_dir;
 
 typedef struct {
     LIST_ENTRY list_entry;
-    UINT64 inode;
-    BOOL dir;
+    uint64_t inode;
+    bool dir;
     send_dir* sd;
     char tmpname[64];
 } orphan;
@@ -47,18 +48,18 @@ typedef struct {
 typedef struct {
     LIST_ENTRY list_entry;
     send_dir* sd;
-    UINT16 namelen;
+    uint16_t namelen;
     char name[1];
 } ref;
 
 typedef struct {
     send_dir* sd;
-    UINT64 last_child_inode;
+    uint64_t last_child_inode;
     LIST_ENTRY list_entry;
 } pending_rmdir;
 
 typedef struct {
-    UINT64 offset;
+    uint64_t offset;
     LIST_ENTRY list_entry;
     ULONG datalen;
     EXTENT_DATA data;
@@ -68,7 +69,7 @@ typedef struct {
     device_extension* Vcb;
     root* root;
     root* parent;
-    UINT8* data;
+    uint8_t* data;
     ULONG datalen;
     ULONG num_clones;
     root** clones;
@@ -80,22 +81,22 @@ typedef struct {
     send_info* send;
 
     struct {
-        UINT64 inode;
-        BOOL deleting;
-        BOOL new;
-        UINT64 gen;
-        UINT64 uid;
-        UINT64 olduid;
-        UINT64 gid;
-        UINT64 oldgid;
-        UINT64 mode;
-        UINT64 oldmode;
-        UINT64 size;
-        UINT64 flags;
+        uint64_t inode;
+        bool deleting;
+        bool new;
+        uint64_t gen;
+        uint64_t uid;
+        uint64_t olduid;
+        uint64_t gid;
+        uint64_t oldgid;
+        uint64_t mode;
+        uint64_t oldmode;
+        uint64_t size;
+        uint64_t flags;
         BTRFS_TIME atime;
         BTRFS_TIME mtime;
         BTRFS_TIME ctime;
-        BOOL file;
+        bool file;
         char* path;
         orphan* o;
         send_dir* sd;
@@ -109,10 +110,10 @@ typedef struct {
 #define MAX_SEND_WRITE 0xc000 // 48 KB
 #define SEND_BUFFER_LENGTH 0x100000 // 1 MB
 
-static NTSTATUS find_send_dir(send_context* context, UINT64 dir, UINT64 generation, send_dir** psd, BOOL* added_dummy);
+static NTSTATUS find_send_dir(send_context* context, uint64_t dir, uint64_t generation, send_dir** psd, bool* added_dummy);
 static NTSTATUS wait_for_flush(send_context* context, traverse_ptr* tp1, traverse_ptr* tp2);
 
-static void send_command(send_context* context, UINT16 cmd) {
+static void send_command(send_context* context, uint16_t cmd) {
     btrfs_send_command* bsc = (btrfs_send_command*)&context->data[context->datalen];
 
     bsc->cmd = cmd;
@@ -125,10 +126,10 @@ static void send_command_finish(send_context* context, ULONG pos) {
     btrfs_send_command* bsc = (btrfs_send_command*)&context->data[pos];
 
     bsc->length = context->datalen - pos - sizeof(btrfs_send_command);
-    bsc->csum = calc_crc32c(0, (UINT8*)bsc, context->datalen - pos);
+    bsc->csum = calc_crc32c(0, (uint8_t*)bsc, context->datalen - pos);
 }
 
-static void send_add_tlv(send_context* context, UINT16 type, void* data, UINT16 length) {
+static void send_add_tlv(send_context* context, uint16_t type, void* data, uint16_t length) {
     btrfs_send_tlv* tlv = (btrfs_send_tlv*)&context->data[context->datalen];
 
     tlv->type = type;
@@ -140,7 +141,7 @@ static void send_add_tlv(send_context* context, UINT16 type, void* data, UINT16 
     context->datalen += sizeof(btrfs_send_tlv) + length;
 }
 
-static char* uint64_to_char(UINT64 num, char* buf) {
+static char* uint64_to_char(uint64_t num, char* buf) {
     char *tmp, tmp2[20];
 
     if (num == 0) {
@@ -160,9 +161,9 @@ static char* uint64_to_char(UINT64 num, char* buf) {
     return &buf[tmp2 + sizeof(tmp2) - tmp];
 }
 
-static NTSTATUS get_orphan_name(send_context* context, UINT64 inode, UINT64 generation, char* name) {
+static NTSTATUS get_orphan_name(send_context* context, uint64_t inode, uint64_t generation, char* name) {
     char *ptr, *ptr2;
-    UINT64 index = 0;
+    uint64_t index = 0;
     KEY searchkey;
 
     name[0] = 'o';
@@ -183,11 +184,11 @@ static NTSTATUS get_orphan_name(send_context* context, UINT64 inode, UINT64 gene
         ptr = uint64_to_char(index, ptr);
         *ptr = 0;
 
-        searchkey.offset = calc_crc32c(0xfffffffe, (UINT8*)name, (ULONG)(ptr - name));
+        searchkey.offset = calc_crc32c(0xfffffffe, (uint8_t*)name, (ULONG)(ptr - name));
 
-        Status = find_item(context->Vcb, context->root, &tp, &searchkey, FALSE, NULL);
+        Status = find_item(context->Vcb, context->root, &tp, &searchkey, false, NULL);
         if (!NT_SUCCESS(Status)) {
-            ERR("find_item returned %08x\n", Status);
+            ERR("find_item returned %08lx\n", Status);
             return Status;
         }
 
@@ -195,9 +196,9 @@ static NTSTATUS get_orphan_name(send_context* context, UINT64 inode, UINT64 gene
             goto cont;
 
         if (context->parent) {
-            Status = find_item(context->Vcb, context->parent, &tp, &searchkey, FALSE, NULL);
+            Status = find_item(context->Vcb, context->parent, &tp, &searchkey, false, NULL);
             if (!NT_SUCCESS(Status)) {
-                ERR("find_item returned %08x\n", Status);
+                ERR("find_item returned %08lx\n", Status);
                 return Status;
             }
 
@@ -210,7 +211,7 @@ static NTSTATUS get_orphan_name(send_context* context, UINT64 inode, UINT64 gene
 cont:
         index++;
         ptr = ptr2;
-    } while (TRUE);
+    } while (true);
 }
 
 static void add_orphan(send_context* context, orphan* o) {
@@ -231,7 +232,7 @@ static void add_orphan(send_context* context, orphan* o) {
     InsertTailList(&context->orphans, &o->list_entry);
 }
 
-static NTSTATUS send_read_symlink(send_context* context, UINT64 inode, char** link, UINT16* linklen) {
+static NTSTATUS send_read_symlink(send_context* context, uint64_t inode, char** link, uint16_t* linklen) {
     NTSTATUS Status;
     KEY searchkey;
     traverse_ptr tp;
@@ -241,19 +242,19 @@ static NTSTATUS send_read_symlink(send_context* context, UINT64 inode, char** li
     searchkey.obj_type = TYPE_EXTENT_DATA;
     searchkey.offset = 0;
 
-    Status = find_item(context->Vcb, context->root, &tp, &searchkey, FALSE, NULL);
+    Status = find_item(context->Vcb, context->root, &tp, &searchkey, false, NULL);
     if (!NT_SUCCESS(Status)) {
-        ERR("find_item returned %08x\n", Status);
+        ERR("find_item returned %08lx\n", Status);
         return Status;
     }
 
     if (keycmp(tp.item->key, searchkey)) {
-        ERR("could not find (%llx,%x,%llx)\n", tp.item->key.obj_id, tp.item->key.obj_type, tp.item->key.offset);
+        ERR("could not find (%I64x,%x,%I64x)\n", tp.item->key.obj_id, tp.item->key.obj_type, tp.item->key.offset);
         return STATUS_INTERNAL_ERROR;
     }
 
     if (tp.item->size < sizeof(EXTENT_DATA)) {
-        ERR("(%llx,%x,%llx) was %u bytes, expected at least %u\n", tp.item->key.obj_id, tp.item->key.obj_type, tp.item->key.offset,
+        ERR("(%I64x,%x,%I64x) was %u bytes, expected at least %Iu\n", tp.item->key.obj_id, tp.item->key.obj_type, tp.item->key.offset,
             tp.item->size, sizeof(EXTENT_DATA));
         return STATUS_INTERNAL_ERROR;
     }
@@ -268,13 +269,13 @@ static NTSTATUS send_read_symlink(send_context* context, UINT64 inode, char** li
     }
 
     if (tp.item->size < offsetof(EXTENT_DATA, data[0]) + ed->decoded_size) {
-        ERR("(%llx,%x,%llx) was %u bytes, expected %u\n", tp.item->key.obj_id, tp.item->key.obj_type, tp.item->key.offset,
+        ERR("(%I64x,%x,%I64x) was %u bytes, expected %I64u\n", tp.item->key.obj_id, tp.item->key.obj_type, tp.item->key.offset,
             tp.item->size, offsetof(EXTENT_DATA, data[0]) + ed->decoded_size);
         return STATUS_INTERNAL_ERROR;
     }
 
     *link = (char*)ed->data;
-    *linklen = (UINT16)ed->decoded_size;
+    *linklen = (uint16_t)ed->decoded_size;
 
     return STATUS_SUCCESS;
 }
@@ -287,13 +288,13 @@ static NTSTATUS send_inode(send_context* context, traverse_ptr* tp, traverse_ptr
         INODE_ITEM* ii2 = (INODE_ITEM*)tp2->item->data;
 
         if (tp2->item->size < sizeof(INODE_ITEM)) {
-            ERR("(%llx,%x,%llx) was %u bytes, expected %u\n", tp2->item->key.obj_id, tp2->item->key.obj_type, tp2->item->key.offset,
+            ERR("(%I64x,%x,%I64x) was %u bytes, expected %Iu\n", tp2->item->key.obj_id, tp2->item->key.obj_type, tp2->item->key.offset,
                 tp2->item->size, sizeof(INODE_ITEM));
             return STATUS_INTERNAL_ERROR;
         }
 
         context->lastinode.inode = tp2->item->key.obj_id;
-        context->lastinode.deleting = TRUE;
+        context->lastinode.deleting = true;
         context->lastinode.gen = ii2->generation;
         context->lastinode.mode = ii2->st_mode;
         context->lastinode.flags = ii2->flags;
@@ -306,13 +307,13 @@ static NTSTATUS send_inode(send_context* context, traverse_ptr* tp, traverse_ptr
     ii = (INODE_ITEM*)tp->item->data;
 
     if (tp->item->size < sizeof(INODE_ITEM)) {
-        ERR("(%llx,%x,%llx) was %u bytes, expected %u\n", tp->item->key.obj_id, tp->item->key.obj_type, tp->item->key.offset,
+        ERR("(%I64x,%x,%I64x) was %u bytes, expected %Iu\n", tp->item->key.obj_id, tp->item->key.obj_type, tp->item->key.offset,
             tp->item->size, sizeof(INODE_ITEM));
         return STATUS_INTERNAL_ERROR;
     }
 
     context->lastinode.inode = tp->item->key.obj_id;
-    context->lastinode.deleting = FALSE;
+    context->lastinode.deleting = false;
     context->lastinode.gen = ii->generation;
     context->lastinode.uid = ii->st_uid;
     context->lastinode.gid = ii->st_gid;
@@ -322,7 +323,7 @@ static NTSTATUS send_inode(send_context* context, traverse_ptr* tp, traverse_ptr
     context->lastinode.mtime = ii->st_mtime;
     context->lastinode.ctime = ii->st_ctime;
     context->lastinode.flags = ii->flags;
-    context->lastinode.file = FALSE;
+    context->lastinode.file = false;
     context->lastinode.o = NULL;
     context->lastinode.sd = NULL;
 
@@ -336,7 +337,7 @@ static NTSTATUS send_inode(send_context* context, traverse_ptr* tp, traverse_ptr
         LIST_ENTRY* le;
 
         if (tp2->item->size < sizeof(INODE_ITEM)) {
-            ERR("(%llx,%x,%llx) was %u bytes, expected %u\n", tp2->item->key.obj_id, tp2->item->key.obj_type, tp2->item->key.offset,
+            ERR("(%I64x,%x,%I64x) was %u bytes, expected %Iu\n", tp2->item->key.obj_id, tp2->item->key.obj_type, tp2->item->key.offset,
                 tp2->item->size, sizeof(INODE_ITEM));
             return STATUS_INTERNAL_ERROR;
         }
@@ -346,9 +347,9 @@ static NTSTATUS send_inode(send_context* context, traverse_ptr* tp, traverse_ptr
         context->lastinode.oldgid = ii2->st_gid;
 
         if ((ii2->st_mode & __S_IFREG) == __S_IFREG && (ii2->st_mode & __S_IFLNK) != __S_IFLNK && (ii2->st_mode & __S_IFSOCK) != __S_IFSOCK)
-            context->lastinode.file = TRUE;
+            context->lastinode.file = true;
 
-        context->lastinode.new = FALSE;
+        context->lastinode.new = false;
 
         le = context->orphans.Flink;
         while (le != &context->orphans) {
@@ -363,14 +364,14 @@ static NTSTATUS send_inode(send_context* context, traverse_ptr* tp, traverse_ptr
             le = le->Flink;
         }
     } else
-        context->lastinode.new = TRUE;
+        context->lastinode.new = true;
 
     if (tp->item->key.obj_id == SUBVOL_ROOT_INODE) {
         send_dir* sd;
 
         Status = find_send_dir(context, tp->item->key.obj_id, ii->generation, &sd, NULL);
         if (!NT_SUCCESS(Status)) {
-            ERR("find_send_dir returned %08x\n", Status);
+            ERR("find_send_dir returned %08lx\n", Status);
             return Status;
         }
 
@@ -380,7 +381,7 @@ static NTSTATUS send_inode(send_context* context, traverse_ptr* tp, traverse_ptr
         context->root_dir = sd;
     } else if (!tp2) {
         ULONG pos = context->datalen;
-        UINT16 cmd;
+        uint16_t cmd;
         send_dir* sd;
 
         char name[64];
@@ -399,7 +400,7 @@ static NTSTATUS send_inode(send_context* context, traverse_ptr* tp, traverse_ptr
                     o2->sd->atime = ii->st_atime;
                     o2->sd->mtime = ii->st_mtime;
                     o2->sd->ctime = ii->st_ctime;
-                    o2->sd->dummy = FALSE;
+                    o2->sd->dummy = false;
                     return STATUS_SUCCESS;
                 } else if (o2->inode > tp->item->key.obj_id)
                     break;
@@ -420,32 +421,32 @@ static NTSTATUS send_inode(send_context* context, traverse_ptr* tp, traverse_ptr
             cmd = BTRFS_SEND_CMD_MKFIFO;
         else {
             cmd = BTRFS_SEND_CMD_MKFILE;
-            context->lastinode.file = TRUE;
+            context->lastinode.file = true;
         }
 
         send_command(context, cmd);
 
         Status = get_orphan_name(context, tp->item->key.obj_id, ii->generation, name);
         if (!NT_SUCCESS(Status)) {
-            ERR("get_orphan_name returned %08x\n", Status);
+            ERR("get_orphan_name returned %08lx\n", Status);
             return Status;
         }
 
-        send_add_tlv(context, BTRFS_SEND_TLV_PATH, name, (UINT16)strlen(name));
-        send_add_tlv(context, BTRFS_SEND_TLV_INODE, &tp->item->key.obj_id, sizeof(UINT64));
+        send_add_tlv(context, BTRFS_SEND_TLV_PATH, name, (uint16_t)strlen(name));
+        send_add_tlv(context, BTRFS_SEND_TLV_INODE, &tp->item->key.obj_id, sizeof(uint64_t));
 
         if (cmd == BTRFS_SEND_CMD_MKNOD || cmd == BTRFS_SEND_CMD_MKFIFO || cmd == BTRFS_SEND_CMD_MKSOCK) {
-            UINT64 rdev = makedev((ii->st_rdev & 0xFFFFFFFFFFF) >> 20, ii->st_rdev & 0xFFFFF), mode = ii->st_mode;
+            uint64_t rdev = makedev((ii->st_rdev & 0xFFFFFFFFFFF) >> 20, ii->st_rdev & 0xFFFFF), mode = ii->st_mode;
 
-            send_add_tlv(context, BTRFS_SEND_TLV_RDEV, &rdev, sizeof(UINT64));
-            send_add_tlv(context, BTRFS_SEND_TLV_MODE, &mode, sizeof(UINT64));
+            send_add_tlv(context, BTRFS_SEND_TLV_RDEV, &rdev, sizeof(uint64_t));
+            send_add_tlv(context, BTRFS_SEND_TLV_MODE, &mode, sizeof(uint64_t));
         } else if (cmd == BTRFS_SEND_CMD_SYMLINK && ii->st_size > 0) {
             char* link;
-            UINT16 linklen;
+            uint16_t linklen;
 
             Status = send_read_symlink(context, tp->item->key.obj_id, &link, &linklen);
             if (!NT_SUCCESS(Status)) {
-                ERR("send_read_symlink returned %08x\n", Status);
+                ERR("send_read_symlink returned %08lx\n", Status);
                 return Status;
             }
 
@@ -457,11 +458,11 @@ static NTSTATUS send_inode(send_context* context, traverse_ptr* tp, traverse_ptr
         if (ii->st_mode & __S_IFDIR) {
             Status = find_send_dir(context, tp->item->key.obj_id, ii->generation, &sd, NULL);
             if (!NT_SUCCESS(Status)) {
-                ERR("find_send_dir returned %08x\n", Status);
+                ERR("find_send_dir returned %08lx\n", Status);
                 return Status;
             }
 
-            sd->dummy = FALSE;
+            sd->dummy = false;
         } else
             sd = NULL;
 
@@ -474,7 +475,7 @@ static NTSTATUS send_inode(send_context* context, traverse_ptr* tp, traverse_ptr
         }
 
         o->inode = tp->item->key.obj_id;
-        o->dir = (ii->st_mode & __S_IFDIR && ii->st_size > 0) ? TRUE : FALSE;
+        o->dir = (ii->st_mode & __S_IFDIR && ii->st_size > 0) ? true : false;
         strcpy(o->tmpname, name);
         o->sd = sd;
         add_orphan(context, o);
@@ -493,7 +494,7 @@ static NTSTATUS send_inode(send_context* context, traverse_ptr* tp, traverse_ptr
     return STATUS_SUCCESS;
 }
 
-static NTSTATUS send_add_dir(send_context* context, UINT64 inode, send_dir* parent, char* name, UINT16 namelen, BOOL dummy, LIST_ENTRY* lastentry, send_dir** psd) {
+static NTSTATUS send_add_dir(send_context* context, uint64_t inode, send_dir* parent, char* name, uint16_t namelen, bool dummy, LIST_ENTRY* lastentry, send_dir** psd) {
     LIST_ENTRY* le;
     send_dir* sd = ExAllocatePoolWithTag(PagedPool, sizeof(send_dir), ALLOC_TAG);
 
@@ -556,8 +557,8 @@ static NTSTATUS send_add_dir(send_context* context, UINT64 inode, send_dir* pare
     return STATUS_SUCCESS;
 }
 
-static __inline UINT16 find_path_len(send_dir* parent, UINT16 namelen) {
-    UINT16 len = namelen;
+static __inline uint16_t find_path_len(send_dir* parent, uint16_t namelen) {
+    uint16_t len = namelen;
 
     while (parent && parent->namelen > 0) {
         len += parent->namelen + 1;
@@ -582,8 +583,8 @@ static void find_path(char* path, send_dir* parent, char* name, ULONG namelen) {
     }
 }
 
-static void send_add_tlv_path(send_context* context, UINT16 type, send_dir* parent, char* name, UINT16 namelen) {
-    UINT16 len = find_path_len(parent, namelen);
+static void send_add_tlv_path(send_context* context, uint16_t type, send_dir* parent, char* name, uint16_t namelen) {
+    uint16_t len = find_path_len(parent, namelen);
 
     send_add_tlv(context, type, NULL, len);
 
@@ -591,13 +592,13 @@ static void send_add_tlv_path(send_context* context, UINT16 type, send_dir* pare
         find_path((char*)&context->data[context->datalen - len], parent, name, namelen);
 }
 
-static NTSTATUS found_path(send_context* context, send_dir* parent, char* name, UINT16 namelen) {
+static NTSTATUS found_path(send_context* context, send_dir* parent, char* name, uint16_t namelen) {
     ULONG pos = context->datalen;
 
     if (context->lastinode.o) {
         send_command(context, BTRFS_SEND_CMD_RENAME);
 
-        send_add_tlv_path(context, BTRFS_SEND_TLV_PATH, context->root_dir, context->lastinode.o->tmpname, (UINT16)strlen(context->lastinode.o->tmpname));
+        send_add_tlv_path(context, BTRFS_SEND_TLV_PATH, context->root_dir, context->lastinode.o->tmpname, (uint16_t)strlen(context->lastinode.o->tmpname));
 
         send_add_tlv_path(context, BTRFS_SEND_TLV_PATH_TO, parent, name, namelen);
 
@@ -607,13 +608,13 @@ static NTSTATUS found_path(send_context* context, send_dir* parent, char* name, 
 
         send_add_tlv_path(context, BTRFS_SEND_TLV_PATH, parent, name, namelen);
 
-        send_add_tlv(context, BTRFS_SEND_TLV_PATH_LINK, context->lastinode.path, context->lastinode.path ? (UINT16)strlen(context->lastinode.path) : 0);
+        send_add_tlv(context, BTRFS_SEND_TLV_PATH_LINK, context->lastinode.path, context->lastinode.path ? (uint16_t)strlen(context->lastinode.path) : 0);
 
         send_command_finish(context, pos);
     }
 
     if (context->lastinode.o) {
-        UINT16 pathlen;
+        uint16_t pathlen;
 
         if (context->lastinode.o->sd) {
             if (context->lastinode.o->sd->name)
@@ -666,7 +667,7 @@ static void send_utimes_command_dir(send_context* context, send_dir* sd, BTRFS_T
     send_command_finish(context, pos);
 }
 
-static NTSTATUS find_send_dir(send_context* context, UINT64 dir, UINT64 generation, send_dir** psd, BOOL* added_dummy) {
+static NTSTATUS find_send_dir(send_context* context, uint64_t dir, uint64_t generation, send_dir** psd, bool* added_dummy) {
     NTSTATUS Status;
     LIST_ENTRY* le;
     char name[64];
@@ -681,7 +682,7 @@ static NTSTATUS find_send_dir(send_context* context, UINT64 dir, UINT64 generati
             *psd = sd2;
 
             if (added_dummy)
-                *added_dummy = FALSE;
+                *added_dummy = false;
 
             return STATUS_SUCCESS;
         }
@@ -690,14 +691,14 @@ static NTSTATUS find_send_dir(send_context* context, UINT64 dir, UINT64 generati
     }
 
     if (dir == SUBVOL_ROOT_INODE) {
-        Status = send_add_dir(context, dir, NULL, NULL, 0, FALSE, le, psd);
+        Status = send_add_dir(context, dir, NULL, NULL, 0, false, le, psd);
         if (!NT_SUCCESS(Status)) {
-            ERR("send_add_dir returned %08x\n", Status);
+            ERR("send_add_dir returned %08lx\n", Status);
             return Status;
         }
 
         if (added_dummy)
-            *added_dummy = FALSE;
+            *added_dummy = false;
 
         return STATUS_SUCCESS;
     }
@@ -710,9 +711,9 @@ static NTSTATUS find_send_dir(send_context* context, UINT64 dir, UINT64 generati
         searchkey.obj_type = TYPE_INODE_REF; // directories should never have an extiref
         searchkey.offset = 0xffffffffffffffff;
 
-        Status = find_item(context->Vcb, context->parent, &tp, &searchkey, FALSE, NULL);
+        Status = find_item(context->Vcb, context->parent, &tp, &searchkey, false, NULL);
         if (!NT_SUCCESS(Status)) {
-            ERR("find_item returned %08x\n", Status);
+            ERR("find_item returned %08lx\n", Status);
             return Status;
         }
 
@@ -721,7 +722,7 @@ static NTSTATUS find_send_dir(send_context* context, UINT64 dir, UINT64 generati
             send_dir* parent;
 
             if (tp.item->size < sizeof(INODE_REF) || tp.item->size < offsetof(INODE_REF, name[0]) + ir->n) {
-                ERR("(%llx,%x,%llx) was truncated\n", tp.item->key.obj_id, tp.item->key.obj_type, tp.item->key.offset);
+                ERR("(%I64x,%x,%I64x) was truncated\n", tp.item->key.obj_id, tp.item->key.obj_type, tp.item->key.offset);
                 return STATUS_INTERNAL_ERROR;
             }
 
@@ -730,19 +731,19 @@ static NTSTATUS find_send_dir(send_context* context, UINT64 dir, UINT64 generati
             else {
                 Status = find_send_dir(context, tp.item->key.offset, generation, &parent, NULL);
                 if (!NT_SUCCESS(Status)) {
-                    ERR("find_send_dir returned %08x\n", Status);
+                    ERR("find_send_dir returned %08lx\n", Status);
                     return Status;
                 }
             }
 
-            Status = send_add_dir(context, dir, parent, ir->name, ir->n, TRUE, NULL, psd);
+            Status = send_add_dir(context, dir, parent, ir->name, ir->n, true, NULL, psd);
             if (!NT_SUCCESS(Status)) {
-                ERR("send_add_dir returned %08x\n", Status);
+                ERR("send_add_dir returned %08lx\n", Status);
                 return Status;
             }
 
             if (added_dummy)
-                *added_dummy = FALSE;
+                *added_dummy = false;
 
             return STATUS_SUCCESS;
         }
@@ -750,28 +751,28 @@ static NTSTATUS find_send_dir(send_context* context, UINT64 dir, UINT64 generati
 
     Status = get_orphan_name(context, dir, generation, name);
     if (!NT_SUCCESS(Status)) {
-        ERR("get_orphan_name returned %08x\n", Status);
+        ERR("get_orphan_name returned %08lx\n", Status);
         return Status;
     }
 
-    Status = send_add_dir(context, dir, NULL, name, (UINT16)strlen(name), TRUE, le, psd);
+    Status = send_add_dir(context, dir, NULL, name, (uint16_t)strlen(name), true, le, psd);
     if (!NT_SUCCESS(Status)) {
-        ERR("send_add_dir returned %08x\n", Status);
+        ERR("send_add_dir returned %08lx\n", Status);
         return Status;
     }
 
     if (added_dummy)
-        *added_dummy = TRUE;
+        *added_dummy = true;
 
     return STATUS_SUCCESS;
 }
 
-static NTSTATUS send_inode_ref(send_context* context, traverse_ptr* tp, BOOL tree2) {
+static NTSTATUS send_inode_ref(send_context* context, traverse_ptr* tp, bool tree2) {
     NTSTATUS Status;
-    UINT64 inode = tp ? tp->item->key.obj_id : 0, dir = tp ? tp->item->key.offset : 0;
+    uint64_t inode = tp ? tp->item->key.obj_id : 0, dir = tp ? tp->item->key.offset : 0;
     LIST_ENTRY* le;
     INODE_REF* ir;
-    UINT16 len;
+    uint16_t len;
     send_dir* sd = NULL;
     orphan* o2 = NULL;
 
@@ -779,30 +780,30 @@ static NTSTATUS send_inode_ref(send_context* context, traverse_ptr* tp, BOOL tre
         return STATUS_SUCCESS;
 
     if (tp->item->size < sizeof(INODE_REF)) {
-        ERR("(%llx,%x,%llx) was %u bytes, expected at least %u\n", tp->item->key.obj_id, tp->item->key.obj_type, tp->item->key.offset,
+        ERR("(%I64x,%x,%I64x) was %u bytes, expected at least %Iu\n", tp->item->key.obj_id, tp->item->key.obj_type, tp->item->key.offset,
             tp->item->size, sizeof(INODE_REF));
         return STATUS_INTERNAL_ERROR;
     }
 
     if (dir != SUBVOL_ROOT_INODE) {
-        BOOL added_dummy;
+        bool added_dummy;
 
         Status = find_send_dir(context, dir, context->root->root_item.ctransid, &sd, &added_dummy);
         if (!NT_SUCCESS(Status)) {
-            ERR("find_send_dir returned %08x\n", Status);
+            ERR("find_send_dir returned %08lx\n", Status);
             return Status;
         }
 
         // directory has higher inode number than file, so might need to be created
         if (added_dummy) {
-            BOOL found = FALSE;
+            bool found = false;
 
             le = context->orphans.Flink;
             while (le != &context->orphans) {
                 o2 = CONTAINING_RECORD(le, orphan, list_entry);
 
                 if (o2->inode == dir) {
-                    found = TRUE;
+                    found = true;
                     break;
                 } else if (o2->inode > dir)
                     break;
@@ -817,7 +818,7 @@ static NTSTATUS send_inode_ref(send_context* context, traverse_ptr* tp, BOOL tre
 
                 send_add_tlv_path(context, BTRFS_SEND_TLV_PATH, NULL, sd->name, sd->namelen);
 
-                send_add_tlv(context, BTRFS_SEND_TLV_INODE, &dir, sizeof(UINT64));
+                send_add_tlv(context, BTRFS_SEND_TLV_INODE, &dir, sizeof(uint64_t));
 
                 send_command_finish(context, pos);
 
@@ -828,7 +829,7 @@ static NTSTATUS send_inode_ref(send_context* context, traverse_ptr* tp, BOOL tre
                 }
 
                 o2->inode = dir;
-                o2->dir = TRUE;
+                o2->dir = true;
                 memcpy(o2->tmpname, sd->name, sd->namelen);
                 o2->tmpname[sd->namelen] = 0;
                 o2->sd = sd;
@@ -845,7 +846,7 @@ static NTSTATUS send_inode_ref(send_context* context, traverse_ptr* tp, BOOL tre
         ref* r;
 
         if (len < sizeof(INODE_REF) || len < offsetof(INODE_REF, name[0]) + ir->n) {
-            ERR("(%llx,%x,%llx) was truncated\n", tp->item->key.obj_id, tp->item->key.obj_type, tp->item->key.offset);
+            ERR("(%I64x,%x,%I64x) was truncated\n", tp->item->key.obj_id, tp->item->key.obj_type, tp->item->key.offset);
             return STATUS_INTERNAL_ERROR;
         }
 
@@ -861,19 +862,19 @@ static NTSTATUS send_inode_ref(send_context* context, traverse_ptr* tp, BOOL tre
 
         InsertTailList(tree2 ? &context->lastinode.oldrefs : &context->lastinode.refs, &r->list_entry);
 
-        len -= (UINT16)offsetof(INODE_REF, name[0]) + ir->n;
+        len -= (uint16_t)offsetof(INODE_REF, name[0]) + ir->n;
         ir = (INODE_REF*)&ir->name[ir->n];
     }
 
     return STATUS_SUCCESS;
 }
 
-static NTSTATUS send_inode_extref(send_context* context, traverse_ptr* tp, BOOL tree2) {
+static NTSTATUS send_inode_extref(send_context* context, traverse_ptr* tp, bool tree2) {
     INODE_EXTREF* ier;
-    UINT16 len;
+    uint16_t len;
 
     if (tp->item->size < sizeof(INODE_EXTREF)) {
-        ERR("(%llx,%x,%llx) was %u bytes, expected at least %u\n", tp->item->key.obj_id, tp->item->key.obj_type, tp->item->key.offset,
+        ERR("(%I64x,%x,%I64x) was %u bytes, expected at least %Iu\n", tp->item->key.obj_id, tp->item->key.obj_type, tp->item->key.offset,
             tp->item->size, sizeof(INODE_EXTREF));
         return STATUS_INTERNAL_ERROR;
     }
@@ -888,30 +889,30 @@ static NTSTATUS send_inode_extref(send_context* context, traverse_ptr* tp, BOOL 
         ref* r;
 
         if (len < sizeof(INODE_EXTREF) || len < offsetof(INODE_EXTREF, name[0]) + ier->n) {
-            ERR("(%llx,%x,%llx) was truncated\n", tp->item->key.obj_id, tp->item->key.obj_type, tp->item->key.offset);
+            ERR("(%I64x,%x,%I64x) was truncated\n", tp->item->key.obj_id, tp->item->key.obj_type, tp->item->key.offset);
             return STATUS_INTERNAL_ERROR;
         }
 
         if (ier->dir != SUBVOL_ROOT_INODE) {
             LIST_ENTRY* le;
-            BOOL added_dummy;
+            bool added_dummy;
 
             Status = find_send_dir(context, ier->dir, context->root->root_item.ctransid, &sd, &added_dummy);
             if (!NT_SUCCESS(Status)) {
-                ERR("find_send_dir returned %08x\n", Status);
+                ERR("find_send_dir returned %08lx\n", Status);
                 return Status;
             }
 
             // directory has higher inode number than file, so might need to be created
             if (added_dummy) {
-                BOOL found = FALSE;
+                bool found = false;
 
                 le = context->orphans.Flink;
                 while (le != &context->orphans) {
                     o2 = CONTAINING_RECORD(le, orphan, list_entry);
 
                     if (o2->inode == ier->dir) {
-                        found = TRUE;
+                        found = true;
                         break;
                     } else if (o2->inode > ier->dir)
                         break;
@@ -925,7 +926,7 @@ static NTSTATUS send_inode_extref(send_context* context, traverse_ptr* tp, BOOL 
                     send_command(context, BTRFS_SEND_CMD_MKDIR);
 
                     send_add_tlv_path(context, BTRFS_SEND_TLV_PATH, NULL, sd->name, sd->namelen);
-                    send_add_tlv(context, BTRFS_SEND_TLV_INODE, &ier->dir, sizeof(UINT64));
+                    send_add_tlv(context, BTRFS_SEND_TLV_INODE, &ier->dir, sizeof(uint64_t));
 
                     send_command_finish(context, pos);
 
@@ -936,7 +937,7 @@ static NTSTATUS send_inode_extref(send_context* context, traverse_ptr* tp, BOOL 
                     }
 
                     o2->inode = ier->dir;
-                    o2->dir = TRUE;
+                    o2->dir = true;
                     memcpy(o2->tmpname, sd->name, sd->namelen);
                     o2->tmpname[sd->namelen] = 0;
                     o2->sd = sd;
@@ -958,7 +959,7 @@ static NTSTATUS send_inode_extref(send_context* context, traverse_ptr* tp, BOOL 
 
         InsertTailList(tree2 ? &context->lastinode.oldrefs : &context->lastinode.refs, &r->list_entry);
 
-        len -= (UINT16)offsetof(INODE_EXTREF, name[0]) + ier->n;
+        len -= (uint16_t)offsetof(INODE_EXTREF, name[0]) + ier->n;
         ier = (INODE_EXTREF*)&ier->name[ier->n];
     }
 
@@ -973,38 +974,38 @@ static void send_subvol_header(send_context* context, root* r, file_ref* fr) {
     send_add_tlv(context, BTRFS_SEND_TLV_PATH, fr->dc->utf8.Buffer, fr->dc->utf8.Length);
 
     send_add_tlv(context, BTRFS_SEND_TLV_UUID, r->root_item.rtransid == 0 ? &r->root_item.uuid : &r->root_item.received_uuid, sizeof(BTRFS_UUID));
-    send_add_tlv(context, BTRFS_SEND_TLV_TRANSID, &r->root_item.ctransid, sizeof(UINT64));
+    send_add_tlv(context, BTRFS_SEND_TLV_TRANSID, &r->root_item.ctransid, sizeof(uint64_t));
 
     if (context->parent) {
         send_add_tlv(context, BTRFS_SEND_TLV_CLONE_UUID,
                      context->parent->root_item.rtransid == 0 ? &context->parent->root_item.uuid : &context->parent->root_item.received_uuid, sizeof(BTRFS_UUID));
-        send_add_tlv(context, BTRFS_SEND_TLV_CLONE_CTRANSID, &context->parent->root_item.ctransid, sizeof(UINT64));
+        send_add_tlv(context, BTRFS_SEND_TLV_CLONE_CTRANSID, &context->parent->root_item.ctransid, sizeof(uint64_t));
     }
 
     send_command_finish(context, pos);
 }
 
-static void send_chown_command(send_context* context, char* path, UINT64 uid, UINT64 gid) {
+static void send_chown_command(send_context* context, char* path, uint64_t uid, uint64_t gid) {
     ULONG pos = context->datalen;
 
     send_command(context, BTRFS_SEND_CMD_CHOWN);
 
-    send_add_tlv(context, BTRFS_SEND_TLV_PATH, path, path ? (UINT16)strlen(path) : 0);
-    send_add_tlv(context, BTRFS_SEND_TLV_UID, &uid, sizeof(UINT64));
-    send_add_tlv(context, BTRFS_SEND_TLV_GID, &gid, sizeof(UINT64));
+    send_add_tlv(context, BTRFS_SEND_TLV_PATH, path, path ? (uint16_t)strlen(path) : 0);
+    send_add_tlv(context, BTRFS_SEND_TLV_UID, &uid, sizeof(uint64_t));
+    send_add_tlv(context, BTRFS_SEND_TLV_GID, &gid, sizeof(uint64_t));
 
     send_command_finish(context, pos);
 }
 
-static void send_chmod_command(send_context* context, char* path, UINT64 mode) {
+static void send_chmod_command(send_context* context, char* path, uint64_t mode) {
     ULONG pos = context->datalen;
 
     send_command(context, BTRFS_SEND_CMD_CHMOD);
 
     mode &= 07777;
 
-    send_add_tlv(context, BTRFS_SEND_TLV_PATH, path, path ? (UINT16)strlen(path) : 0);
-    send_add_tlv(context, BTRFS_SEND_TLV_MODE, &mode, sizeof(UINT64));
+    send_add_tlv(context, BTRFS_SEND_TLV_PATH, path, path ? (uint16_t)strlen(path) : 0);
+    send_add_tlv(context, BTRFS_SEND_TLV_MODE, &mode, sizeof(uint64_t));
 
     send_command_finish(context, pos);
 }
@@ -1014,7 +1015,7 @@ static void send_utimes_command(send_context* context, char* path, BTRFS_TIME* a
 
     send_command(context, BTRFS_SEND_CMD_UTIMES);
 
-    send_add_tlv(context, BTRFS_SEND_TLV_PATH, path, path ? (UINT16)strlen(path) : 0);
+    send_add_tlv(context, BTRFS_SEND_TLV_PATH, path, path ? (uint16_t)strlen(path) : 0);
     send_add_tlv(context, BTRFS_SEND_TLV_ATIME, atime, sizeof(BTRFS_TIME));
     send_add_tlv(context, BTRFS_SEND_TLV_MTIME, mtime, sizeof(BTRFS_TIME));
     send_add_tlv(context, BTRFS_SEND_TLV_CTIME, ctime, sizeof(BTRFS_TIME));
@@ -1022,20 +1023,20 @@ static void send_utimes_command(send_context* context, char* path, BTRFS_TIME* a
     send_command_finish(context, pos);
 }
 
-static void send_truncate_command(send_context* context, char* path, UINT64 size) {
+static void send_truncate_command(send_context* context, char* path, uint64_t size) {
     ULONG pos = context->datalen;
 
     send_command(context, BTRFS_SEND_CMD_TRUNCATE);
 
-    send_add_tlv(context, BTRFS_SEND_TLV_PATH, path, path ? (UINT16)strlen(path) : 0);
-    send_add_tlv(context, BTRFS_SEND_TLV_SIZE, &size, sizeof(UINT64));
+    send_add_tlv(context, BTRFS_SEND_TLV_PATH, path, path ? (uint16_t)strlen(path) : 0);
+    send_add_tlv(context, BTRFS_SEND_TLV_SIZE, &size, sizeof(uint64_t));
 
     send_command_finish(context, pos);
 }
 
-static NTSTATUS send_unlink_command(send_context* context, send_dir* parent, UINT16 namelen, char* name) {
+static NTSTATUS send_unlink_command(send_context* context, send_dir* parent, uint16_t namelen, char* name) {
     ULONG pos = context->datalen;
-    UINT16 pathlen;
+    uint16_t pathlen;
 
     send_command(context, BTRFS_SEND_CMD_UNLINK);
 
@@ -1049,7 +1050,7 @@ static NTSTATUS send_unlink_command(send_context* context, send_dir* parent, UIN
     return STATUS_SUCCESS;
 }
 
-static void send_rmdir_command(send_context* context, UINT16 pathlen, char* path) {
+static void send_rmdir_command(send_context* context, uint16_t pathlen, char* path) {
     ULONG pos = context->datalen;
 
     send_command(context, BTRFS_SEND_CMD_RMDIR);
@@ -1057,7 +1058,7 @@ static void send_rmdir_command(send_context* context, UINT16 pathlen, char* path
     send_command_finish(context, pos);
 }
 
-static NTSTATUS get_dir_last_child(send_context* context, UINT64* last_inode) {
+static NTSTATUS get_dir_last_child(send_context* context, uint64_t* last_inode) {
     NTSTATUS Status;
     KEY searchkey;
     traverse_ptr tp;
@@ -1068,9 +1069,9 @@ static NTSTATUS get_dir_last_child(send_context* context, UINT64* last_inode) {
     searchkey.obj_type = TYPE_DIR_INDEX;
     searchkey.offset = 2;
 
-    Status = find_item(context->Vcb, context->parent, &tp, &searchkey, FALSE, NULL);
+    Status = find_item(context->Vcb, context->parent, &tp, &searchkey, false, NULL);
     if (!NT_SUCCESS(Status)) {
-        ERR("find_item returned %08x\n", Status);
+        ERR("find_item returned %08lx\n", Status);
         return Status;
     }
 
@@ -1081,7 +1082,7 @@ static NTSTATUS get_dir_last_child(send_context* context, UINT64* last_inode) {
             DIR_ITEM* di = (DIR_ITEM*)tp.item->data;
 
             if (tp.item->size < sizeof(DIR_ITEM) || tp.item->size < offsetof(DIR_ITEM, name[0]) + di->m + di->n) {
-                ERR("(%llx,%x,%llx) was truncated\n", tp.item->key.obj_id, tp.item->key.obj_type, tp.item->key.offset);
+                ERR("(%I64x,%x,%I64x) was truncated\n", tp.item->key.obj_id, tp.item->key.obj_type, tp.item->key.offset);
                 return STATUS_INTERNAL_ERROR;
             }
 
@@ -1090,16 +1091,16 @@ static NTSTATUS get_dir_last_child(send_context* context, UINT64* last_inode) {
         } else
             break;
 
-        if (find_next_item(context->Vcb, &tp, &next_tp, FALSE, NULL))
+        if (find_next_item(context->Vcb, &tp, &next_tp, false, NULL))
             tp = next_tp;
         else
             break;
-    } while (TRUE);
+    } while (true);
 
     return STATUS_SUCCESS;
 }
 
-static NTSTATUS add_pending_rmdir(send_context* context, UINT64 last_inode) {
+static NTSTATUS add_pending_rmdir(send_context* context, uint64_t last_inode) {
     pending_rmdir* pr;
     LIST_ENTRY* le;
 
@@ -1129,20 +1130,20 @@ static NTSTATUS add_pending_rmdir(send_context* context, UINT64 last_inode) {
     return STATUS_SUCCESS;
 }
 
-static NTSTATUS look_for_collision(send_context* context, send_dir* sd, char* name, ULONG namelen, UINT64* inode, BOOL* dir) {
+static NTSTATUS look_for_collision(send_context* context, send_dir* sd, char* name, ULONG namelen, uint64_t* inode, bool* dir) {
     NTSTATUS Status;
     KEY searchkey;
     traverse_ptr tp;
     DIR_ITEM* di;
-    UINT16 len;
+    uint16_t len;
 
     searchkey.obj_id = sd->inode;
     searchkey.obj_type = TYPE_DIR_ITEM;
-    searchkey.offset = calc_crc32c(0xfffffffe, (UINT8*)name, namelen);
+    searchkey.offset = calc_crc32c(0xfffffffe, (uint8_t*)name, namelen);
 
-    Status = find_item(context->Vcb, context->parent, &tp, &searchkey, FALSE, NULL);
+    Status = find_item(context->Vcb, context->parent, &tp, &searchkey, false, NULL);
     if (!NT_SUCCESS(Status)) {
-        ERR("find_item returned %08x\n", Status);
+        ERR("find_item returned %08lx\n", Status);
         return Status;
     }
 
@@ -1154,24 +1155,24 @@ static NTSTATUS look_for_collision(send_context* context, send_dir* sd, char* na
 
     do {
         if (len < sizeof(DIR_ITEM) || len < offsetof(DIR_ITEM, name[0]) + di->m + di->n) {
-            ERR("(%llx,%x,%llx) was truncated\n", tp.item->key.obj_id, tp.item->key.obj_type, tp.item->key.offset);
+            ERR("(%I64x,%x,%I64x) was truncated\n", tp.item->key.obj_id, tp.item->key.obj_type, tp.item->key.offset);
             return STATUS_INTERNAL_ERROR;
         }
 
         if (di->n == namelen && RtlCompareMemory(di->name, name, namelen) == namelen) {
             *inode = di->key.obj_type == TYPE_INODE_ITEM ? di->key.obj_id : 0;
-            *dir = di->type == BTRFS_TYPE_DIRECTORY ? TRUE: FALSE;
+            *dir = di->type == BTRFS_TYPE_DIRECTORY ? true: false;
             return STATUS_OBJECT_NAME_COLLISION;
         }
 
         di = (DIR_ITEM*)&di->name[di->m + di->n];
-        len -= (UINT16)offsetof(DIR_ITEM, name[0]) + di->m + di->n;
+        len -= (uint16_t)offsetof(DIR_ITEM, name[0]) + di->m + di->n;
     } while (len > 0);
 
     return STATUS_SUCCESS;
 }
 
-static NTSTATUS make_file_orphan(send_context* context, UINT64 inode, BOOL dir, UINT64 generation, ref* r) {
+static NTSTATUS make_file_orphan(send_context* context, uint64_t inode, bool dir, uint64_t generation, ref* r) {
     NTSTATUS Status;
     ULONG pos = context->datalen;
     send_dir* sd = NULL;
@@ -1213,30 +1214,30 @@ static NTSTATUS make_file_orphan(send_context* context, UINT64 inode, BOOL dir, 
 
     Status = get_orphan_name(context, inode, generation, name);
     if (!NT_SUCCESS(Status)) {
-        ERR("get_orphan_name returned %08x\n", Status);
+        ERR("get_orphan_name returned %08lx\n", Status);
         return Status;
     }
 
     if (dir) {
         Status = find_send_dir(context, inode, generation, &sd, NULL);
         if (!NT_SUCCESS(Status)) {
-            ERR("find_send_dir returned %08x\n", Status);
+            ERR("find_send_dir returned %08lx\n", Status);
             return Status;
         }
 
-        sd->dummy = TRUE;
+        sd->dummy = true;
 
         send_command(context, BTRFS_SEND_CMD_RENAME);
 
         send_add_tlv_path(context, BTRFS_SEND_TLV_PATH, r->sd, r->name, r->namelen);
-        send_add_tlv_path(context, BTRFS_SEND_TLV_PATH_TO, context->root_dir, name, (UINT16)strlen(name));
+        send_add_tlv_path(context, BTRFS_SEND_TLV_PATH_TO, context->root_dir, name, (uint16_t)strlen(name));
 
         send_command_finish(context, pos);
 
         if (sd->name)
             ExFreePool(sd->name);
 
-        sd->namelen = (UINT16)strlen(name);
+        sd->namelen = (uint16_t)strlen(name);
         sd->name = ExAllocatePoolWithTag(PagedPool, sd->namelen, ALLOC_TAG);
         if (!sd->name) {
             ERR("out of memory\n");
@@ -1250,7 +1251,7 @@ static NTSTATUS make_file_orphan(send_context* context, UINT64 inode, BOOL dir, 
 
         send_add_tlv_path(context, BTRFS_SEND_TLV_PATH, r->sd, r->name, r->namelen);
 
-        send_add_tlv_path(context, BTRFS_SEND_TLV_PATH_TO, context->root_dir, name, (UINT16)strlen(name));
+        send_add_tlv_path(context, BTRFS_SEND_TLV_PATH_TO, context->root_dir, name, (uint16_t)strlen(name));
 
         send_command_finish(context, pos);
     }
@@ -1262,7 +1263,7 @@ static NTSTATUS make_file_orphan(send_context* context, UINT64 inode, BOOL dir, 
     }
 
     o->inode = inode;
-    o->dir = TRUE;
+    o->dir = true;
     strcpy(o->tmpname, name);
     o->sd = sd;
     add_orphan(context, o);
@@ -1292,28 +1293,28 @@ static NTSTATUS flush_refs(send_context* context, traverse_ptr* tp1, traverse_pt
             context->lastinode.path[len] = 0;
 
             if (!context->lastinode.sd) {
-                Status = find_send_dir(context, context->lastinode.inode, context->lastinode.gen, &context->lastinode.sd, FALSE);
+                Status = find_send_dir(context, context->lastinode.inode, context->lastinode.gen, &context->lastinode.sd, false);
                 if (!NT_SUCCESS(Status)) {
-                    ERR("find_send_dir returned %08x\n", Status);
+                    ERR("find_send_dir returned %08lx\n", Status);
                     return Status;
                 }
             }
         }
 
         if (r && or) {
-            UINT64 inode;
-            BOOL dir;
+            uint64_t inode;
+            bool dir;
 
             Status = look_for_collision(context, r->sd, r->name, r->namelen, &inode, &dir);
             if (!NT_SUCCESS(Status) && Status != STATUS_OBJECT_NAME_COLLISION) {
-                ERR("look_for_collision returned %08x\n", Status);
+                ERR("look_for_collision returned %08lx\n", Status);
                 return Status;
             }
 
             if (Status == STATUS_OBJECT_NAME_COLLISION && inode > context->lastinode.inode) {
                 Status = make_file_orphan(context, inode, dir, context->parent->root_item.ctransid, r);
                 if (!NT_SUCCESS(Status)) {
-                    ERR("make_file_orphan returned %08x\n", Status);
+                    ERR("make_file_orphan returned %08lx\n", Status);
                     return Status;
                 }
             }
@@ -1321,7 +1322,7 @@ static NTSTATUS flush_refs(send_context* context, traverse_ptr* tp1, traverse_pt
             if (context->lastinode.o) {
                 Status = found_path(context, r->sd, r->name, r->namelen);
                 if (!NT_SUCCESS(Status)) {
-                    ERR("found_path returned %08x\n", Status);
+                    ERR("found_path returned %08lx\n", Status);
                     return Status;
                 }
 
@@ -1332,7 +1333,7 @@ static NTSTATUS flush_refs(send_context* context, traverse_ptr* tp1, traverse_pt
 
                 send_command(context, BTRFS_SEND_CMD_RENAME);
 
-                send_add_tlv(context, BTRFS_SEND_TLV_PATH, context->lastinode.path, (UINT16)strlen(context->lastinode.path));
+                send_add_tlv(context, BTRFS_SEND_TLV_PATH, context->lastinode.path, (uint16_t)strlen(context->lastinode.path));
 
                 send_add_tlv_path(context, BTRFS_SEND_TLV_PATH_TO, r->sd, r->name, r->namelen);
 
@@ -1369,23 +1370,23 @@ static NTSTATUS flush_refs(send_context* context, traverse_ptr* tp1, traverse_pt
         } else if (r && !or) { // new
             Status = found_path(context, r->sd, r->name, r->namelen);
             if (!NT_SUCCESS(Status)) {
-                ERR("found_path returned %08x\n", Status);
+                ERR("found_path returned %08lx\n", Status);
                 return Status;
             }
 
             if (!r->sd->dummy)
                 send_utimes_command_dir(context, r->sd, &r->sd->atime, &r->sd->mtime, &r->sd->ctime);
         } else { // deleted
-            UINT64 last_inode;
+            uint64_t last_inode;
 
             Status = get_dir_last_child(context, &last_inode);
             if (!NT_SUCCESS(Status)) {
-                ERR("get_dir_last_child returned %08x\n", Status);
+                ERR("get_dir_last_child returned %08lx\n", Status);
                 return Status;
             }
 
             if (last_inode <= context->lastinode.inode) {
-                send_rmdir_command(context, (UINT16)strlen(context->lastinode.path), context->lastinode.path);
+                send_rmdir_command(context, (uint16_t)strlen(context->lastinode.path), context->lastinode.path);
 
                 if (!or->sd->dummy)
                     send_utimes_command_dir(context, or->sd, &or->sd->atime, &or->sd->mtime, &or->sd->ctime);
@@ -1395,13 +1396,13 @@ static NTSTATUS flush_refs(send_context* context, traverse_ptr* tp1, traverse_pt
 
                 Status = get_orphan_name(context, context->lastinode.inode, context->lastinode.gen, name);
                 if (!NT_SUCCESS(Status)) {
-                    ERR("get_orphan_name returned %08x\n", Status);
+                    ERR("get_orphan_name returned %08lx\n", Status);
                     return Status;
                 }
 
                 send_command(context, BTRFS_SEND_CMD_RENAME);
-                send_add_tlv(context, BTRFS_SEND_TLV_PATH, context->lastinode.path, (UINT16)strlen(context->lastinode.path));
-                send_add_tlv(context, BTRFS_SEND_TLV_PATH_TO, name, (UINT16)strlen(name));
+                send_add_tlv(context, BTRFS_SEND_TLV_PATH, context->lastinode.path, (uint16_t)strlen(context->lastinode.path));
+                send_add_tlv(context, BTRFS_SEND_TLV_PATH_TO, name, (uint16_t)strlen(name));
                 send_command_finish(context, pos);
 
                 if (context->lastinode.sd->name)
@@ -1414,15 +1415,15 @@ static NTSTATUS flush_refs(send_context* context, traverse_ptr* tp1, traverse_pt
                 }
 
                 RtlCopyMemory(context->lastinode.sd->name, name, strlen(name));
-                context->lastinode.sd->namelen = (UINT16)strlen(name);
-                context->lastinode.sd->dummy = TRUE;
+                context->lastinode.sd->namelen = (uint16_t)strlen(name);
+                context->lastinode.sd->dummy = true;
                 context->lastinode.sd->parent = NULL;
 
                 send_utimes_command(context, NULL, &context->root_dir->atime, &context->root_dir->mtime, &context->root_dir->ctime);
 
                 Status = add_pending_rmdir(context, last_inode);
                 if (!NT_SUCCESS(Status)) {
-                    ERR("add_pending_rmdir returned %08x\n", Status);
+                    ERR("add_pending_rmdir returned %08lx\n", Status);
                     return Status;
                 }
             }
@@ -1460,7 +1461,7 @@ static NTSTATUS flush_refs(send_context* context, traverse_ptr* tp1, traverse_pt
         while (le != &context->lastinode.oldrefs) {
             ref* or = CONTAINING_RECORD(le, ref, list_entry);
             LIST_ENTRY* le2;
-            BOOL matched = FALSE;
+            bool matched = false;
 
             le2 = context->lastinode.refs.Flink;
             while (le2 != &context->lastinode.refs) {
@@ -1469,7 +1470,7 @@ static NTSTATUS flush_refs(send_context* context, traverse_ptr* tp1, traverse_pt
                 if (r->sd == or->sd && r->namelen == or->namelen && RtlCompareMemory(r->name, or->name, r->namelen) == r->namelen) {
                     RemoveEntryList(&r->list_entry);
                     ExFreePool(r);
-                    matched = TRUE;
+                    matched = true;
                     break;
                 }
 
@@ -1488,20 +1489,20 @@ static NTSTATUS flush_refs(send_context* context, traverse_ptr* tp1, traverse_pt
 
         while (!IsListEmpty(&context->lastinode.refs)) {
             ref* r = CONTAINING_RECORD(RemoveHeadList(&context->lastinode.refs), ref, list_entry);
-            UINT64 inode;
-            BOOL dir;
+            uint64_t inode;
+            bool dir;
 
             if (context->parent) {
                 Status = look_for_collision(context, r->sd, r->name, r->namelen, &inode, &dir);
                 if (!NT_SUCCESS(Status) && Status != STATUS_OBJECT_NAME_COLLISION) {
-                    ERR("look_for_collision returned %08x\n", Status);
+                    ERR("look_for_collision returned %08lx\n", Status);
                     return Status;
                 }
 
                 if (Status == STATUS_OBJECT_NAME_COLLISION && inode > context->lastinode.inode) {
                     Status = make_file_orphan(context, inode, dir, context->lastinode.gen, r);
                     if (!NT_SUCCESS(Status)) {
-                        ERR("make_file_orphan returned %08x\n", Status);
+                        ERR("make_file_orphan returned %08lx\n", Status);
                         return Status;
                     }
                 }
@@ -1510,7 +1511,7 @@ static NTSTATUS flush_refs(send_context* context, traverse_ptr* tp1, traverse_pt
             if (context->datalen > SEND_BUFFER_LENGTH) {
                 Status = wait_for_flush(context, tp1, tp2);
                 if (!NT_SUCCESS(Status)) {
-                    ERR("wait_for_flush returned %08x\n", Status);
+                    ERR("wait_for_flush returned %08lx\n", Status);
                     return Status;
                 }
 
@@ -1520,7 +1521,7 @@ static NTSTATUS flush_refs(send_context* context, traverse_ptr* tp1, traverse_pt
 
             Status = found_path(context, r->sd, r->name, r->namelen);
             if (!NT_SUCCESS(Status)) {
-                ERR("found_path returned %08x\n", Status);
+                ERR("found_path returned %08lx\n", Status);
                 return Status;
             }
 
@@ -1535,7 +1536,7 @@ static NTSTATUS flush_refs(send_context* context, traverse_ptr* tp1, traverse_pt
 
         while (!IsListEmpty(&context->lastinode.oldrefs)) {
             ref* or = CONTAINING_RECORD(RemoveHeadList(&context->lastinode.oldrefs), ref, list_entry);
-            BOOL deleted = FALSE;
+            bool deleted = false;
 
             le = or->sd->deleted_children.Flink;
             while (le != &or->sd->deleted_children) {
@@ -1544,7 +1545,7 @@ static NTSTATUS flush_refs(send_context* context, traverse_ptr* tp1, traverse_pt
                 if (dc->namelen == or->namelen && RtlCompareMemory(dc->name, or->name, or->namelen) == or->namelen) {
                     RemoveEntryList(&dc->list_entry);
                     ExFreePool(dc);
-                    deleted = TRUE;
+                    deleted = true;
                     break;
                 }
 
@@ -1555,7 +1556,7 @@ static NTSTATUS flush_refs(send_context* context, traverse_ptr* tp1, traverse_pt
                 if (context->datalen > SEND_BUFFER_LENGTH) {
                     Status = wait_for_flush(context, tp1, tp2);
                     if (!NT_SUCCESS(Status)) {
-                        ERR("wait_for_flush returned %08x\n", Status);
+                        ERR("wait_for_flush returned %08lx\n", Status);
                         return Status;
                     }
 
@@ -1565,7 +1566,7 @@ static NTSTATUS flush_refs(send_context* context, traverse_ptr* tp1, traverse_pt
 
                 Status = send_unlink_command(context, or->sd, or->namelen, or->name);
                 if (!NT_SUCCESS(Status)) {
-                    ERR("send_unlink_command returned %08x\n", Status);
+                    ERR("send_unlink_command returned %08lx\n", Status);
                     return Status;
                 }
 
@@ -1574,7 +1575,7 @@ static NTSTATUS flush_refs(send_context* context, traverse_ptr* tp1, traverse_pt
             }
 
             if (or == nameref && nameref2) {
-                UINT16 len = find_path_len(nameref2->sd, nameref2->namelen);
+                uint16_t len = find_path_len(nameref2->sd, nameref2->namelen);
 
                 if (context->lastinode.path)
                     ExFreePool(context->lastinode.path);
@@ -1611,18 +1612,18 @@ static NTSTATUS wait_for_flush(send_context* context, traverse_ptr* tp1, travers
     ExReleaseResourceLite(&context->Vcb->tree_lock);
 
     KeClearEvent(&context->send->cleared_event);
-    KeSetEvent(&context->buffer_event, 0, TRUE);
-    KeWaitForSingleObject(&context->send->cleared_event, Executive, KernelMode, FALSE, NULL);
+    KeSetEvent(&context->buffer_event, 0, true);
+    KeWaitForSingleObject(&context->send->cleared_event, Executive, KernelMode, false, NULL);
 
-    ExAcquireResourceSharedLite(&context->Vcb->tree_lock, TRUE);
+    ExAcquireResourceSharedLite(&context->Vcb->tree_lock, true);
 
     if (context->send->cancelling)
         return STATUS_SUCCESS;
 
     if (tp1) {
-        Status = find_item(context->Vcb, context->root, tp1, &key1, FALSE, NULL);
+        Status = find_item(context->Vcb, context->root, tp1, &key1, false, NULL);
         if (!NT_SUCCESS(Status)) {
-            ERR("find_item returned %08x\n", Status);
+            ERR("find_item returned %08lx\n", Status);
             return Status;
         }
 
@@ -1633,9 +1634,9 @@ static NTSTATUS wait_for_flush(send_context* context, traverse_ptr* tp1, travers
     }
 
     if (tp2) {
-        Status = find_item(context->Vcb, context->parent, tp2, &key2, FALSE, NULL);
+        Status = find_item(context->Vcb, context->parent, tp2, &key2, false, NULL);
         if (!NT_SUCCESS(Status)) {
-            ERR("find_item returned %08x\n", Status);
+            ERR("find_item returned %08lx\n", Status);
             return Status;
         }
 
@@ -1648,8 +1649,8 @@ static NTSTATUS wait_for_flush(send_context* context, traverse_ptr* tp1, travers
     return STATUS_SUCCESS;
 }
 
-static NTSTATUS add_ext_holes(device_extension* Vcb, LIST_ENTRY* exts, UINT64 size) {
-    UINT64 lastoff = 0;
+static NTSTATUS add_ext_holes(device_extension* Vcb, LIST_ENTRY* exts, uint64_t size) {
+    uint64_t lastoff = 0;
     LIST_ENTRY* le;
 
     le = exts->Flink;
@@ -1709,7 +1710,7 @@ static NTSTATUS add_ext_holes(device_extension* Vcb, LIST_ENTRY* exts, UINT64 si
     return STATUS_SUCCESS;
 }
 
-static NTSTATUS divide_ext(send_ext* ext, UINT64 len, BOOL trunc) {
+static NTSTATUS divide_ext(send_ext* ext, uint64_t len, bool trunc) {
     send_ext* ext2;
     EXTENT_DATA2 *ed2a, *ed2b;
 
@@ -1789,7 +1790,7 @@ static NTSTATUS sync_ext_cutoff_points(send_context* context) {
     ext2 = CONTAINING_RECORD(context->lastinode.oldexts.Flink, send_ext, list_entry);
 
     do {
-        UINT64 len1, len2;
+        uint64_t len1, len2;
         EXTENT_DATA2 *ed2a, *ed2b;
 
         ed2a = ext1->data.type == EXTENT_TYPE_INLINE ? NULL : (EXTENT_DATA2*)ext1->data.data;
@@ -1799,15 +1800,15 @@ static NTSTATUS sync_ext_cutoff_points(send_context* context) {
         len2 = ed2b ? ed2b->num_bytes : ext2->data.decoded_size;
 
         if (len1 < len2) {
-            Status = divide_ext(ext2, len1, FALSE);
+            Status = divide_ext(ext2, len1, false);
             if (!NT_SUCCESS(Status)) {
-                ERR("divide_ext returned %08x\n", Status);
+                ERR("divide_ext returned %08lx\n", Status);
                 return Status;
             }
         } else if (len2 < len1) {
-            Status = divide_ext(ext1, len2, FALSE);
+            Status = divide_ext(ext1, len2, false);
             if (!NT_SUCCESS(Status)) {
-                ERR("divide_ext returned %08x\n", Status);
+                ERR("divide_ext returned %08lx\n", Status);
                 return Status;
             }
         }
@@ -1817,33 +1818,33 @@ static NTSTATUS sync_ext_cutoff_points(send_context* context) {
 
         ext1 = CONTAINING_RECORD(ext1->list_entry.Flink, send_ext, list_entry);
         ext2 = CONTAINING_RECORD(ext2->list_entry.Flink, send_ext, list_entry);
-    } while (TRUE);
+    } while (true);
 
     ext1 = CONTAINING_RECORD(context->lastinode.exts.Blink, send_ext, list_entry);
     ext2 = CONTAINING_RECORD(context->lastinode.oldexts.Blink, send_ext, list_entry);
 
-    Status = divide_ext(ext1, context->lastinode.size - ext1->offset, TRUE);
+    Status = divide_ext(ext1, context->lastinode.size - ext1->offset, true);
     if (!NT_SUCCESS(Status)) {
-        ERR("divide_ext returned %08x\n", Status);
+        ERR("divide_ext returned %08lx\n", Status);
         return Status;
     }
 
-    Status = divide_ext(ext2, context->lastinode.size - ext2->offset, TRUE);
+    Status = divide_ext(ext2, context->lastinode.size - ext2->offset, true);
     if (!NT_SUCCESS(Status)) {
-        ERR("divide_ext returned %08x\n", Status);
+        ERR("divide_ext returned %08lx\n", Status);
         return Status;
     }
 
     return STATUS_SUCCESS;
 }
 
-static BOOL send_add_tlv_clone_path(send_context* context, root* r, UINT64 inode) {
+static bool send_add_tlv_clone_path(send_context* context, root* r, uint64_t inode) {
     NTSTATUS Status;
     KEY searchkey;
     traverse_ptr tp;
-    UINT16 len = 0;
-    UINT64 num;
-    UINT8* ptr;
+    uint16_t len = 0;
+    uint64_t num;
+    uint8_t* ptr;
 
     num = inode;
 
@@ -1852,15 +1853,15 @@ static BOOL send_add_tlv_clone_path(send_context* context, root* r, UINT64 inode
         searchkey.obj_type = TYPE_INODE_EXTREF;
         searchkey.offset = 0xffffffffffffffff;
 
-        Status = find_item(context->Vcb, r, &tp, &searchkey, FALSE, NULL);
+        Status = find_item(context->Vcb, r, &tp, &searchkey, false, NULL);
         if (!NT_SUCCESS(Status)) {
-            ERR("find_item returned %08x\n", Status);
-            return FALSE;
+            ERR("find_item returned %08lx\n", Status);
+            return false;
         }
 
         if (tp.item->key.obj_id != searchkey.obj_id || (tp.item->key.obj_type != TYPE_INODE_REF && tp.item->key.obj_type != TYPE_INODE_EXTREF)) {
-            ERR("could not find INODE_REF for inode %llx\n", searchkey.obj_id);
-            return FALSE;
+            ERR("could not find INODE_REF for inode %I64x\n", searchkey.obj_id);
+            return false;
         }
 
         if (len > 0)
@@ -1870,8 +1871,8 @@ static BOOL send_add_tlv_clone_path(send_context* context, root* r, UINT64 inode
             INODE_REF* ir = (INODE_REF*)tp.item->data;
 
             if (tp.item->size < sizeof(INODE_REF) || tp.item->size < offsetof(INODE_REF, name[0]) + ir->n) {
-                ERR("(%llx,%x,%llx) was truncated\n", tp.item->key.obj_id, tp.item->key.obj_type, tp.item->key.offset);
-                return FALSE;
+                ERR("(%I64x,%x,%I64x) was truncated\n", tp.item->key.obj_id, tp.item->key.obj_type, tp.item->key.offset);
+                return false;
             }
 
             len += ir->n;
@@ -1880,8 +1881,8 @@ static BOOL send_add_tlv_clone_path(send_context* context, root* r, UINT64 inode
             INODE_EXTREF* ier = (INODE_EXTREF*)tp.item->data;
 
             if (tp.item->size < sizeof(INODE_EXTREF) || tp.item->size < offsetof(INODE_EXTREF, name[0]) + ier->n) {
-                ERR("(%llx,%x,%llx) was truncated\n", tp.item->key.obj_id, tp.item->key.obj_type, tp.item->key.offset);
-                return FALSE;
+                ERR("(%I64x,%x,%I64x) was truncated\n", tp.item->key.obj_id, tp.item->key.obj_type, tp.item->key.offset);
+                return false;
             }
 
             len += ier->n;
@@ -1899,15 +1900,15 @@ static BOOL send_add_tlv_clone_path(send_context* context, root* r, UINT64 inode
         searchkey.obj_type = TYPE_INODE_EXTREF;
         searchkey.offset = 0xffffffffffffffff;
 
-        Status = find_item(context->Vcb, r, &tp, &searchkey, FALSE, NULL);
+        Status = find_item(context->Vcb, r, &tp, &searchkey, false, NULL);
         if (!NT_SUCCESS(Status)) {
-            ERR("find_item returned %08x\n", Status);
-            return FALSE;
+            ERR("find_item returned %08lx\n", Status);
+            return false;
         }
 
         if (tp.item->key.obj_id != searchkey.obj_id || (tp.item->key.obj_type != TYPE_INODE_REF && tp.item->key.obj_type != TYPE_INODE_EXTREF)) {
-            ERR("could not find INODE_REF for inode %llx\n", searchkey.obj_id);
-            return FALSE;
+            ERR("could not find INODE_REF for inode %I64x\n", searchkey.obj_id);
+            return false;
         }
 
         if (num != inode) {
@@ -1930,10 +1931,10 @@ static BOOL send_add_tlv_clone_path(send_context* context, root* r, UINT64 inode
         }
     }
 
-    return TRUE;
+    return true;
 }
 
-static BOOL try_clone_edr(send_context* context, send_ext* se, EXTENT_DATA_REF* edr) {
+static bool try_clone_edr(send_context* context, send_ext* se, EXTENT_DATA_REF* edr) {
     NTSTATUS Status;
     root* r = NULL;
     KEY searchkey;
@@ -1955,57 +1956,57 @@ static BOOL try_clone_edr(send_context* context, send_ext* se, EXTENT_DATA_REF* 
     }
 
     if (!r)
-        return FALSE;
+        return false;
 
     searchkey.obj_id = edr->objid;
     searchkey.obj_type = TYPE_EXTENT_DATA;
     searchkey.offset = 0;
 
-    Status = find_item(context->Vcb, r, &tp, &searchkey, FALSE, NULL);
+    Status = find_item(context->Vcb, r, &tp, &searchkey, false, NULL);
     if (!NT_SUCCESS(Status)) {
-        ERR("find_item returned %08x\n", Status);
-        return FALSE;
+        ERR("find_item returned %08lx\n", Status);
+        return false;
     }
 
-    while (TRUE) {
+    while (true) {
         traverse_ptr next_tp;
 
         if (tp.item->key.obj_id == searchkey.obj_id && tp.item->key.obj_type == searchkey.obj_type) {
             if (tp.item->size < sizeof(EXTENT_DATA))
-                ERR("(%llx,%x,%llx) has size %u, not at least %u as expected\n", tp.item->key.obj_id, tp.item->key.obj_type, tp.item->key.offset, tp.item->size, sizeof(EXTENT_DATA));
+                ERR("(%I64x,%x,%I64x) has size %u, not at least %Iu as expected\n", tp.item->key.obj_id, tp.item->key.obj_type, tp.item->key.offset, tp.item->size, sizeof(EXTENT_DATA));
             else {
                 EXTENT_DATA* ed = (EXTENT_DATA*)tp.item->data;
 
                 if (ed->type == EXTENT_TYPE_REGULAR) {
                     if (tp.item->size < offsetof(EXTENT_DATA, data[0]) + sizeof(EXTENT_DATA2))
-                        ERR("(%llx,%x,%llx) has size %u, not %u as expected\n", tp.item->key.obj_id, tp.item->key.obj_type, tp.item->key.offset,
+                        ERR("(%I64x,%x,%I64x) has size %u, not %Iu as expected\n", tp.item->key.obj_id, tp.item->key.obj_type, tp.item->key.offset,
                             tp.item->size, offsetof(EXTENT_DATA, data[0]) + sizeof(EXTENT_DATA2));
                     else {
                         EXTENT_DATA2* ed2 = (EXTENT_DATA2*)ed->data;
 
                         if (ed2->address == seed2->address && ed2->size == seed2->size && seed2->offset <= ed2->offset && seed2->offset + seed2->num_bytes >= ed2->offset + ed2->num_bytes) {
-                            UINT64 clone_offset = tp.item->key.offset + ed2->offset - seed2->offset;
-                            UINT64 clone_len = min(context->lastinode.size - se->offset, ed2->num_bytes);
+                            uint64_t clone_offset = tp.item->key.offset + ed2->offset - seed2->offset;
+                            uint64_t clone_len = min(context->lastinode.size - se->offset, ed2->num_bytes);
 
                             if (clone_offset % context->Vcb->superblock.sector_size == 0 && clone_len % context->Vcb->superblock.sector_size == 0) {
                                 ULONG pos = context->datalen;
 
                                 send_command(context, BTRFS_SEND_CMD_CLONE);
 
-                                send_add_tlv(context, BTRFS_SEND_TLV_OFFSET, &se->offset, sizeof(UINT64));
-                                send_add_tlv(context, BTRFS_SEND_TLV_CLONE_LENGTH, &clone_len, sizeof(UINT64));
-                                send_add_tlv(context, BTRFS_SEND_TLV_PATH, context->lastinode.path, context->lastinode.path ? (UINT16)strlen(context->lastinode.path) : 0);
+                                send_add_tlv(context, BTRFS_SEND_TLV_OFFSET, &se->offset, sizeof(uint64_t));
+                                send_add_tlv(context, BTRFS_SEND_TLV_CLONE_LENGTH, &clone_len, sizeof(uint64_t));
+                                send_add_tlv(context, BTRFS_SEND_TLV_PATH, context->lastinode.path, context->lastinode.path ? (uint16_t)strlen(context->lastinode.path) : 0);
                                 send_add_tlv(context, BTRFS_SEND_TLV_CLONE_UUID, r->root_item.rtransid == 0 ? &r->root_item.uuid : &r->root_item.received_uuid, sizeof(BTRFS_UUID));
-                                send_add_tlv(context, BTRFS_SEND_TLV_CLONE_CTRANSID, &r->root_item.ctransid, sizeof(UINT64));
+                                send_add_tlv(context, BTRFS_SEND_TLV_CLONE_CTRANSID, &r->root_item.ctransid, sizeof(uint64_t));
 
                                 if (!send_add_tlv_clone_path(context, r, tp.item->key.obj_id))
                                     context->datalen = pos;
                                 else {
-                                    send_add_tlv(context, BTRFS_SEND_TLV_CLONE_OFFSET, &clone_offset, sizeof(UINT64));
+                                    send_add_tlv(context, BTRFS_SEND_TLV_CLONE_OFFSET, &clone_offset, sizeof(uint64_t));
 
                                     send_command_finish(context, pos);
 
-                                    return TRUE;
+                                    return true;
                                 }
                             }
                         }
@@ -2015,112 +2016,112 @@ static BOOL try_clone_edr(send_context* context, send_ext* se, EXTENT_DATA_REF* 
         } else if (tp.item->key.obj_id > searchkey.obj_id || (tp.item->key.obj_id == searchkey.obj_id && tp.item->key.obj_type > searchkey.obj_type))
             break;
 
-        if (find_next_item(context->Vcb, &tp, &next_tp, FALSE, NULL))
+        if (find_next_item(context->Vcb, &tp, &next_tp, false, NULL))
             tp = next_tp;
         else
             break;
     }
 
-    return FALSE;
+    return false;
 }
 
-static BOOL try_clone(send_context* context, send_ext* se) {
+static bool try_clone(send_context* context, send_ext* se) {
     NTSTATUS Status;
     KEY searchkey;
     traverse_ptr tp;
     EXTENT_DATA2* ed2 = (EXTENT_DATA2*)se->data.data;
     EXTENT_ITEM* ei;
-    UINT64 rc = 0;
+    uint64_t rc = 0;
 
     searchkey.obj_id = ed2->address;
     searchkey.obj_type = TYPE_EXTENT_ITEM;
     searchkey.offset = ed2->size;
 
-    Status = find_item(context->Vcb, context->Vcb->extent_root, &tp, &searchkey, FALSE, NULL);
+    Status = find_item(context->Vcb, context->Vcb->extent_root, &tp, &searchkey, false, NULL);
     if (!NT_SUCCESS(Status)) {
-        ERR("find_item returned %08x\n", Status);
-        return FALSE;
+        ERR("find_item returned %08lx\n", Status);
+        return false;
     }
 
     if (keycmp(tp.item->key, searchkey)) {
-        ERR("(%llx,%x,%llx) not found\n", searchkey.obj_id, searchkey.obj_type, searchkey.offset);
-        return FALSE;
+        ERR("(%I64x,%x,%I64x) not found\n", searchkey.obj_id, searchkey.obj_type, searchkey.offset);
+        return false;
     }
 
     if (tp.item->size < sizeof(EXTENT_ITEM)) {
-        ERR("(%llx,%x,%llx) was %u bytes, expected at least %u\n", tp.item->key.obj_id, tp.item->key.obj_type, tp.item->key.offset, tp.item->size, sizeof(EXTENT_ITEM));
-        return FALSE;
+        ERR("(%I64x,%x,%I64x) was %u bytes, expected at least %Iu\n", tp.item->key.obj_id, tp.item->key.obj_type, tp.item->key.offset, tp.item->size, sizeof(EXTENT_ITEM));
+        return false;
     }
 
     ei = (EXTENT_ITEM*)tp.item->data;
 
     if (tp.item->size > sizeof(EXTENT_ITEM)) {
-        UINT32 len = tp.item->size - sizeof(EXTENT_ITEM);
-        UINT8* ptr = (UINT8*)&ei[1];
+        uint32_t len = tp.item->size - sizeof(EXTENT_ITEM);
+        uint8_t* ptr = (uint8_t*)&ei[1];
 
         while (len > 0) {
-            UINT8 secttype = *ptr;
+            uint8_t secttype = *ptr;
             ULONG sectlen = get_extent_data_len(secttype);
-            UINT64 sectcount = get_extent_data_refcount(secttype, ptr + sizeof(UINT8));
+            uint64_t sectcount = get_extent_data_refcount(secttype, ptr + sizeof(uint8_t));
 
             len--;
 
             if (sectlen > len) {
-                ERR("(%llx,%x,%llx): %x bytes left, expecting at least %x\n", tp.item->key.obj_id, tp.item->key.obj_type, tp.item->key.offset, len, sectlen);
-                return FALSE;
+                ERR("(%I64x,%x,%I64x): %x bytes left, expecting at least %lx\n", tp.item->key.obj_id, tp.item->key.obj_type, tp.item->key.offset, len, sectlen);
+                return false;
             }
 
             if (sectlen == 0) {
-                ERR("(%llx,%x,%llx): unrecognized extent type %x\n", tp.item->key.obj_id, tp.item->key.obj_type, tp.item->key.offset, secttype);
-                return FALSE;
+                ERR("(%I64x,%x,%I64x): unrecognized extent type %x\n", tp.item->key.obj_id, tp.item->key.obj_type, tp.item->key.offset, secttype);
+                return false;
             }
 
             rc += sectcount;
 
             if (secttype == TYPE_EXTENT_DATA_REF) {
-                EXTENT_DATA_REF* sectedr = (EXTENT_DATA_REF*)(ptr + sizeof(UINT8));
+                EXTENT_DATA_REF* sectedr = (EXTENT_DATA_REF*)(ptr + sizeof(uint8_t));
 
                 if (try_clone_edr(context, se, sectedr))
-                    return TRUE;
+                    return true;
             }
 
             len -= sectlen;
-            ptr += sizeof(UINT8) + sectlen;
+            ptr += sizeof(uint8_t) + sectlen;
         }
     }
 
     if (rc >= ei->refcount)
-        return FALSE;
+        return false;
 
     searchkey.obj_type = TYPE_EXTENT_DATA_REF;
     searchkey.offset = 0;
 
-    Status = find_item(context->Vcb, context->Vcb->extent_root, &tp, &searchkey, FALSE, NULL);
+    Status = find_item(context->Vcb, context->Vcb->extent_root, &tp, &searchkey, false, NULL);
     if (!NT_SUCCESS(Status)) {
-        ERR("find_item returned %08x\n", Status);
-        return FALSE;
+        ERR("find_item returned %08lx\n", Status);
+        return false;
     }
 
-    while (TRUE) {
+    while (true) {
         traverse_ptr next_tp;
 
         if (tp.item->key.obj_id == searchkey.obj_id && tp.item->key.obj_type == searchkey.obj_type) {
             if (tp.item->size < sizeof(EXTENT_DATA_REF))
-                ERR("(%llx,%x,%llx) has size %u, not %u as expected\n", tp.item->key.obj_id, tp.item->key.obj_type, tp.item->key.offset, tp.item->size, sizeof(EXTENT_DATA_REF));
+                ERR("(%I64x,%x,%I64x) has size %u, not %Iu as expected\n", tp.item->key.obj_id, tp.item->key.obj_type, tp.item->key.offset, tp.item->size, sizeof(EXTENT_DATA_REF));
             else {
                 if (try_clone_edr(context, se, (EXTENT_DATA_REF*)tp.item->data))
-                    return TRUE;
+                    return true;
             }
         } else if (tp.item->key.obj_id > searchkey.obj_id || (tp.item->key.obj_id == searchkey.obj_id && tp.item->key.obj_type > searchkey.obj_type))
             break;
 
-        if (find_next_item(context->Vcb, &tp, &next_tp, FALSE, NULL))
+        if (find_next_item(context->Vcb, &tp, &next_tp, false, NULL))
             tp = next_tp;
         else
             break;
     }
 
-    return FALSE;
+    return false;
 }
 
 static NTSTATUS flush_extents(send_context* context, traverse_ptr* tp1, traverse_ptr* tp2) {
@@ -2132,19 +2133,19 @@ static NTSTATUS flush_extents(send_context* context, traverse_ptr* tp1, traverse
     if (context->parent) {
         Status = add_ext_holes(context->Vcb, &context->lastinode.exts, context->lastinode.size);
         if (!NT_SUCCESS(Status)) {
-            ERR("add_ext_holes returned %08x\n", Status);
+            ERR("add_ext_holes returned %08lx\n", Status);
             return Status;
         }
 
         Status = add_ext_holes(context->Vcb, &context->lastinode.oldexts, context->lastinode.size);
         if (!NT_SUCCESS(Status)) {
-            ERR("add_ext_holes returned %08x\n", Status);
+            ERR("add_ext_holes returned %08lx\n", Status);
             return Status;
         }
 
         Status = sync_ext_cutoff_points(context);
         if (!NT_SUCCESS(Status)) {
-            ERR("sync_ext_cutoff_points returned %08x\n", Status);
+            ERR("sync_ext_cutoff_points returned %08lx\n", Status);
             return Status;
         }
     }
@@ -2182,45 +2183,45 @@ static NTSTATUS flush_extents(send_context* context, traverse_ptr* tp1, traverse
 
             send_command(context, BTRFS_SEND_CMD_WRITE);
 
-            send_add_tlv(context, BTRFS_SEND_TLV_PATH, context->lastinode.path, context->lastinode.path ? (UINT16)strlen(context->lastinode.path) : 0);
-            send_add_tlv(context, BTRFS_SEND_TLV_OFFSET, &se->offset, sizeof(UINT64));
+            send_add_tlv(context, BTRFS_SEND_TLV_PATH, context->lastinode.path, context->lastinode.path ? (uint16_t)strlen(context->lastinode.path) : 0);
+            send_add_tlv(context, BTRFS_SEND_TLV_OFFSET, &se->offset, sizeof(uint64_t));
 
             if (se->data.compression == BTRFS_COMPRESSION_NONE)
-                send_add_tlv(context, BTRFS_SEND_TLV_DATA, se->data.data, (UINT16)se->data.decoded_size);
+                send_add_tlv(context, BTRFS_SEND_TLV_DATA, se->data.data, (uint16_t)se->data.decoded_size);
             else if (se->data.compression == BTRFS_COMPRESSION_ZLIB || se->data.compression == BTRFS_COMPRESSION_LZO || se->data.compression == BTRFS_COMPRESSION_ZSTD) {
                 ULONG inlen = se->datalen - (ULONG)offsetof(EXTENT_DATA, data[0]);
 
-                send_add_tlv(context, BTRFS_SEND_TLV_DATA, NULL, (UINT16)se->data.decoded_size);
+                send_add_tlv(context, BTRFS_SEND_TLV_DATA, NULL, (uint16_t)se->data.decoded_size);
                 RtlZeroMemory(&context->data[context->datalen - se->data.decoded_size], (ULONG)se->data.decoded_size);
 
                 if (se->data.compression == BTRFS_COMPRESSION_ZLIB) {
-                    Status = zlib_decompress(se->data.data, inlen, &context->data[context->datalen - se->data.decoded_size], (UINT32)se->data.decoded_size);
+                    Status = zlib_decompress(se->data.data, inlen, &context->data[context->datalen - se->data.decoded_size], (uint32_t)se->data.decoded_size);
                     if (!NT_SUCCESS(Status)) {
-                        ERR("zlib_decompress returned %08x\n", Status);
+                        ERR("zlib_decompress returned %08lx\n", Status);
                         ExFreePool(se);
                         if (se2) ExFreePool(se2);
                         return Status;
                     }
                 } else if (se->data.compression == BTRFS_COMPRESSION_LZO) {
-                    if (inlen < sizeof(UINT32)) {
+                    if (inlen < sizeof(uint32_t)) {
                         ERR("extent data was truncated\n");
                         ExFreePool(se);
                         if (se2) ExFreePool(se2);
                         return STATUS_INTERNAL_ERROR;
                     } else
-                        inlen -= sizeof(UINT32);
+                        inlen -= sizeof(uint32_t);
 
-                    Status = lzo_decompress(se->data.data + sizeof(UINT32), inlen, &context->data[context->datalen - se->data.decoded_size], (UINT32)se->data.decoded_size, sizeof(UINT32));
+                    Status = lzo_decompress(se->data.data + sizeof(uint32_t), inlen, &context->data[context->datalen - se->data.decoded_size], (uint32_t)se->data.decoded_size, sizeof(uint32_t));
                     if (!NT_SUCCESS(Status)) {
-                        ERR("lzo_decompress returned %08x\n", Status);
+                        ERR("lzo_decompress returned %08lx\n", Status);
                         ExFreePool(se);
                         if (se2) ExFreePool(se2);
                         return Status;
                     }
                 } else if (se->data.compression == BTRFS_COMPRESSION_ZSTD) {
-                    Status = zstd_decompress(se->data.data, inlen, &context->data[context->datalen - se->data.decoded_size], (UINT32)se->data.decoded_size);
+                    Status = zstd_decompress(se->data.data, inlen, &context->data[context->datalen - se->data.decoded_size], (uint32_t)se->data.decoded_size);
                     if (!NT_SUCCESS(Status)) {
-                        ERR("zlib_decompress returned %08x\n", Status);
+                        ERR("zlib_decompress returned %08lx\n", Status);
                         ExFreePool(se);
                         if (se2) ExFreePool(se2);
                         return Status;
@@ -2251,15 +2252,15 @@ static NTSTATUS flush_extents(send_context* context, traverse_ptr* tp1, traverse
         }
 
         if (ed2->size == 0) { // write sparse
-            UINT64 off, offset;
+            uint64_t off, offset;
 
             for (off = ed2->offset; off < ed2->offset + ed2->num_bytes; off += MAX_SEND_WRITE) {
-                UINT16 length = (UINT16)min(min(ed2->offset + ed2->num_bytes - off, MAX_SEND_WRITE), context->lastinode.size - se->offset - off);
+                uint16_t length = (uint16_t)min(min(ed2->offset + ed2->num_bytes - off, MAX_SEND_WRITE), context->lastinode.size - se->offset - off);
 
                 if (context->datalen > SEND_BUFFER_LENGTH) {
                     Status = wait_for_flush(context, tp1, tp2);
                     if (!NT_SUCCESS(Status)) {
-                        ERR("wait_for_flush returned %08x\n", Status);
+                        ERR("wait_for_flush returned %08lx\n", Status);
                         ExFreePool(se);
                         if (se2) ExFreePool(se2);
                         return Status;
@@ -2276,10 +2277,10 @@ static NTSTATUS flush_extents(send_context* context, traverse_ptr* tp1, traverse
 
                 send_command(context, BTRFS_SEND_CMD_WRITE);
 
-                send_add_tlv(context, BTRFS_SEND_TLV_PATH, context->lastinode.path, context->lastinode.path ? (UINT16)strlen(context->lastinode.path) : 0);
+                send_add_tlv(context, BTRFS_SEND_TLV_PATH, context->lastinode.path, context->lastinode.path ? (uint16_t)strlen(context->lastinode.path) : 0);
 
                 offset = se->offset + off;
-                send_add_tlv(context, BTRFS_SEND_TLV_OFFSET, &offset, sizeof(UINT64));
+                send_add_tlv(context, BTRFS_SEND_TLV_OFFSET, &offset, sizeof(uint64_t));
 
                 send_add_tlv(context, BTRFS_SEND_TLV_DATA, NULL, length);
                 RtlZeroMemory(&context->data[context->datalen - length], length);
@@ -2287,8 +2288,8 @@ static NTSTATUS flush_extents(send_context* context, traverse_ptr* tp1, traverse
                 send_command_finish(context, pos);
             }
         } else if (se->data.compression == BTRFS_COMPRESSION_NONE) {
-            UINT64 off, offset;
-            UINT8* buf;
+            uint64_t off, offset;
+            uint8_t* buf;
 
             buf = ExAllocatePoolWithTag(NonPagedPool, MAX_SEND_WRITE + (2 * context->Vcb->superblock.sector_size), ALLOC_TAG);
             if (!buf) {
@@ -2299,15 +2300,15 @@ static NTSTATUS flush_extents(send_context* context, traverse_ptr* tp1, traverse
             }
 
             for (off = ed2->offset; off < ed2->offset + ed2->num_bytes; off += MAX_SEND_WRITE) {
-                UINT16 length = (UINT16)min(ed2->offset + ed2->num_bytes - off, MAX_SEND_WRITE);
+                uint16_t length = (uint16_t)min(ed2->offset + ed2->num_bytes - off, MAX_SEND_WRITE);
                 ULONG skip_start;
-                UINT64 addr = ed2->address + off;
-                UINT32* csum;
+                uint64_t addr = ed2->address + off;
+                void* csum;
 
                 if (context->datalen > SEND_BUFFER_LENGTH) {
                     Status = wait_for_flush(context, tp1, tp2);
                     if (!NT_SUCCESS(Status)) {
-                        ERR("wait_for_flush returned %08x\n", Status);
+                        ERR("wait_for_flush returned %08lx\n", Status);
                         ExFreePool(buf);
                         ExFreePool(se);
                         if (se2) ExFreePool(se2);
@@ -2328,11 +2329,11 @@ static NTSTATUS flush_extents(send_context* context, traverse_ptr* tp1, traverse
                 if (context->lastinode.flags & BTRFS_INODE_NODATASUM)
                     csum = NULL;
                 else {
-                    UINT32 len;
+                    uint32_t len;
 
-                    len = (UINT32)sector_align(length + skip_start, context->Vcb->superblock.sector_size) / context->Vcb->superblock.sector_size;
+                    len = (uint32_t)sector_align(length + skip_start, context->Vcb->superblock.sector_size) / context->Vcb->superblock.sector_size;
 
-                    csum = ExAllocatePoolWithTag(PagedPool, len * sizeof(UINT32), ALLOC_TAG);
+                    csum = ExAllocatePoolWithTag(PagedPool, len * context->Vcb->csum_size, ALLOC_TAG);
                     if (!csum) {
                         ERR("out of memory\n");
                         ExFreePool(buf);
@@ -2343,7 +2344,7 @@ static NTSTATUS flush_extents(send_context* context, traverse_ptr* tp1, traverse
 
                     Status = load_csum(context->Vcb, csum, addr, len, NULL);
                     if (!NT_SUCCESS(Status)) {
-                        ERR("load_csum returned %08x\n", Status);
+                        ERR("load_csum returned %08lx\n", Status);
                         ExFreePool(csum);
                         ExFreePool(buf);
                         ExFreePool(se);
@@ -2352,10 +2353,10 @@ static NTSTATUS flush_extents(send_context* context, traverse_ptr* tp1, traverse
                     }
                 }
 
-                Status = read_data(context->Vcb, addr, (UINT32)sector_align(length + skip_start, context->Vcb->superblock.sector_size),
-                                   csum, FALSE, buf, NULL, NULL, NULL, 0, FALSE, NormalPagePriority);
+                Status = read_data(context->Vcb, addr, (uint32_t)sector_align(length + skip_start, context->Vcb->superblock.sector_size),
+                                   csum, false, buf, NULL, NULL, NULL, 0, false, NormalPagePriority);
                 if (!NT_SUCCESS(Status)) {
-                    ERR("read_data returned %08x\n", Status);
+                    ERR("read_data returned %08lx\n", Status);
                     ExFreePool(buf);
                     ExFreePool(se);
                     if (se2) ExFreePool(se2);
@@ -2370,12 +2371,12 @@ static NTSTATUS flush_extents(send_context* context, traverse_ptr* tp1, traverse
 
                 send_command(context, BTRFS_SEND_CMD_WRITE);
 
-                send_add_tlv(context, BTRFS_SEND_TLV_PATH, context->lastinode.path, context->lastinode.path ? (UINT16)strlen(context->lastinode.path) : 0);
+                send_add_tlv(context, BTRFS_SEND_TLV_PATH, context->lastinode.path, context->lastinode.path ? (uint16_t)strlen(context->lastinode.path) : 0);
 
                 offset = se->offset + off;
-                send_add_tlv(context, BTRFS_SEND_TLV_OFFSET, &offset, sizeof(UINT64));
+                send_add_tlv(context, BTRFS_SEND_TLV_OFFSET, &offset, sizeof(uint64_t));
 
-                length = (UINT16)min(context->lastinode.size - se->offset - off, length);
+                length = (uint16_t)min(context->lastinode.size - se->offset - off, length);
                 send_add_tlv(context, BTRFS_SEND_TLV_DATA, buf + skip_start, length);
 
                 send_command_finish(context, pos);
@@ -2383,9 +2384,9 @@ static NTSTATUS flush_extents(send_context* context, traverse_ptr* tp1, traverse
 
             ExFreePool(buf);
         } else {
-            UINT8 *buf, *compbuf;
-            UINT64 off;
-            UINT32* csum;
+            uint8_t *buf, *compbuf;
+            uint64_t off;
+            void* csum;
 
             buf = ExAllocatePoolWithTag(PagedPool, (ULONG)se->data.decoded_size, ALLOC_TAG);
             if (!buf) {
@@ -2407,11 +2408,11 @@ static NTSTATUS flush_extents(send_context* context, traverse_ptr* tp1, traverse
             if (context->lastinode.flags & BTRFS_INODE_NODATASUM)
                 csum = NULL;
             else {
-                UINT32 len;
+                uint32_t len;
 
-                len = (UINT32)(ed2->size / context->Vcb->superblock.sector_size);
+                len = (uint32_t)(ed2->size / context->Vcb->superblock.sector_size);
 
-                csum = ExAllocatePoolWithTag(PagedPool, len * sizeof(UINT32), ALLOC_TAG);
+                csum = ExAllocatePoolWithTag(PagedPool, len * context->Vcb->csum_size, ALLOC_TAG);
                 if (!csum) {
                     ERR("out of memory\n");
                     ExFreePool(compbuf);
@@ -2423,7 +2424,7 @@ static NTSTATUS flush_extents(send_context* context, traverse_ptr* tp1, traverse
 
                 Status = load_csum(context->Vcb, csum, ed2->address, len, NULL);
                 if (!NT_SUCCESS(Status)) {
-                    ERR("load_csum returned %08x\n", Status);
+                    ERR("load_csum returned %08lx\n", Status);
                     ExFreePool(csum);
                     ExFreePool(compbuf);
                     ExFreePool(buf);
@@ -2433,9 +2434,9 @@ static NTSTATUS flush_extents(send_context* context, traverse_ptr* tp1, traverse
                 }
             }
 
-            Status = read_data(context->Vcb, ed2->address, (UINT32)ed2->size, csum, FALSE, compbuf, NULL, NULL, NULL, 0, FALSE, NormalPagePriority);
+            Status = read_data(context->Vcb, ed2->address, (uint32_t)ed2->size, csum, false, compbuf, NULL, NULL, NULL, 0, false, NormalPagePriority);
             if (!NT_SUCCESS(Status)) {
-                ERR("read_data returned %08x\n", Status);
+                ERR("read_data returned %08lx\n", Status);
                 ExFreePool(compbuf);
                 ExFreePool(buf);
                 ExFreePool(se);
@@ -2448,9 +2449,9 @@ static NTSTATUS flush_extents(send_context* context, traverse_ptr* tp1, traverse
                 ExFreePool(csum);
 
             if (se->data.compression == BTRFS_COMPRESSION_ZLIB) {
-                Status = zlib_decompress(compbuf, (UINT32)ed2->size, buf, (UINT32)se->data.decoded_size);
+                Status = zlib_decompress(compbuf, (uint32_t)ed2->size, buf, (uint32_t)se->data.decoded_size);
                 if (!NT_SUCCESS(Status)) {
-                    ERR("zlib_decompress returned %08x\n", Status);
+                    ERR("zlib_decompress returned %08lx\n", Status);
                     ExFreePool(compbuf);
                     ExFreePool(buf);
                     ExFreePool(se);
@@ -2458,9 +2459,9 @@ static NTSTATUS flush_extents(send_context* context, traverse_ptr* tp1, traverse
                     return Status;
                 }
             } else if (se->data.compression == BTRFS_COMPRESSION_LZO) {
-                Status = lzo_decompress(&compbuf[sizeof(UINT32)], (UINT32)ed2->size, buf, (UINT32)se->data.decoded_size, sizeof(UINT32));
+                Status = lzo_decompress(&compbuf[sizeof(uint32_t)], (uint32_t)ed2->size, buf, (uint32_t)se->data.decoded_size, sizeof(uint32_t));
                 if (!NT_SUCCESS(Status)) {
-                    ERR("lzo_decompress returned %08x\n", Status);
+                    ERR("lzo_decompress returned %08lx\n", Status);
                     ExFreePool(compbuf);
                     ExFreePool(buf);
                     ExFreePool(se);
@@ -2468,9 +2469,9 @@ static NTSTATUS flush_extents(send_context* context, traverse_ptr* tp1, traverse
                     return Status;
                 }
             } else if (se->data.compression == BTRFS_COMPRESSION_ZSTD) {
-                Status = zstd_decompress(compbuf, (UINT32)ed2->size, buf, (UINT32)se->data.decoded_size);
+                Status = zstd_decompress(compbuf, (uint32_t)ed2->size, buf, (uint32_t)se->data.decoded_size);
                 if (!NT_SUCCESS(Status)) {
-                    ERR("zstd_decompress returned %08x\n", Status);
+                    ERR("zstd_decompress returned %08lx\n", Status);
                     ExFreePool(compbuf);
                     ExFreePool(buf);
                     ExFreePool(se);
@@ -2482,13 +2483,13 @@ static NTSTATUS flush_extents(send_context* context, traverse_ptr* tp1, traverse
             ExFreePool(compbuf);
 
             for (off = ed2->offset; off < ed2->offset + ed2->num_bytes; off += MAX_SEND_WRITE) {
-                UINT16 length = (UINT16)min(ed2->offset + ed2->num_bytes - off, MAX_SEND_WRITE);
-                UINT64 offset;
+                uint16_t length = (uint16_t)min(ed2->offset + ed2->num_bytes - off, MAX_SEND_WRITE);
+                uint64_t offset;
 
                 if (context->datalen > SEND_BUFFER_LENGTH) {
                     Status = wait_for_flush(context, tp1, tp2);
                     if (!NT_SUCCESS(Status)) {
-                        ERR("wait_for_flush returned %08x\n", Status);
+                        ERR("wait_for_flush returned %08lx\n", Status);
                         ExFreePool(buf);
                         ExFreePool(se);
                         if (se2) ExFreePool(se2);
@@ -2507,12 +2508,12 @@ static NTSTATUS flush_extents(send_context* context, traverse_ptr* tp1, traverse
 
                 send_command(context, BTRFS_SEND_CMD_WRITE);
 
-                send_add_tlv(context, BTRFS_SEND_TLV_PATH, context->lastinode.path, context->lastinode.path ? (UINT16)strlen(context->lastinode.path) : 0);
+                send_add_tlv(context, BTRFS_SEND_TLV_PATH, context->lastinode.path, context->lastinode.path ? (uint16_t)strlen(context->lastinode.path) : 0);
 
                 offset = se->offset + off;
-                send_add_tlv(context, BTRFS_SEND_TLV_OFFSET, &offset, sizeof(UINT64));
+                send_add_tlv(context, BTRFS_SEND_TLV_OFFSET, &offset, sizeof(uint64_t));
 
-                length = (UINT16)min(context->lastinode.size - se->offset - off, length);
+                length = (uint16_t)min(context->lastinode.size - se->offset - off, length);
                 send_add_tlv(context, BTRFS_SEND_TLV_DATA, &buf[off], length);
 
                 send_command_finish(context, pos);
@@ -2534,7 +2535,7 @@ static NTSTATUS finish_inode(send_context* context, traverse_ptr* tp1, traverse_
     if (!IsListEmpty(&context->lastinode.refs) || !IsListEmpty(&context->lastinode.oldrefs)) {
         NTSTATUS Status = flush_refs(context, tp1, tp2);
         if (!NT_SUCCESS(Status)) {
-            ERR("flush_refs returned %08x\n", Status);
+            ERR("flush_refs returned %08lx\n", Status);
             return Status;
         }
 
@@ -2546,7 +2547,7 @@ static NTSTATUS finish_inode(send_context* context, traverse_ptr* tp1, traverse_
         if (context->lastinode.file) {
             NTSTATUS Status = flush_extents(context, tp1, tp2);
             if (!NT_SUCCESS(Status)) {
-                ERR("flush_extents returned %08x\n", Status);
+                ERR("flush_extents returned %08lx\n", Status);
                 return Status;
             }
 
@@ -2624,7 +2625,7 @@ static NTSTATUS send_extent_data(send_context* context, traverse_ptr* tp, traver
     if (!IsListEmpty(&context->lastinode.refs) || !IsListEmpty(&context->lastinode.oldrefs)) {
         Status = flush_refs(context, tp, tp2);
         if (!NT_SUCCESS(Status)) {
-            ERR("flush_refs returned %08x\n", Status);
+            ERR("flush_refs returned %08lx\n", Status);
             return Status;
         }
 
@@ -2640,7 +2641,7 @@ static NTSTATUS send_extent_data(send_context* context, traverse_ptr* tp, traver
         EXTENT_DATA2* ed2 = NULL;
 
         if (tp->item->size < sizeof(EXTENT_DATA)) {
-            ERR("(%llx,%x,%llx) was %u bytes, expected at least %u\n", tp->item->key.obj_id, tp->item->key.obj_type, tp->item->key.offset,
+            ERR("(%I64x,%x,%I64x) was %u bytes, expected at least %Iu\n", tp->item->key.obj_id, tp->item->key.obj_type, tp->item->key.offset,
                 tp->item->size, sizeof(EXTENT_DATA));
             return STATUS_INTERNAL_ERROR;
         }
@@ -2665,7 +2666,7 @@ static NTSTATUS send_extent_data(send_context* context, traverse_ptr* tp, traver
 
         if (ed->type == EXTENT_TYPE_REGULAR) {
             if (tp->item->size < offsetof(EXTENT_DATA, data[0]) + sizeof(EXTENT_DATA2)) {
-                ERR("(%llx,%x,%llx) was %u bytes, expected %u\n", tp->item->key.obj_id, tp->item->key.obj_type, tp->item->key.offset,
+                ERR("(%I64x,%x,%I64x) was %u bytes, expected %Iu\n", tp->item->key.obj_id, tp->item->key.obj_type, tp->item->key.offset,
                     tp->item->size, offsetof(EXTENT_DATA, data[0]) + sizeof(EXTENT_DATA2));
                 return STATUS_INTERNAL_ERROR;
             }
@@ -2673,7 +2674,7 @@ static NTSTATUS send_extent_data(send_context* context, traverse_ptr* tp, traver
             ed2 = (EXTENT_DATA2*)ed->data;
         } else if (ed->type == EXTENT_TYPE_INLINE) {
             if (tp->item->size < offsetof(EXTENT_DATA, data[0]) + ed->decoded_size && ed->compression == BTRFS_COMPRESSION_NONE) {
-                ERR("(%llx,%x,%llx) was %u bytes, expected %u\n", tp->item->key.obj_id, tp->item->key.obj_type, tp->item->key.offset,
+                ERR("(%I64x,%x,%I64x) was %u bytes, expected %I64u\n", tp->item->key.obj_id, tp->item->key.obj_type, tp->item->key.offset,
                     tp->item->size, offsetof(EXTENT_DATA, data[0]) + ed->decoded_size);
                 return STATUS_INTERNAL_ERROR;
             }
@@ -2699,7 +2700,7 @@ static NTSTATUS send_extent_data(send_context* context, traverse_ptr* tp, traver
         EXTENT_DATA2* ed2 = NULL;
 
         if (tp2->item->size < sizeof(EXTENT_DATA)) {
-            ERR("(%llx,%x,%llx) was %u bytes, expected at least %u\n", tp2->item->key.obj_id, tp2->item->key.obj_type, tp2->item->key.offset,
+            ERR("(%I64x,%x,%I64x) was %u bytes, expected at least %Iu\n", tp2->item->key.obj_id, tp2->item->key.obj_type, tp2->item->key.offset,
                 tp2->item->size, sizeof(EXTENT_DATA));
             return STATUS_INTERNAL_ERROR;
         }
@@ -2724,7 +2725,7 @@ static NTSTATUS send_extent_data(send_context* context, traverse_ptr* tp, traver
 
         if (ed->type == EXTENT_TYPE_REGULAR) {
             if (tp2->item->size < offsetof(EXTENT_DATA, data[0]) + sizeof(EXTENT_DATA2)) {
-                ERR("(%llx,%x,%llx) was %u bytes, expected %u\n", tp2->item->key.obj_id, tp2->item->key.obj_type, tp2->item->key.offset,
+                ERR("(%I64x,%x,%I64x) was %u bytes, expected %Iu\n", tp2->item->key.obj_id, tp2->item->key.obj_type, tp2->item->key.offset,
                     tp2->item->size, offsetof(EXTENT_DATA, data[0]) + sizeof(EXTENT_DATA2));
                 return STATUS_INTERNAL_ERROR;
             }
@@ -2732,7 +2733,7 @@ static NTSTATUS send_extent_data(send_context* context, traverse_ptr* tp, traver
             ed2 = (EXTENT_DATA2*)ed->data;
         } else if (ed->type == EXTENT_TYPE_INLINE) {
             if (tp2->item->size < offsetof(EXTENT_DATA, data[0]) + ed->decoded_size) {
-                ERR("(%llx,%x,%llx) was %u bytes, expected %u\n", tp2->item->key.obj_id, tp2->item->key.obj_type, tp2->item->key.offset,
+                ERR("(%I64x,%x,%I64x) was %u bytes, expected %I64u\n", tp2->item->key.obj_id, tp2->item->key.obj_type, tp2->item->key.offset,
                     tp2->item->size, offsetof(EXTENT_DATA, data[0]) + ed->decoded_size);
                 return STATUS_INTERNAL_ERROR;
             }
@@ -2757,11 +2758,11 @@ static NTSTATUS send_extent_data(send_context* context, traverse_ptr* tp, traver
 }
 
 typedef struct {
-    UINT16 namelen;
+    uint16_t namelen;
     char* name;
-    UINT16 value1len;
+    uint16_t value1len;
     char* value1;
-    UINT16 value2len;
+    uint16_t value2len;
     char* value2;
     LIST_ENTRY list_entry;
 } xattr_cmp;
@@ -2773,7 +2774,7 @@ static NTSTATUS send_xattr(send_context* context, traverse_ptr* tp, traverse_ptr
     if (!IsListEmpty(&context->lastinode.refs) || !IsListEmpty(&context->lastinode.oldrefs)) {
         NTSTATUS Status = flush_refs(context, tp, tp2);
         if (!NT_SUCCESS(Status)) {
-            ERR("flush_refs returned %08x\n", Status);
+            ERR("flush_refs returned %08lx\n", Status);
             return Status;
         }
 
@@ -2782,13 +2783,13 @@ static NTSTATUS send_xattr(send_context* context, traverse_ptr* tp, traverse_ptr
     }
 
     if (tp && tp->item->size < sizeof(DIR_ITEM)) {
-        ERR("(%llx,%x,%llx) was %u bytes, expected at least %u\n", tp->item->key.obj_id, tp->item->key.obj_type, tp->item->key.offset,
+        ERR("(%I64x,%x,%I64x) was %u bytes, expected at least %Iu\n", tp->item->key.obj_id, tp->item->key.obj_type, tp->item->key.offset,
             tp->item->size, sizeof(DIR_ITEM));
         return STATUS_INTERNAL_ERROR;
     }
 
     if (tp2 && tp2->item->size < sizeof(DIR_ITEM)) {
-        ERR("(%llx,%x,%llx) was %u bytes, expected at least %u\n", tp2->item->key.obj_id, tp2->item->key.obj_type, tp2->item->key.offset,
+        ERR("(%I64x,%x,%I64x) was %u bytes, expected at least %Iu\n", tp2->item->key.obj_id, tp2->item->key.obj_type, tp2->item->key.offset,
             tp2->item->size, sizeof(DIR_ITEM));
         return STATUS_INTERNAL_ERROR;
     }
@@ -2804,13 +2805,13 @@ static NTSTATUS send_xattr(send_context* context, traverse_ptr* tp, traverse_ptr
             ULONG pos;
 
             if (len < sizeof(DIR_ITEM) || len < offsetof(DIR_ITEM, name[0]) + di->m + di->n) {
-                ERR("(%llx,%x,%llx) was truncated\n", tp->item->key.obj_id, tp->item->key.obj_type, tp->item->key.offset);
+                ERR("(%I64x,%x,%I64x) was truncated\n", tp->item->key.obj_id, tp->item->key.obj_type, tp->item->key.offset);
                 return STATUS_INTERNAL_ERROR;
             }
 
             pos = context->datalen;
             send_command(context, BTRFS_SEND_CMD_SET_XATTR);
-            send_add_tlv(context, BTRFS_SEND_TLV_PATH, context->lastinode.path, context->lastinode.path ? (UINT16)strlen(context->lastinode.path) : 0);
+            send_add_tlv(context, BTRFS_SEND_TLV_PATH, context->lastinode.path, context->lastinode.path ? (uint16_t)strlen(context->lastinode.path) : 0);
             send_add_tlv(context, BTRFS_SEND_TLV_XATTR_NAME, di->name, di->n);
             send_add_tlv(context, BTRFS_SEND_TLV_XATTR_DATA, &di->name[di->n], di->m);
             send_command_finish(context, pos);
@@ -2829,13 +2830,13 @@ static NTSTATUS send_xattr(send_context* context, traverse_ptr* tp, traverse_ptr
             ULONG pos;
 
             if (len < sizeof(DIR_ITEM) || len < offsetof(DIR_ITEM, name[0]) + di->m + di->n) {
-                ERR("(%llx,%x,%llx) was truncated\n", tp2->item->key.obj_id, tp2->item->key.obj_type, tp2->item->key.offset);
+                ERR("(%I64x,%x,%I64x) was truncated\n", tp2->item->key.obj_id, tp2->item->key.obj_type, tp2->item->key.offset);
                 return STATUS_INTERNAL_ERROR;
             }
 
             pos = context->datalen;
             send_command(context, BTRFS_SEND_CMD_REMOVE_XATTR);
-            send_add_tlv(context, BTRFS_SEND_TLV_PATH, context->lastinode.path, context->lastinode.path ? (UINT16)strlen(context->lastinode.path) : 0);
+            send_add_tlv(context, BTRFS_SEND_TLV_PATH, context->lastinode.path, context->lastinode.path ? (uint16_t)strlen(context->lastinode.path) : 0);
             send_add_tlv(context, BTRFS_SEND_TLV_XATTR_NAME, di->name, di->n);
             send_command_finish(context, pos);
 
@@ -2856,7 +2857,7 @@ static NTSTATUS send_xattr(send_context* context, traverse_ptr* tp, traverse_ptr
             xattr_cmp* xa;
 
             if (len < sizeof(DIR_ITEM) || len < offsetof(DIR_ITEM, name[0]) + di->m + di->n) {
-                ERR("(%llx,%x,%llx) was truncated\n", tp->item->key.obj_id, tp->item->key.obj_type, tp->item->key.offset);
+                ERR("(%I64x,%x,%I64x) was truncated\n", tp->item->key.obj_id, tp->item->key.obj_type, tp->item->key.offset);
                 return STATUS_INTERNAL_ERROR;
             }
 
@@ -2890,10 +2891,10 @@ static NTSTATUS send_xattr(send_context* context, traverse_ptr* tp, traverse_ptr
         do {
             xattr_cmp* xa;
             LIST_ENTRY* le;
-            BOOL found = FALSE;
+            bool found = false;
 
             if (len < sizeof(DIR_ITEM) || len < offsetof(DIR_ITEM, name[0]) + di->m + di->n) {
-                ERR("(%llx,%x,%llx) was truncated\n", tp2->item->key.obj_id, tp2->item->key.obj_type, tp2->item->key.offset);
+                ERR("(%I64x,%x,%I64x) was truncated\n", tp2->item->key.obj_id, tp2->item->key.obj_type, tp2->item->key.offset);
                 return STATUS_INTERNAL_ERROR;
             }
 
@@ -2904,7 +2905,7 @@ static NTSTATUS send_xattr(send_context* context, traverse_ptr* tp, traverse_ptr
                 if (xa->namelen == di->n && RtlCompareMemory(xa->name, di->name, di->n) == di->n) {
                     xa->value2len = di->m;
                     xa->value2 = di->name + di->n;
-                    found = TRUE;
+                    found = true;
                     break;
                 }
 
@@ -2946,13 +2947,13 @@ static NTSTATUS send_xattr(send_context* context, traverse_ptr* tp, traverse_ptr
                 if (!xa->value1) {
                     pos = context->datalen;
                     send_command(context, BTRFS_SEND_CMD_REMOVE_XATTR);
-                    send_add_tlv(context, BTRFS_SEND_TLV_PATH, context->lastinode.path, context->lastinode.path ? (UINT16)strlen(context->lastinode.path) : 0);
+                    send_add_tlv(context, BTRFS_SEND_TLV_PATH, context->lastinode.path, context->lastinode.path ? (uint16_t)strlen(context->lastinode.path) : 0);
                     send_add_tlv(context, BTRFS_SEND_TLV_XATTR_NAME, xa->name, xa->namelen);
                     send_command_finish(context, pos);
                 } else {
                     pos = context->datalen;
                     send_command(context, BTRFS_SEND_CMD_SET_XATTR);
-                    send_add_tlv(context, BTRFS_SEND_TLV_PATH, context->lastinode.path, context->lastinode.path ? (UINT16)strlen(context->lastinode.path) : 0);
+                    send_add_tlv(context, BTRFS_SEND_TLV_PATH, context->lastinode.path, context->lastinode.path ? (uint16_t)strlen(context->lastinode.path) : 0);
                     send_add_tlv(context, BTRFS_SEND_TLV_XATTR_NAME, xa->name, xa->namelen);
                     send_add_tlv(context, BTRFS_SEND_TLV_XATTR_DATA, xa->value1, xa->value1len);
                     send_command_finish(context, pos);
@@ -2967,11 +2968,7 @@ static NTSTATUS send_xattr(send_context* context, traverse_ptr* tp, traverse_ptr
 }
 
 _Function_class_(KSTART_ROUTINE)
-#ifdef __REACTOS__
-static void NTAPI send_thread(void* ctx) {
-#else
-static void send_thread(void* ctx) {
-#endif
+static void __stdcall send_thread(void* ctx) {
     send_context* context = (send_context*)ctx;
     NTSTATUS Status;
     KEY searchkey;
@@ -2990,7 +2987,7 @@ static void send_thread(void* ctx) {
         }
     }
 
-    ExAcquireResourceExclusiveLite(&context->Vcb->tree_lock, TRUE);
+    ExAcquireResourceExclusiveLite(&context->Vcb->tree_lock, true);
 
     flush_subvol_fcbs(context->root);
 
@@ -3005,7 +3002,7 @@ static void send_thread(void* ctx) {
     free_trees(context->Vcb);
 
     if (!NT_SUCCESS(Status)) {
-        ERR("do_write returned %08x\n", Status);
+        ERR("do_write returned %08lx\n", Status);
         ExReleaseResourceLite(&context->Vcb->tree_lock);
         goto end;
     }
@@ -3015,18 +3012,18 @@ static void send_thread(void* ctx) {
     searchkey.obj_id = searchkey.offset = 0;
     searchkey.obj_type = 0;
 
-    Status = find_item(context->Vcb, context->root, &tp, &searchkey, FALSE, NULL);
+    Status = find_item(context->Vcb, context->root, &tp, &searchkey, false, NULL);
     if (!NT_SUCCESS(Status)) {
-        ERR("find_item returned %08x\n", Status);
+        ERR("find_item returned %08lx\n", Status);
         ExReleaseResourceLite(&context->Vcb->tree_lock);
         goto end;
     }
 
     if (context->parent) {
-        BOOL ended1 = FALSE, ended2 = FALSE;
-        Status = find_item(context->Vcb, context->parent, &tp2, &searchkey, FALSE, NULL);
+        bool ended1 = false, ended2 = false;
+        Status = find_item(context->Vcb, context->parent, &tp2, &searchkey, false, NULL);
         if (!NT_SUCCESS(Status)) {
-            ERR("find_item returned %08x\n", Status);
+            ERR("find_item returned %08lx\n", Status);
             ExReleaseResourceLite(&context->Vcb->tree_lock);
             goto end;
         }
@@ -3040,18 +3037,18 @@ static void send_thread(void* ctx) {
                 ExReleaseResourceLite(&context->Vcb->tree_lock);
 
                 KeClearEvent(&context->send->cleared_event);
-                KeSetEvent(&context->buffer_event, 0, TRUE);
-                KeWaitForSingleObject(&context->send->cleared_event, Executive, KernelMode, FALSE, NULL);
+                KeSetEvent(&context->buffer_event, 0, true);
+                KeWaitForSingleObject(&context->send->cleared_event, Executive, KernelMode, false, NULL);
 
                 if (context->send->cancelling)
                     goto end;
 
-                ExAcquireResourceSharedLite(&context->Vcb->tree_lock, TRUE);
+                ExAcquireResourceSharedLite(&context->Vcb->tree_lock, true);
 
                 if (!ended1) {
-                    Status = find_item(context->Vcb, context->root, &tp, &key1, FALSE, NULL);
+                    Status = find_item(context->Vcb, context->root, &tp, &key1, false, NULL);
                     if (!NT_SUCCESS(Status)) {
-                        ERR("find_item returned %08x\n", Status);
+                        ERR("find_item returned %08lx\n", Status);
                         ExReleaseResourceLite(&context->Vcb->tree_lock);
                         goto end;
                     }
@@ -3065,9 +3062,9 @@ static void send_thread(void* ctx) {
                 }
 
                 if (!ended2) {
-                    Status = find_item(context->Vcb, context->parent, &tp2, &key2, FALSE, NULL);
+                    Status = find_item(context->Vcb, context->parent, &tp2, &key2, false, NULL);
                     if (!NT_SUCCESS(Status)) {
-                        ERR("find_item returned %08x\n", Status);
+                        ERR("find_item returned %08lx\n", Status);
                         ExReleaseResourceLite(&context->Vcb->tree_lock);
                         goto end;
                     }
@@ -3084,21 +3081,21 @@ static void send_thread(void* ctx) {
             while (!ended1 && !ended2 && tp.tree->header.address == tp2.tree->header.address) {
                 Status = skip_to_difference(context->Vcb, &tp, &tp2, &ended1, &ended2);
                 if (!NT_SUCCESS(Status)) {
-                    ERR("skip_to_difference returned %08x\n", Status);
+                    ERR("skip_to_difference returned %08lx\n", Status);
                     ExReleaseResourceLite(&context->Vcb->tree_lock);
                     goto end;
                 }
             }
 
             if (!ended1 && !ended2 && !keycmp(tp.item->key, tp2.item->key)) {
-                BOOL no_next = FALSE, no_next2 = FALSE;
+                bool no_next = false, no_next2 = false;
 
-                TRACE("~ %llx,%x,%llx\n", tp.item->key.obj_id, tp.item->key.obj_type, tp.item->key.offset);
+                TRACE("~ %I64x,%x,%I64x\n", tp.item->key.obj_id, tp.item->key.obj_type, tp.item->key.offset);
 
                 if (context->lastinode.inode != 0 && tp.item->key.obj_id > context->lastinode.inode) {
                     Status = finish_inode(context, ended1 ? NULL : &tp, ended2 ? NULL : &tp2);
                     if (!NT_SUCCESS(Status)) {
-                        ERR("finish_inode returned %08x\n", Status);
+                        ERR("finish_inode returned %08lx\n", Status);
                         ExReleaseResourceLite(&context->Vcb->tree_lock);
                         goto end;
                     }
@@ -3111,11 +3108,11 @@ static void send_thread(void* ctx) {
 
                 if (tp.item->key.obj_type == TYPE_INODE_ITEM) {
                     if (tp.item->size == tp2.item->size && tp.item->size > 0 && RtlCompareMemory(tp.item->data, tp2.item->data, tp.item->size) == tp.item->size) {
-                        UINT64 inode = tp.item->key.obj_id;
+                        uint64_t inode = tp.item->key.obj_id;
 
-                        while (TRUE) {
-                            if (!find_next_item(context->Vcb, &tp, &next_tp, FALSE, NULL)) {
-                                ended1 = TRUE;
+                        while (true) {
+                            if (!find_next_item(context->Vcb, &tp, &next_tp, false, NULL)) {
+                                ended1 = true;
                                 break;
                             }
 
@@ -3125,9 +3122,9 @@ static void send_thread(void* ctx) {
                                 break;
                         }
 
-                        while (TRUE) {
-                            if (!find_next_item(context->Vcb, &tp2, &next_tp, FALSE, NULL)) {
-                                ended2 = TRUE;
+                        while (true) {
+                            if (!find_next_item(context->Vcb, &tp2, &next_tp, false, NULL)) {
+                                ended2 = true;
                                 break;
                             }
 
@@ -3137,20 +3134,20 @@ static void send_thread(void* ctx) {
                                 break;
                         }
 
-                        no_next = TRUE;
-                    } else if (tp.item->size > sizeof(UINT64) && tp2.item->size > sizeof(UINT64) && *(UINT64*)tp.item->data != *(UINT64*)tp2.item->data) {
-                        UINT64 inode = tp.item->key.obj_id;
+                        no_next = true;
+                    } else if (tp.item->size > sizeof(uint64_t) && tp2.item->size > sizeof(uint64_t) && *(uint64_t*)tp.item->data != *(uint64_t*)tp2.item->data) {
+                        uint64_t inode = tp.item->key.obj_id;
 
                         Status = send_inode(context, NULL, &tp2);
                         if (!NT_SUCCESS(Status)) {
-                            ERR("send_inode returned %08x\n", Status);
+                            ERR("send_inode returned %08lx\n", Status);
                             ExReleaseResourceLite(&context->Vcb->tree_lock);
                             goto end;
                         }
 
-                        while (TRUE) {
-                            if (!find_next_item(context->Vcb, &tp2, &next_tp, FALSE, NULL)) {
-                                ended2 = TRUE;
+                        while (true) {
+                            if (!find_next_item(context->Vcb, &tp2, &next_tp, false, NULL)) {
+                                ended2 = true;
                                 break;
                             }
 
@@ -3160,16 +3157,16 @@ static void send_thread(void* ctx) {
                                 break;
 
                             if (tp2.item->key.obj_type == TYPE_INODE_REF) {
-                                Status = send_inode_ref(context, &tp2, TRUE);
+                                Status = send_inode_ref(context, &tp2, true);
                                 if (!NT_SUCCESS(Status)) {
-                                    ERR("send_inode_ref returned %08x\n", Status);
+                                    ERR("send_inode_ref returned %08lx\n", Status);
                                     ExReleaseResourceLite(&context->Vcb->tree_lock);
                                     goto end;
                                 }
                             } else if (tp2.item->key.obj_type == TYPE_INODE_EXTREF) {
-                                Status = send_inode_extref(context, &tp2, TRUE);
+                                Status = send_inode_extref(context, &tp2, true);
                                 if (!NT_SUCCESS(Status)) {
-                                    ERR("send_inode_extref returned %08x\n", Status);
+                                    ERR("send_inode_extref returned %08lx\n", Status);
                                     ExReleaseResourceLite(&context->Vcb->tree_lock);
                                     goto end;
                                 }
@@ -3178,7 +3175,7 @@ static void send_thread(void* ctx) {
 
                         Status = finish_inode(context, ended1 ? NULL : &tp, ended2 ? NULL : &tp2);
                         if (!NT_SUCCESS(Status)) {
-                            ERR("finish_inode returned %08x\n", Status);
+                            ERR("finish_inode returned %08lx\n", Status);
                             ExReleaseResourceLite(&context->Vcb->tree_lock);
                             goto end;
                         }
@@ -3188,54 +3185,54 @@ static void send_thread(void* ctx) {
                             goto end;
                         }
 
-                        no_next2 = TRUE;
+                        no_next2 = true;
 
                         Status = send_inode(context, &tp, NULL);
                         if (!NT_SUCCESS(Status)) {
-                            ERR("send_inode returned %08x\n", Status);
+                            ERR("send_inode returned %08lx\n", Status);
                             ExReleaseResourceLite(&context->Vcb->tree_lock);
                             goto end;
                         }
                     } else {
                         Status = send_inode(context, &tp, &tp2);
                         if (!NT_SUCCESS(Status)) {
-                            ERR("send_inode returned %08x\n", Status);
+                            ERR("send_inode returned %08lx\n", Status);
                             ExReleaseResourceLite(&context->Vcb->tree_lock);
                             goto end;
                         }
                     }
                 } else if (tp.item->key.obj_type == TYPE_INODE_REF) {
-                    Status = send_inode_ref(context, &tp, FALSE);
+                    Status = send_inode_ref(context, &tp, false);
                     if (!NT_SUCCESS(Status)) {
-                        ERR("send_inode_ref returned %08x\n", Status);
+                        ERR("send_inode_ref returned %08lx\n", Status);
                         ExReleaseResourceLite(&context->Vcb->tree_lock);
                         goto end;
                     }
 
-                    Status = send_inode_ref(context, &tp2, TRUE);
+                    Status = send_inode_ref(context, &tp2, true);
                     if (!NT_SUCCESS(Status)) {
-                        ERR("send_inode_ref returned %08x\n", Status);
+                        ERR("send_inode_ref returned %08lx\n", Status);
                         ExReleaseResourceLite(&context->Vcb->tree_lock);
                         goto end;
                     }
                 } else if (tp.item->key.obj_type == TYPE_INODE_EXTREF) {
-                    Status = send_inode_extref(context, &tp, FALSE);
+                    Status = send_inode_extref(context, &tp, false);
                     if (!NT_SUCCESS(Status)) {
-                        ERR("send_inode_extref returned %08x\n", Status);
+                        ERR("send_inode_extref returned %08lx\n", Status);
                         ExReleaseResourceLite(&context->Vcb->tree_lock);
                         goto end;
                     }
 
-                    Status = send_inode_extref(context, &tp2, TRUE);
+                    Status = send_inode_extref(context, &tp2, true);
                     if (!NT_SUCCESS(Status)) {
-                        ERR("send_inode_extref returned %08x\n", Status);
+                        ERR("send_inode_extref returned %08lx\n", Status);
                         ExReleaseResourceLite(&context->Vcb->tree_lock);
                         goto end;
                     }
                 } else if (tp.item->key.obj_type == TYPE_EXTENT_DATA) {
                     Status = send_extent_data(context, &tp, &tp2);
                     if (!NT_SUCCESS(Status)) {
-                        ERR("send_extent_data returned %08x\n", Status);
+                        ERR("send_extent_data returned %08lx\n", Status);
                         ExReleaseResourceLite(&context->Vcb->tree_lock);
                         goto end;
                     }
@@ -3247,7 +3244,7 @@ static void send_thread(void* ctx) {
                 } else if (tp.item->key.obj_type == TYPE_XATTR_ITEM) {
                     Status = send_xattr(context, &tp, &tp2);
                     if (!NT_SUCCESS(Status)) {
-                        ERR("send_xattr returned %08x\n", Status);
+                        ERR("send_xattr returned %08lx\n", Status);
                         ExReleaseResourceLite(&context->Vcb->tree_lock);
                         goto end;
                     }
@@ -3259,25 +3256,25 @@ static void send_thread(void* ctx) {
                 }
 
                 if (!no_next) {
-                    if (find_next_item(context->Vcb, &tp, &next_tp, FALSE, NULL))
+                    if (find_next_item(context->Vcb, &tp, &next_tp, false, NULL))
                         tp = next_tp;
                     else
-                        ended1 = TRUE;
+                        ended1 = true;
 
                     if (!no_next2) {
-                        if (find_next_item(context->Vcb, &tp2, &next_tp, FALSE, NULL))
+                        if (find_next_item(context->Vcb, &tp2, &next_tp, false, NULL))
                             tp2 = next_tp;
                         else
-                            ended2 = TRUE;
+                            ended2 = true;
                     }
                 }
             } else if (ended2 || (!ended1 && !ended2 && keycmp(tp.item->key, tp2.item->key) == -1)) {
-                TRACE("A %llx,%x,%llx\n", tp.item->key.obj_id, tp.item->key.obj_type, tp.item->key.offset);
+                TRACE("A %I64x,%x,%I64x\n", tp.item->key.obj_id, tp.item->key.obj_type, tp.item->key.offset);
 
                 if (context->lastinode.inode != 0 && tp.item->key.obj_id > context->lastinode.inode) {
                     Status = finish_inode(context, ended1 ? NULL : &tp, ended2 ? NULL : &tp2);
                     if (!NT_SUCCESS(Status)) {
-                        ERR("finish_inode returned %08x\n", Status);
+                        ERR("finish_inode returned %08lx\n", Status);
                         ExReleaseResourceLite(&context->Vcb->tree_lock);
                         goto end;
                     }
@@ -3291,28 +3288,28 @@ static void send_thread(void* ctx) {
                 if (tp.item->key.obj_type == TYPE_INODE_ITEM) {
                     Status = send_inode(context, &tp, NULL);
                     if (!NT_SUCCESS(Status)) {
-                        ERR("send_inode returned %08x\n", Status);
+                        ERR("send_inode returned %08lx\n", Status);
                         ExReleaseResourceLite(&context->Vcb->tree_lock);
                         goto end;
                     }
                 } else if (tp.item->key.obj_type == TYPE_INODE_REF) {
-                    Status = send_inode_ref(context, &tp, FALSE);
+                    Status = send_inode_ref(context, &tp, false);
                     if (!NT_SUCCESS(Status)) {
-                        ERR("send_inode_ref returned %08x\n", Status);
+                        ERR("send_inode_ref returned %08lx\n", Status);
                         ExReleaseResourceLite(&context->Vcb->tree_lock);
                         goto end;
                     }
                 } else if (tp.item->key.obj_type == TYPE_INODE_EXTREF) {
-                    Status = send_inode_extref(context, &tp, FALSE);
+                    Status = send_inode_extref(context, &tp, false);
                     if (!NT_SUCCESS(Status)) {
-                        ERR("send_inode_extref returned %08x\n", Status);
+                        ERR("send_inode_extref returned %08lx\n", Status);
                         ExReleaseResourceLite(&context->Vcb->tree_lock);
                         goto end;
                     }
                 } else if (tp.item->key.obj_type == TYPE_EXTENT_DATA) {
                     Status = send_extent_data(context, &tp, NULL);
                     if (!NT_SUCCESS(Status)) {
-                        ERR("send_extent_data returned %08x\n", Status);
+                        ERR("send_extent_data returned %08lx\n", Status);
                         ExReleaseResourceLite(&context->Vcb->tree_lock);
                         goto end;
                     }
@@ -3324,7 +3321,7 @@ static void send_thread(void* ctx) {
                 } else if (tp.item->key.obj_type == TYPE_XATTR_ITEM) {
                     Status = send_xattr(context, &tp, NULL);
                     if (!NT_SUCCESS(Status)) {
-                        ERR("send_xattr returned %08x\n", Status);
+                        ERR("send_xattr returned %08lx\n", Status);
                         ExReleaseResourceLite(&context->Vcb->tree_lock);
                         goto end;
                     }
@@ -3335,17 +3332,17 @@ static void send_thread(void* ctx) {
                     }
                 }
 
-                if (find_next_item(context->Vcb, &tp, &next_tp, FALSE, NULL))
+                if (find_next_item(context->Vcb, &tp, &next_tp, false, NULL))
                     tp = next_tp;
                 else
-                    ended1 = TRUE;
+                    ended1 = true;
             } else if (ended1 || (!ended1 && !ended2 && keycmp(tp.item->key, tp2.item->key) == 1)) {
-                TRACE("B %llx,%x,%llx\n", tp2.item->key.obj_id, tp2.item->key.obj_type, tp2.item->key.offset);
+                TRACE("B %I64x,%x,%I64x\n", tp2.item->key.obj_id, tp2.item->key.obj_type, tp2.item->key.offset);
 
                 if (context->lastinode.inode != 0 && tp2.item->key.obj_id > context->lastinode.inode) {
                     Status = finish_inode(context, ended1 ? NULL : &tp, ended2 ? NULL : &tp2);
                     if (!NT_SUCCESS(Status)) {
-                        ERR("finish_inode returned %08x\n", Status);
+                        ERR("finish_inode returned %08lx\n", Status);
                         ExReleaseResourceLite(&context->Vcb->tree_lock);
                         goto end;
                     }
@@ -3359,28 +3356,28 @@ static void send_thread(void* ctx) {
                 if (tp2.item->key.obj_type == TYPE_INODE_ITEM) {
                     Status = send_inode(context, NULL, &tp2);
                     if (!NT_SUCCESS(Status)) {
-                        ERR("send_inode returned %08x\n", Status);
+                        ERR("send_inode returned %08lx\n", Status);
                         ExReleaseResourceLite(&context->Vcb->tree_lock);
                         goto end;
                     }
                 } else if (tp2.item->key.obj_type == TYPE_INODE_REF) {
-                    Status = send_inode_ref(context, &tp2, TRUE);
+                    Status = send_inode_ref(context, &tp2, true);
                     if (!NT_SUCCESS(Status)) {
-                        ERR("send_inode_ref returned %08x\n", Status);
+                        ERR("send_inode_ref returned %08lx\n", Status);
                         ExReleaseResourceLite(&context->Vcb->tree_lock);
                         goto end;
                     }
                 } else if (tp2.item->key.obj_type == TYPE_INODE_EXTREF) {
-                    Status = send_inode_extref(context, &tp2, TRUE);
+                    Status = send_inode_extref(context, &tp2, true);
                     if (!NT_SUCCESS(Status)) {
-                        ERR("send_inode_extref returned %08x\n", Status);
+                        ERR("send_inode_extref returned %08lx\n", Status);
                         ExReleaseResourceLite(&context->Vcb->tree_lock);
                         goto end;
                     }
                 } else if (tp2.item->key.obj_type == TYPE_EXTENT_DATA && !context->lastinode.deleting) {
                     Status = send_extent_data(context, NULL, &tp2);
                     if (!NT_SUCCESS(Status)) {
-                        ERR("send_extent_data returned %08x\n", Status);
+                        ERR("send_extent_data returned %08lx\n", Status);
                         ExReleaseResourceLite(&context->Vcb->tree_lock);
                         goto end;
                     }
@@ -3392,7 +3389,7 @@ static void send_thread(void* ctx) {
                 } else if (tp2.item->key.obj_type == TYPE_XATTR_ITEM && !context->lastinode.deleting) {
                     Status = send_xattr(context, NULL, &tp2);
                     if (!NT_SUCCESS(Status)) {
-                        ERR("send_xattr returned %08x\n", Status);
+                        ERR("send_xattr returned %08lx\n", Status);
                         ExReleaseResourceLite(&context->Vcb->tree_lock);
                         goto end;
                     }
@@ -3403,10 +3400,10 @@ static void send_thread(void* ctx) {
                     }
                 }
 
-                if (find_next_item(context->Vcb, &tp2, &next_tp, FALSE, NULL))
+                if (find_next_item(context->Vcb, &tp2, &next_tp, false, NULL))
                     tp2 = next_tp;
                 else
-                    ended2 = TRUE;
+                    ended2 = true;
             }
         } while (!ended1 || !ended2);
     } else {
@@ -3419,17 +3416,17 @@ static void send_thread(void* ctx) {
                 ExReleaseResourceLite(&context->Vcb->tree_lock);
 
                 KeClearEvent(&context->send->cleared_event);
-                KeSetEvent(&context->buffer_event, 0, TRUE);
-                KeWaitForSingleObject(&context->send->cleared_event, Executive, KernelMode, FALSE, NULL);
+                KeSetEvent(&context->buffer_event, 0, true);
+                KeWaitForSingleObject(&context->send->cleared_event, Executive, KernelMode, false, NULL);
 
                 if (context->send->cancelling)
                     goto end;
 
-                ExAcquireResourceSharedLite(&context->Vcb->tree_lock, TRUE);
+                ExAcquireResourceSharedLite(&context->Vcb->tree_lock, true);
 
-                Status = find_item(context->Vcb, context->root, &tp, &key, FALSE, NULL);
+                Status = find_item(context->Vcb, context->root, &tp, &key, false, NULL);
                 if (!NT_SUCCESS(Status)) {
-                    ERR("find_item returned %08x\n", Status);
+                    ERR("find_item returned %08lx\n", Status);
                     ExReleaseResourceLite(&context->Vcb->tree_lock);
                     goto end;
                 }
@@ -3445,7 +3442,7 @@ static void send_thread(void* ctx) {
             if (context->lastinode.inode != 0 && tp.item->key.obj_id > context->lastinode.inode) {
                 Status = finish_inode(context, &tp, NULL);
                 if (!NT_SUCCESS(Status)) {
-                    ERR("finish_inode returned %08x\n", Status);
+                    ERR("finish_inode returned %08lx\n", Status);
                     ExReleaseResourceLite(&context->Vcb->tree_lock);
                     goto end;
                 }
@@ -3459,28 +3456,28 @@ static void send_thread(void* ctx) {
             if (tp.item->key.obj_type == TYPE_INODE_ITEM) {
                 Status = send_inode(context, &tp, NULL);
                 if (!NT_SUCCESS(Status)) {
-                    ERR("send_inode returned %08x\n", Status);
+                    ERR("send_inode returned %08lx\n", Status);
                     ExReleaseResourceLite(&context->Vcb->tree_lock);
                     goto end;
                 }
             } else if (tp.item->key.obj_type == TYPE_INODE_REF) {
-                Status = send_inode_ref(context, &tp, FALSE);
+                Status = send_inode_ref(context, &tp, false);
                 if (!NT_SUCCESS(Status)) {
-                    ERR("send_inode_ref returned %08x\n", Status);
+                    ERR("send_inode_ref returned %08lx\n", Status);
                     ExReleaseResourceLite(&context->Vcb->tree_lock);
                     goto end;
                 }
             } else if (tp.item->key.obj_type == TYPE_INODE_EXTREF) {
-                Status = send_inode_extref(context, &tp, FALSE);
+                Status = send_inode_extref(context, &tp, false);
                 if (!NT_SUCCESS(Status)) {
-                    ERR("send_inode_extref returned %08x\n", Status);
+                    ERR("send_inode_extref returned %08lx\n", Status);
                     ExReleaseResourceLite(&context->Vcb->tree_lock);
                     goto end;
                 }
             } else if (tp.item->key.obj_type == TYPE_EXTENT_DATA) {
                 Status = send_extent_data(context, &tp, NULL);
                 if (!NT_SUCCESS(Status)) {
-                    ERR("send_extent_data returned %08x\n", Status);
+                    ERR("send_extent_data returned %08lx\n", Status);
                     ExReleaseResourceLite(&context->Vcb->tree_lock);
                     goto end;
                 }
@@ -3492,7 +3489,7 @@ static void send_thread(void* ctx) {
             } else if (tp.item->key.obj_type == TYPE_XATTR_ITEM) {
                 Status = send_xattr(context, &tp, NULL);
                 if (!NT_SUCCESS(Status)) {
-                    ERR("send_xattr returned %08x\n", Status);
+                    ERR("send_xattr returned %08lx\n", Status);
                     ExReleaseResourceLite(&context->Vcb->tree_lock);
                     goto end;
                 }
@@ -3503,17 +3500,17 @@ static void send_thread(void* ctx) {
                 }
             }
 
-            if (find_next_item(context->Vcb, &tp, &next_tp, FALSE, NULL))
+            if (find_next_item(context->Vcb, &tp, &next_tp, false, NULL))
                 tp = next_tp;
             else
                 break;
-        } while (TRUE);
+        } while (true);
     }
 
     if (context->lastinode.inode != 0) {
         Status = finish_inode(context, NULL, NULL);
         if (!NT_SUCCESS(Status)) {
-            ERR("finish_inode returned %08x\n", Status);
+            ERR("finish_inode returned %08lx\n", Status);
             ExReleaseResourceLite(&context->Vcb->tree_lock);
             goto end;
         }
@@ -3526,20 +3523,20 @@ static void send_thread(void* ctx) {
         ExReleaseResourceLite(&context->Vcb->tree_lock);
 
     KeClearEvent(&context->send->cleared_event);
-    KeSetEvent(&context->buffer_event, 0, TRUE);
-    KeWaitForSingleObject(&context->send->cleared_event, Executive, KernelMode, FALSE, NULL);
+    KeSetEvent(&context->buffer_event, 0, true);
+    KeWaitForSingleObject(&context->send->cleared_event, Executive, KernelMode, false, NULL);
 
     Status = STATUS_SUCCESS;
 
 end:
     if (!NT_SUCCESS(Status)) {
-        KeSetEvent(&context->buffer_event, 0, FALSE);
+        KeSetEvent(&context->buffer_event, 0, false);
 
         if (context->send->ccb)
             context->send->ccb->send_status = Status;
     }
 
-    ExAcquireResourceExclusiveLite(&context->Vcb->send_load_lock, TRUE);
+    ExAcquireResourceExclusiveLite(&context->Vcb->send_load_lock, true);
 
     while (!IsListEmpty(&context->orphans)) {
         orphan* o = CONTAINING_RECORD(RemoveHeadList(&context->orphans), orphan, list_entry);
@@ -3602,6 +3599,7 @@ NTSTATUS send_subvol(device_extension* Vcb, void* data, ULONG datalen, PFILE_OBJ
     send_info* send;
     ULONG num_clones = 0;
     root** clones = NULL;
+    OBJECT_ATTRIBUTES oa;
 
     if (!FileObject || !FileObject->FsContext || !FileObject->FsContext2 || FileObject->FsContext == Vcb->volume_fcb)
         return STATUS_INVALID_PARAMETER;
@@ -3634,7 +3632,7 @@ NTSTATUS send_subvol(device_extension* Vcb, void* data, ULONG datalen, PFILE_OBJ
             if (datalen >= offsetof(btrfs_send_subvol32, clones[0]))
                 num_clones = bss32->num_clones;
 
-            if (datalen < offsetof(btrfs_send_subvol32, clones[0]) + (num_clones * sizeof(UINT32)))
+            if (datalen < offsetof(btrfs_send_subvol32, clones[0]) + (num_clones * sizeof(uint32_t)))
                 return STATUS_INVALID_PARAMETER;
         } else {
 #endif
@@ -3658,7 +3656,7 @@ NTSTATUS send_subvol(device_extension* Vcb, void* data, ULONG datalen, PFILE_OBJ
 
             Status = ObReferenceObjectByHandle(parent, 0, *IoFileObjectType, Irp->RequestorMode, (void**)&fileobj, NULL);
             if (!NT_SUCCESS(Status)) {
-                ERR("ObReferenceObjectByHandle returned %08x\n", Status);
+                ERR("ObReferenceObjectByHandle returned %08lx\n", Status);
                 return Status;
             }
 
@@ -3709,7 +3707,7 @@ NTSTATUS send_subvol(device_extension* Vcb, void* data, ULONG datalen, PFILE_OBJ
 
                 Status = ObReferenceObjectByHandle(h, 0, *IoFileObjectType, Irp->RequestorMode, (void**)&fileobj, NULL);
                 if (!NT_SUCCESS(Status)) {
-                    ERR("ObReferenceObjectByHandle returned %08x\n", Status);
+                    ERR("ObReferenceObjectByHandle returned %08lx\n", Status);
                     ExFreePool(clones);
                     return Status;
                 }
@@ -3739,7 +3737,7 @@ NTSTATUS send_subvol(device_extension* Vcb, void* data, ULONG datalen, PFILE_OBJ
         }
     }
 
-    ExAcquireResourceExclusiveLite(&Vcb->send_load_lock, TRUE);
+    ExAcquireResourceExclusiveLite(&Vcb->send_load_lock, true);
 
     if (ccb->send) {
         WARN("send operation already running\n");
@@ -3786,7 +3784,7 @@ NTSTATUS send_subvol(device_extension* Vcb, void* data, ULONG datalen, PFILE_OBJ
 
     send_subvol_header(context, fcb->subvol, ccb->fileref); // FIXME - fileref needs some sort of lock here
 
-    KeInitializeEvent(&context->buffer_event, NotificationEvent, FALSE);
+    KeInitializeEvent(&context->buffer_event, NotificationEvent, false);
 
     send = ExAllocatePoolWithTag(NonPagedPool, sizeof(send_info), ALLOC_TAG);
     if (!send) {
@@ -3801,7 +3799,7 @@ NTSTATUS send_subvol(device_extension* Vcb, void* data, ULONG datalen, PFILE_OBJ
         return STATUS_INSUFFICIENT_RESOURCES;
     }
 
-    KeInitializeEvent(&send->cleared_event, NotificationEvent, FALSE);
+    KeInitializeEvent(&send->cleared_event, NotificationEvent, false);
 
     send->context = context;
     context->send = send;
@@ -3810,13 +3808,15 @@ NTSTATUS send_subvol(device_extension* Vcb, void* data, ULONG datalen, PFILE_OBJ
     send->ccb = ccb;
     ccb->send_status = STATUS_SUCCESS;
 
-    send->cancelling = FALSE;
+    send->cancelling = false;
 
     InterlockedIncrement(&Vcb->running_sends);
 
-    Status = PsCreateSystemThread(&send->thread, 0, NULL, NULL, NULL, send_thread, context);
+    InitializeObjectAttributes(&oa, NULL, OBJ_KERNEL_HANDLE, NULL, NULL);
+
+    Status = PsCreateSystemThread(&send->thread, 0, &oa, NULL, NULL, send_thread, context);
     if (!NT_SUCCESS(Status)) {
-        ERR("PsCreateSystemThread returned %08x\n", Status);
+        ERR("PsCreateSystemThread returned %08lx\n", Status);
         ccb->send = NULL;
         InterlockedDecrement(&Vcb->running_sends);
         ExFreePool(send);
@@ -3847,7 +3847,7 @@ NTSTATUS read_send_buffer(device_extension* Vcb, PFILE_OBJECT FileObject, void* 
     if (!SeSinglePrivilegeCheck(RtlConvertLongToLuid(SE_MANAGE_VOLUME_PRIVILEGE), processor_mode))
         return STATUS_PRIVILEGE_NOT_HELD;
 
-    ExAcquireResourceExclusiveLite(&Vcb->send_load_lock, TRUE);
+    ExAcquireResourceExclusiveLite(&Vcb->send_load_lock, true);
 
     if (!ccb->send) {
         ExReleaseResourceLite(&Vcb->send_load_lock);
@@ -3856,7 +3856,7 @@ NTSTATUS read_send_buffer(device_extension* Vcb, PFILE_OBJECT FileObject, void* 
 
     context = (send_context*)ccb->send->context;
 
-    KeWaitForSingleObject(&context->buffer_event, Executive, KernelMode, FALSE, NULL);
+    KeWaitForSingleObject(&context->buffer_event, Executive, KernelMode, false, NULL);
 
     if (datalen == 0) {
         ExReleaseResourceLite(&Vcb->send_load_lock);
@@ -3876,7 +3876,7 @@ NTSTATUS read_send_buffer(device_extension* Vcb, PFILE_OBJECT FileObject, void* 
         ExReleaseResourceLite(&Vcb->send_load_lock);
 
         KeClearEvent(&context->buffer_event);
-        KeSetEvent(&ccb->send->cleared_event, 0, FALSE);
+        KeSetEvent(&ccb->send->cleared_event, 0, false);
     }
 
     return STATUS_SUCCESS;

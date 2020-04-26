@@ -17,19 +17,6 @@ assoc (друк всiх асоцiацiй)\n\
 assoc .рош (друк вiдповiдної асоцiацiї)\n\
 assoc .рош= (видалення вiдповiдної асоцiацiї)\n\
 assoc .рош=ФайлТип (додати нову асоцiацiю)\n"
-    STRING_ATTRIB_HELP "Відображення або зміна атрибутів файлу.\n\n\
-ATTRIB [+R | -R] [+A | -A] [+S | -S] [+H | -H] файл ...\n\
-       [/S [/D]]\n\n\
-  +   Встановлення атрибуту\n\
-  -   Зняття атрибуту\n\
-  R   Атрибут файлу ""Лише читання""\n\
-  A   Атрибут файлу ""Архiвний""\n\
-  S   Атрибут файлу ""Системний""\n\
-  H   Атрибут файлу ""Прихований""\n\
-  /S  Обробка файлiв зi вказаними iменами в поточнiй тецi\n\
-      i у всіх її пiдтеках\n\
-  /D  Обробка також i тек\n\n\
-Введiть ATTRIB без параметра, щоб вивести атрибути всiх файлiв.\n"
     STRING_ALIAS_HELP "Встановлення, видалення або показ псевдонiмiв.\n\n\
 ALIAS [псевдонiм=[команда]]\n\n\
   псевдонiм    Iм'я псевдонiма.\n\
@@ -184,7 +171,7 @@ DELAY [/m]n\n\n\
               A  Останнiй доступ\n\
               W  Остання змiна\n\
   /W          Список на декiлька стовпцiв.\n\
-  /X          Вiдображення коротких iмен файлiв, iмена яких не вiдповiдають \n\
+  /X          Вiдображення коротких iмен файлiв, iмена яких не вiдповiдають\n\
               стандарту 8.3.  Формат аналогiчний виводу з ключем /N але короткi\n\
               iмена виводяться спава вiд довгих. Якщо у файла немає короткого\n\
               iм'я, замiсть нього виводяться пробли.\n\
@@ -219,7 +206,7 @@ PUSHD [path | ..]\n\n\
 ECHO без параметра виводить поточний режим вiдображення команд."
     STRING_ECHO_HELP5 "ECHO is %s\n"
     STRING_EXIT_HELP "Завершує iнтерпретатор команд.\n\nEXIT [/b] [ExitCode]\n\n\
-  /B            Виходить лише з пакетного файлу.  \n\
+  /B            Виходить лише з пакетного файлу.\n\
                 Якщо робота йде поза пакетним файлом - вихiд з cmd.exe\n\
   ExitCode      Це значення буде присвоєно ERRORLEVEL при виходi\n"
     STRING_FOR_HELP1 "Запускає вказану команду для кожного файлу з набору файлiв.\n\n\
@@ -268,11 +255,6 @@ ERRORLEVEL число  Ця умова є iстинною, якщо код, що
 EXIST iм'я_файлу  Умова є iстинною, якщо файл з вказаним iменем iснує.\n\
 DEFINED змiнна    Ця умова є iстинною, якщо вказана змiнна\n\
                   задана.\n"
-    STRING_LABEL_HELP1 "Вiдображення або змiна мiтки тому.\n\nLABEL [диск:][мiтка]\n"
-    STRING_LABEL_HELP2 "Том в пристрої %c: має мiтку %s\n"
-    STRING_LABEL_HELP3 "Том в пристрої %c: не має мiтки\n"
-    STRING_LABEL_HELP4 "Серiйний номер тому: %04X-%04X\n"
-    STRING_LABEL_HELP5 "Мiтка тому (11 букв, ENTER без мiтки)? "
     STRING_LOCALE_HELP1 "Поточний час: "
     STRING_MKDIR_HELP "Створення каталогу.\n\n\
 MKDIR [диск:]шлях\nMD [диск:]шлях"
@@ -403,18 +385,18 @@ SET [змiнна[=][значення]]\n\n\
   значення   Рядок символiв, що призначається вказанiй змiннiй.\n\n\
 SET без параметрiв виводить поточнi значення змiнних середовища.\n"
     STRING_START_HELP1 "Запуск команди.\n\n\
-START [""title""] [/D path] [/I] [/B] [/MIN] [/MAX] [/WAIT]\n\
-      [command/program] [parameters]\n\n\
-  ""title""     Title of the window.\n\
-  path        Specifies the startup directory.\n\
-  I           Uses the original environment given to cmd.exe,\n\
-              instead of the current environment.\n\
-  B           Starts the command or program without creating any window.\n\
-  MIN         Starts with a minimized window.\n\
-  MAX         Starts with a maximized window.\n\
-  WAIT        Starts the command or program and waits for its termination.\n\
-  команда     Команда для запуску.\n\
-  parameters  Specifies the parameters to be given to the command or program.\n"
+START [""заголовок""] [/D шлях] [/I] [/B] [/MIN] [/MAX] [/WAIT]\n\
+      [команда/програма] [параметри]\n\n\
+  ""заголовок""   Заголовок вікна.\n\
+  шлях          Вказує папку запуску.\n\
+  I             Використовувати оригінальне оточення cmd.exe,\n\
+                замість теперішнього.\n\
+  B             Запуск без створення вікна.\n\
+  MIN           Запуск зі згорнутим вікном.\n\
+  MAX           Запуск з розгорнутим вікном.\n\
+  WAIT          Чекати завершення програми або команди.\n\
+  команда       Команда або програма для запуску.\n\
+  параметри     Параметри, які будуть передані програмі чи команді.\n"
     STRING_TITLE_HELP "Змiна заголовка вiкна командного рядка.\n\n\
 TITLE [рядок]\n\n\
 рядок       Майбутнiй заголовок вiкна командного рядка.\n"
@@ -441,7 +423,7 @@ TIMER  [ON|OFF] [/S] [/n] [/Fn]\n\n\
                     1    hh%cmm%css%cdd\n\n\
 Якщо не вказанi ON, OFF та /S , команда перемикає\n\
 стан секундомiра\n\n"
-    STRING_TYPE_HELP1 "Виведення вмiсту текстових файлiв.\n\nTYPE [диск:][шлях]iм'я_файлу \n\
+    STRING_TYPE_HELP1 "Виведення вмiсту текстових файлiв.\n\nTYPE [диск:][шлях]iм'я_файлу\n\
   /P          Поекранний вивiд.\n"
     STRING_VERIFY_HELP1 "This command is just a dummy!!\n\
 Ввiмкнення чи вимкнення перевiрки правильностi запису файлiв\n\
@@ -457,7 +439,7 @@ VER [/C][/R][/W]\n\n\
   /W  Вiдображення гарантiйної iнформацiї."
     STRING_VERSION_HELP2 " надається без БУДЬ-ЯКИХ ГАРАНТIЙ; для детальних даних\n\
 надрукуйте: `ver /w'. Ця програма є вiльним ПЗ, i ви можете розповсюджувати\n\
-її згiдно певних умов; надрукуйте `ver /r' для детальних даних. Надрукуйте `ver /c' \n\
+її згiдно певних умов; надрукуйте `ver /r' для детальних даних. Надрукуйте `ver /c'\n\
 для виведення списку авторiв."
     STRING_VERSION_HELP3 "\n Ця програма розповсюджується iз сподiванням, що вона буде корисною,\n\
  але БЕЗ БУДЬ-ЯКИХ ГАРАНТIЙ; навiть без непрямих гарантiй\n\
@@ -554,7 +536,7 @@ title         новий заголовок\n"
     STRING_REPLACE_ERROR5 "Немає доступу - %s\n"
     STRING_REPLACE_ERROR6 "Файли не знайдено - %s\n"
     STRING_REPLACE_ERROR7 "Розширена помилка 32\n"
-    STRING_CMD_INFOLINE "  ReactOS Command Prompt                                      Type HELP = Help  "
+    STRING_CMD_INFOLINE "  Командний рядок ReactOS                              Введіть HELP = Допомога  "
     STRING_REACTOS_VERSION "Операцiйна Система ReactOS [Версiя %s %s]\n"
     STRING_CMD_SHELLINFO "\nIнтерпретатор командного рядка ReactOS\nVersion %s %s"
     STRING_VERSION_RUNNING_ON "Запущений на: "

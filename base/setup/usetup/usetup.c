@@ -22,11 +22,12 @@
  * FILE:            base/setup/usetup/usetup.c
  * PURPOSE:         Text-mode setup
  * PROGRAMMERS:     Casper S. Hornstrup (chorns@users.sourceforge.net)
- *                  Hervé Poussineau (hpoussin@reactos.org)
+ *                  HervÃ© Poussineau (hpoussin@reactos.org)
  */
 
 #include <usetup.h>
 #include <math.h>
+#include <ntstrsafe.h>
 
 #include "bootsup.h"
 #include "chkdsk.h"
@@ -45,8 +46,19 @@ BOOLEAN IsUnattendedSetup = FALSE;
 
 static USETUP_DATA USetupData;
 
-// FIXME: Is it really useful?? Just used for SetDefaultPagefile...
-static WCHAR DestinationDriveLetter;
+/* The partition where to perform the installation */
+static PPARTENTRY InstallPartition = NULL;
+/*
+ * The system partition we will actually use. It can be different from
+ * PartitionList->SystemPartition in case we don't support it, or we install
+ * on a removable disk.
+ * We may indeed not support the original system partition in case we do not
+ * have write support on it. Please note that this situation is partly a HACK
+ * and MUST NEVER happen on architectures where real system partitions are
+ * mandatory (because then they are formatted in FAT FS and we support write
+ * operation on them).
+ */
+static PPARTENTRY SystemPartition = NULL;
 
 
 /* OTHER Stuff *****/
@@ -57,9 +69,17 @@ static WCHAR DefaultKBLayout[20];   // Copy of string inside KeyboardList
 
 static BOOLEAN RepairUpdateFlag = FALSE;
 
+/* Global partition list on the system */
 static PPARTLIST PartitionList = NULL;
-static PPARTENTRY TempPartition = NULL;
+
+/* Currently selected partition entry in the list */
+static PPARTENTRY CurrentPartition = NULL;
+
+/* List of supported file systems for the partition to be formatted */
 static PFILE_SYSTEM_LIST FileSystemList = NULL;
+
+/* Machine state for the formatter */
+static PPARTENTRY TempPartition = NULL;
 static FORMATMACHINESTATE FormatState = Start;
 
 /*****************************************************/
@@ -67,6 +87,59 @@ static FORMATMACHINESTATE FormatState = Start;
 static PNTOS_INSTALLATION CurrentInstallation = NULL;
 static PGENERIC_LIST NtOsInstallsList = NULL;
 
+#ifdef __REACTOS__ /* HACK */
+
+/* FONT SUBSTITUTION WORKAROUND *************************************************/
+
+/* For font file check */
+FONTSUBSTSETTINGS s_SubstSettings = { FALSE };
+
+static void
+DoWatchDestFileName(LPCWSTR FileName)
+{
+    if (FileName[0] == 'm' || FileName[0] == 'M')
+    {
+        if (wcsicmp(FileName, L"mingliu.ttc") == 0)
+        {
+            DPRINT("mingliu.ttc found\n");
+            s_SubstSettings.bFoundFontMINGLIU = TRUE;
+        }
+        else if (wcsicmp(FileName, L"msgothic.ttc") == 0)
+        {
+            DPRINT("msgothic.ttc found\n");
+            s_SubstSettings.bFoundFontMSGOTHIC = TRUE;
+        }
+        else if (wcsicmp(FileName, L"msmincho.ttc") == 0)
+        {
+            DPRINT("msmincho.ttc found\n");
+            s_SubstSettings.bFoundFontMSMINCHO = TRUE;
+        }
+        else if (wcsicmp(FileName, L"mssong.ttf") == 0)
+        {
+            DPRINT("mssong.ttf found\n");
+            s_SubstSettings.bFoundFontMSSONG = TRUE;
+        }
+    }
+    else
+    {
+        if (wcsicmp(FileName, L"simsun.ttc") == 0)
+        {
+            DPRINT("simsun.ttc found\n");
+            s_SubstSettings.bFoundFontSIMSUN = TRUE;
+        }
+        else if (wcsicmp(FileName, L"gulim.ttc") == 0)
+        {
+            DPRINT("gulim.ttc found\n");
+            s_SubstSettings.bFoundFontGULIM = TRUE;
+        }
+        else if (wcsicmp(FileName, L"batang.ttc") == 0)
+        {
+            DPRINT("batang.ttc found\n");
+            s_SubstSettings.bFoundFontBATANG = TRUE;
+        }
+    }
+}
+#endif  /* HACK */
 
 /* FUNCTIONS ****************************************************************/
 
@@ -798,7 +871,7 @@ RepairIntroPage(PINPUT_RECORD Ir)
 {
     MUIDisplayPage(REPAIR_INTRO_PAGE);
 
-    while(TRUE)
+    while (TRUE)
     {
         CONSOLE_ConInKey(Ir);
 
@@ -858,6 +931,7 @@ UpgradeRepairPage(PINPUT_RECORD Ir)
             return QUIT_PAGE;
         }
 
+        /* Reset the formatter machine state */
         TempPartition = NULL;
         FormatState = Start;
     }
@@ -1451,7 +1525,6 @@ SelectPartitionPage(PINPUT_RECORD Ir)
         PartitionList = CreatePartitionList();
         if (PartitionList == NULL)
         {
-            /* FIXME: show an error dialog */
             MUIDisplayError(ERROR_DRIVE_INFORMATION, Ir, POPUP_WAIT_ENTER);
             return QUIT_PAGE;
         }
@@ -1461,20 +1534,25 @@ SelectPartitionPage(PINPUT_RECORD Ir)
             return QUIT_PAGE;
         }
 
+        /* Reset the formatter machine state */
         TempPartition = NULL;
         FormatState = Start;
     }
 
     if (RepairUpdateFlag)
     {
+        ASSERT(CurrentInstallation);
+
         /* Determine the selected installation disk & partition */
-        if (!SelectPartition(PartitionList,
-                             CurrentInstallation->DiskNumber,
-                             CurrentInstallation->PartitionNumber))
+        InstallPartition = SelectPartition(PartitionList,
+                                           CurrentInstallation->DiskNumber,
+                                           CurrentInstallation->PartitionNumber);
+        if (!InstallPartition)
         {
             DPRINT1("RepairUpdateFlag == TRUE, SelectPartition() returned FALSE, assert!\n");
             ASSERT(FALSE);
         }
+        ASSERT(!IsContainerPartition(InstallPartition->PartitionType));
 
         return SELECT_FILE_SYSTEM_PAGE;
     }
@@ -1482,50 +1560,62 @@ SelectPartitionPage(PINPUT_RECORD Ir)
     MUIDisplayPage(SELECT_PARTITION_PAGE);
 
     InitPartitionListUi(&ListUi, PartitionList,
-                        2,
-                        23,
+                        CurrentPartition,
+                        2, 23,
                         xScreen - 3,
                         yScreen - 3);
     DrawPartitionList(&ListUi);
 
     if (IsUnattendedSetup)
     {
-        if (!SelectPartition(PartitionList,
-                             USetupData.DestinationDiskNumber,
-                             USetupData.DestinationPartitionNumber))
+        /* Determine the selected installation disk & partition */
+        InstallPartition = SelectPartition(PartitionList,
+                                           USetupData.DestinationDiskNumber,
+                                           USetupData.DestinationPartitionNumber);
+        if (!InstallPartition)
         {
+            CurrentPartition = ListUi.CurrentPartition;
+
             if (USetupData.AutoPartition)
             {
-                if (PartitionList->CurrentPartition->LogicalPartition)
+                ASSERT(CurrentPartition != NULL);
+                ASSERT(!IsContainerPartition(CurrentPartition->PartitionType));
+
+                if (CurrentPartition->LogicalPartition)
                 {
                     CreateLogicalPartition(PartitionList,
-                                           PartitionList->CurrentPartition->SectorCount.QuadPart,
+                                           CurrentPartition,
+                                           CurrentPartition->SectorCount.QuadPart,
                                            TRUE);
                 }
                 else
                 {
                     CreatePrimaryPartition(PartitionList,
-                                           PartitionList->CurrentPartition->SectorCount.QuadPart,
+                                           CurrentPartition,
+                                           CurrentPartition->SectorCount.QuadPart,
                                            TRUE);
                 }
 
 // FIXME?? Aren't we going to enter an infinite loop, if this test fails??
-                if (!IsDiskSizeValid(PartitionList->CurrentPartition))
+                if (!IsDiskSizeValid(CurrentPartition))
                 {
                     MUIDisplayError(ERROR_INSUFFICIENT_PARTITION_SIZE, Ir, POPUP_WAIT_ANY_KEY,
                                     USetupData.RequiredPartitionDiskSpace);
                     return SELECT_PARTITION_PAGE; /* let the user select another partition */
                 }
 
+                InstallPartition = CurrentPartition;
                 return SELECT_FILE_SYSTEM_PAGE;
             }
         }
         else
         {
-            DrawPartitionList(&ListUi);
+            ASSERT(!IsContainerPartition(InstallPartition->PartitionType));
+
+            DrawPartitionList(&ListUi); // FIXME: Doesn't make much sense...
 
 // FIXME?? Aren't we going to enter an infinite loop, if this test fails??
-            if (!IsDiskSizeValid(PartitionList->CurrentPartition))
+            if (!IsDiskSizeValid(InstallPartition))
             {
                 MUIDisplayError(ERROR_INSUFFICIENT_PARTITION_SIZE, Ir, POPUP_WAIT_ANY_KEY,
                                 USetupData.RequiredPartitionDiskSpace);
@@ -1538,14 +1628,16 @@ SelectPartitionPage(PINPUT_RECORD Ir)
 
     while (TRUE)
     {
+        CurrentPartition = ListUi.CurrentPartition;
+
         /* Update status text */
-        if (PartitionList->CurrentPartition == NULL)
+        if (CurrentPartition == NULL)
         {
             CONSOLE_SetStatusText(MUIGetString(STRING_INSTALLCREATEPARTITION));
         }
-        else if (PartitionList->CurrentPartition->LogicalPartition)
+        else if (CurrentPartition->LogicalPartition)
         {
-            if (PartitionList->CurrentPartition->IsPartitioned)
+            if (CurrentPartition->IsPartitioned)
             {
                 CONSOLE_SetStatusText(MUIGetString(STRING_DELETEPARTITION));
             }
@@ -1556,9 +1648,9 @@ SelectPartitionPage(PINPUT_RECORD Ir)
         }
         else
         {
-            if (PartitionList->CurrentPartition->IsPartitioned)
+            if (CurrentPartition->IsPartitioned)
             {
-                if (IsContainerPartition(PartitionList->CurrentPartition->PartitionType))
+                if (IsContainerPartition(CurrentPartition->PartitionType))
                 {
                     CONSOLE_SetStatusText(MUIGetString(STRING_DELETEPARTITION));
                 }
@@ -1599,15 +1691,33 @@ SelectPartitionPage(PINPUT_RECORD Ir)
         }
         else if (Ir->Event.KeyEvent.wVirtualKeyCode == VK_RETURN)  /* ENTER */
         {
-            if (IsContainerPartition(PartitionList->CurrentPartition->PartitionType))
+            ASSERT(CurrentPartition != NULL);
+
+            if (IsContainerPartition(CurrentPartition->PartitionType))
                 continue; // return SELECT_PARTITION_PAGE;
 
-            if (PartitionList->CurrentPartition == NULL ||
-                PartitionList->CurrentPartition->IsPartitioned == FALSE)
+            /*
+             * Check whether the user wants to install ReactOS on a disk that
+             * is not recognized by the computer's firmware and if so, display
+             * a warning since such disks may not be bootable.
+             */
+            if (CurrentPartition->DiskEntry->MediaType == FixedMedia &&
+                !CurrentPartition->DiskEntry->BiosFound)
             {
-                if (PartitionList->CurrentPartition->LogicalPartition)
+                PopupError("The disk you have selected for installing ReactOS\n"
+                           "is not visible by the firmware of your computer,\n"
+                           "and so may not be bootable.\n"
+                           "Press ENTER to continue nonetheless.",
+                           MUIGetString(STRING_CONTINUE),
+                           Ir, POPUP_WAIT_ENTER);
+                // return SELECT_PARTITION_PAGE;
+            }
+
+            if (CurrentPartition->IsPartitioned == FALSE)
+            {
+                if (CurrentPartition->LogicalPartition)
                 {
-                    Error = LogicalPartitionCreationChecks(PartitionList);
+                    Error = LogicalPartitionCreationChecks(CurrentPartition);
                     if (Error != NOT_AN_ERROR)
                     {
                         MUIDisplayError(Error, Ir, POPUP_WAIT_ANY_KEY);
@@ -1615,12 +1725,13 @@ SelectPartitionPage(PINPUT_RECORD Ir)
                     }
 
                     CreateLogicalPartition(PartitionList,
+                                           CurrentPartition,
                                            0ULL,
                                            TRUE);
                 }
                 else
                 {
-                    Error = PrimaryPartitionCreationChecks(PartitionList);
+                    Error = PrimaryPartitionCreationChecks(CurrentPartition);
                     if (Error != NOT_AN_ERROR)
                     {
                         MUIDisplayError(Error, Ir, POPUP_WAIT_ANY_KEY);
@@ -1628,25 +1739,29 @@ SelectPartitionPage(PINPUT_RECORD Ir)
                     }
 
                     CreatePrimaryPartition(PartitionList,
+                                           CurrentPartition,
                                            0ULL,
                                            TRUE);
                 }
             }
 
-            if (!IsDiskSizeValid(PartitionList->CurrentPartition))
+            if (!IsDiskSizeValid(CurrentPartition))
             {
                 MUIDisplayError(ERROR_INSUFFICIENT_PARTITION_SIZE, Ir, POPUP_WAIT_ANY_KEY,
                                 USetupData.RequiredPartitionDiskSpace);
                 return SELECT_PARTITION_PAGE; /* let the user select another partition */
             }
 
+            InstallPartition = CurrentPartition;
             return SELECT_FILE_SYSTEM_PAGE;
         }
         else if (Ir->Event.KeyEvent.wVirtualKeyCode == 'P')  /* P */
         {
-            if (PartitionList->CurrentPartition->LogicalPartition == FALSE)
+            ASSERT(CurrentPartition != NULL);
+
+            if (CurrentPartition->LogicalPartition == FALSE)
             {
-                Error = PrimaryPartitionCreationChecks(PartitionList);
+                Error = PrimaryPartitionCreationChecks(CurrentPartition);
                 if (Error != NOT_AN_ERROR)
                 {
                     MUIDisplayError(Error, Ir, POPUP_WAIT_ANY_KEY);
@@ -1658,9 +1773,11 @@ SelectPartitionPage(PINPUT_RECORD Ir)
         }
         else if (Ir->Event.KeyEvent.wVirtualKeyCode == 'E')  /* E */
         {
-            if (PartitionList->CurrentPartition->LogicalPartition == FALSE)
+            ASSERT(CurrentPartition != NULL);
+
+            if (CurrentPartition->LogicalPartition == FALSE)
             {
-                Error = ExtendedPartitionCreationChecks(PartitionList);
+                Error = ExtendedPartitionCreationChecks(CurrentPartition);
                 if (Error != NOT_AN_ERROR)
                 {
                     MUIDisplayError(Error, Ir, POPUP_WAIT_ANY_KEY);
@@ -1672,9 +1789,11 @@ SelectPartitionPage(PINPUT_RECORD Ir)
         }
         else if (Ir->Event.KeyEvent.wVirtualKeyCode == 'L')  /* L */
         {
-            if (PartitionList->CurrentPartition->LogicalPartition)
+            ASSERT(CurrentPartition != NULL);
+
+            if (CurrentPartition->LogicalPartition)
             {
-                Error = LogicalPartitionCreationChecks(PartitionList);
+                Error = LogicalPartitionCreationChecks(CurrentPartition);
                 if (Error != NOT_AN_ERROR)
                 {
                     MUIDisplayError(Error, Ir, POPUP_WAIT_ANY_KEY);
@@ -1686,36 +1805,44 @@ SelectPartitionPage(PINPUT_RECORD Ir)
         }
         else if (Ir->Event.KeyEvent.wVirtualKeyCode == 'D')  /* D */
         {
+            UNICODE_STRING CurrentPartitionU;
             WCHAR PathBuffer[MAX_PATH];
-            UNICODE_STRING CurrentPartition;
 
-            if (PartitionList->CurrentPartition->IsPartitioned == FALSE)
+            ASSERT(CurrentPartition != NULL);
+
+            if (CurrentPartition->IsPartitioned == FALSE)
             {
                 MUIDisplayError(ERROR_DELETE_SPACE, Ir, POPUP_WAIT_ANY_KEY);
                 return SELECT_PARTITION_PAGE;
             }
 
-            RtlStringCchPrintfW(PathBuffer, ARRAYSIZE(PathBuffer),
-                    L"\\Device\\Harddisk%lu\\Partition%lu\\",
-                    PartitionList->CurrentDisk->DiskNumber,
-                    PartitionList->CurrentPartition->PartitionNumber);
-            RtlInitUnicodeString(&CurrentPartition, PathBuffer);
-
-            /*
-             * Check whether the user attempts to delete the partition on which
-             * the installation source is present. If so, fail with an error.
-             */
-            // &USetupData.SourceRootPath
-            if (RtlPrefixUnicodeString(&CurrentPartition, &USetupData.SourcePath, TRUE))
+// TODO: Do something similar before trying to format the partition?
+            if (!CurrentPartition->New &&
+                !IsContainerPartition(CurrentPartition->PartitionType) &&
+                CurrentPartition->FormatState != Unformatted)
             {
-                PopupError("You cannot delete the partition containing the installation source!",
-                           MUIGetString(STRING_CONTINUE),
-                           Ir, POPUP_WAIT_ENTER);
-                return SELECT_PARTITION_PAGE;
+                ASSERT(CurrentPartition->PartitionNumber != 0);
+
+                RtlStringCchPrintfW(PathBuffer, ARRAYSIZE(PathBuffer),
+                        L"\\Device\\Harddisk%lu\\Partition%lu\\",
+                        CurrentPartition->DiskEntry->DiskNumber,
+                        CurrentPartition->PartitionNumber);
+                RtlInitUnicodeString(&CurrentPartitionU, PathBuffer);
+
+                /*
+                 * Check whether the user attempts to delete the partition on which
+                 * the installation source is present. If so, fail with an error.
+                 */
+                // &USetupData.SourceRootPath
+                if (RtlPrefixUnicodeString(&CurrentPartitionU, &USetupData.SourcePath, TRUE))
+                {
+                    MUIDisplayError(ERROR_SOURCE_PATH, Ir, POPUP_WAIT_ENTER);
+                    return SELECT_PARTITION_PAGE;
+                }
             }
 
-            if (PartitionList->CurrentPartition->BootIndicator ||
-                PartitionList->CurrentPartition == PartitionList->SystemPartition)
+            if (CurrentPartition == PartitionList->SystemPartition ||
+                IsPartitionActive(CurrentPartition))
             {
                 return CONFIRM_DELETE_SYSTEM_PARTITION_PAGE;
             }
@@ -1729,7 +1856,7 @@ SelectPartitionPage(PINPUT_RECORD Ir)
 
 
 #define PARTITION_SIZE_INPUT_FIELD_LENGTH 9
-/* Restriction for MaxSize: pow(10, (PARTITION_SIZE_INPUT_FIELD_LENGTH - 1)) - 1 */
+/* Restriction for MaxSize */
 #define PARTITION_MAXSIZE (pow(10, (PARTITION_SIZE_INPUT_FIELD_LENGTH - 1)) - 1)
 
 static VOID
@@ -1810,7 +1937,7 @@ ShowPartitionSizeInputBox(SHORT Left,
             CONSOLE_SetCursorType(TRUE, FALSE);
             break;
         }
-        else if (Ir.Event.KeyEvent.wVirtualKeyCode == VK_ESCAPE)    /* ESCAPE */
+        else if (Ir.Event.KeyEvent.wVirtualKeyCode == VK_ESCAPE)    /* ESC */
         {
             if (Cancel != NULL)
                 *Cancel = TRUE;
@@ -1929,8 +2056,8 @@ ShowPartitionSizeInputBox(SHORT Left,
 static PAGE_NUMBER
 CreatePrimaryPartitionPage(PINPUT_RECORD Ir)
 {
-    PDISKENTRY DiskEntry;
     PPARTENTRY PartEntry;
+    PDISKENTRY DiskEntry;
     BOOLEAN Quit;
     BOOLEAN Cancel;
     WCHAR InputBuffer[50];
@@ -1940,16 +2067,14 @@ CreatePrimaryPartitionPage(PINPUT_RECORD Ir)
     ULONGLONG SectorCount;
     PCHAR Unit;
 
-    if (PartitionList == NULL ||
-        PartitionList->CurrentDisk == NULL ||
-        PartitionList->CurrentPartition == NULL)
+    if (PartitionList == NULL || CurrentPartition == NULL)
     {
         /* FIXME: show an error dialog */
         return QUIT_PAGE;
     }
 
-    DiskEntry = PartitionList->CurrentDisk;
-    PartEntry = PartitionList->CurrentPartition;
+    PartEntry = CurrentPartition;
+    DiskEntry = CurrentPartition->DiskEntry;
 
     CONSOLE_SetStatusText(MUIGetString(STRING_PLEASEWAIT));
 
@@ -2006,12 +2131,12 @@ CreatePrimaryPartitionPage(PINPUT_RECORD Ir)
 
 #if 0
     CONSOLE_PrintTextXY(8, 10, "Maximum size of the new partition is %I64u MB",
-                        PartitionList->CurrentPartition->SectorCount * DiskEntry->BytesPerSector / MB);
+                        CurrentPartition->SectorCount * DiskEntry->BytesPerSector / MB);
 #endif
 
     CONSOLE_SetStatusText(MUIGetString(STRING_CREATEPARTITION));
 
-    PartEntry = PartitionList->CurrentPartition;
+    PartEntry = CurrentPartition;
     while (TRUE)
     {
         MaxSize = (PartEntry->SectorCount.QuadPart * DiskEntry->BytesPerSector) / MB;  /* in MBytes (rounded) */
@@ -2068,6 +2193,7 @@ CreatePrimaryPartitionPage(PINPUT_RECORD Ir)
             DPRINT ("Partition size: %I64u bytes\n", PartSize);
 
             CreatePrimaryPartition(PartitionList,
+                                   CurrentPartition,
                                    SectorCount,
                                    FALSE);
 
@@ -2092,8 +2218,8 @@ CreatePrimaryPartitionPage(PINPUT_RECORD Ir)
 static PAGE_NUMBER
 CreateExtendedPartitionPage(PINPUT_RECORD Ir)
 {
-    PDISKENTRY DiskEntry;
     PPARTENTRY PartEntry;
+    PDISKENTRY DiskEntry;
     BOOLEAN Quit;
     BOOLEAN Cancel;
     WCHAR InputBuffer[50];
@@ -2103,16 +2229,14 @@ CreateExtendedPartitionPage(PINPUT_RECORD Ir)
     ULONGLONG SectorCount;
     PCHAR Unit;
 
-    if (PartitionList == NULL ||
-        PartitionList->CurrentDisk == NULL ||
-        PartitionList->CurrentPartition == NULL)
+    if (PartitionList == NULL || CurrentPartition == NULL)
     {
         /* FIXME: show an error dialog */
         return QUIT_PAGE;
     }
 
-    DiskEntry = PartitionList->CurrentDisk;
-    PartEntry = PartitionList->CurrentPartition;
+    PartEntry = CurrentPartition;
+    DiskEntry = CurrentPartition->DiskEntry;
 
     CONSOLE_SetStatusText(MUIGetString(STRING_PLEASEWAIT));
 
@@ -2169,12 +2293,12 @@ CreateExtendedPartitionPage(PINPUT_RECORD Ir)
 
 #if 0
     CONSOLE_PrintTextXY(8, 10, "Maximum size of the new partition is %I64u MB",
-                        PartitionList->CurrentPartition->SectorCount * DiskEntry->BytesPerSector / MB);
+                        CurrentPartition->SectorCount * DiskEntry->BytesPerSector / MB);
 #endif
 
     CONSOLE_SetStatusText(MUIGetString(STRING_CREATEPARTITION));
 
-    PartEntry = PartitionList->CurrentPartition;
+    PartEntry = CurrentPartition;
     while (TRUE)
     {
         MaxSize = (PartEntry->SectorCount.QuadPart * DiskEntry->BytesPerSector) / MB;  /* in MBytes (rounded) */
@@ -2231,6 +2355,7 @@ CreateExtendedPartitionPage(PINPUT_RECORD Ir)
             DPRINT ("Partition size: %I64u bytes\n", PartSize);
 
             CreateExtendedPartition(PartitionList,
+                                    CurrentPartition,
                                     SectorCount);
 
             return SELECT_PARTITION_PAGE;
@@ -2254,8 +2379,8 @@ CreateExtendedPartitionPage(PINPUT_RECORD Ir)
 static PAGE_NUMBER
 CreateLogicalPartitionPage(PINPUT_RECORD Ir)
 {
-    PDISKENTRY DiskEntry;
     PPARTENTRY PartEntry;
+    PDISKENTRY DiskEntry;
     BOOLEAN Quit;
     BOOLEAN Cancel;
     WCHAR InputBuffer[50];
@@ -2265,16 +2390,14 @@ CreateLogicalPartitionPage(PINPUT_RECORD Ir)
     ULONGLONG SectorCount;
     PCHAR Unit;
 
-    if (PartitionList == NULL ||
-        PartitionList->CurrentDisk == NULL ||
-        PartitionList->CurrentPartition == NULL)
+    if (PartitionList == NULL || CurrentPartition == NULL)
     {
         /* FIXME: show an error dialog */
         return QUIT_PAGE;
     }
 
-    DiskEntry = PartitionList->CurrentDisk;
-    PartEntry = PartitionList->CurrentPartition;
+    PartEntry = CurrentPartition;
+    DiskEntry = CurrentPartition->DiskEntry;
 
     CONSOLE_SetStatusText(MUIGetString(STRING_PLEASEWAIT));
 
@@ -2331,12 +2454,12 @@ CreateLogicalPartitionPage(PINPUT_RECORD Ir)
 
 #if 0
     CONSOLE_PrintTextXY(8, 10, "Maximum size of the new partition is %I64u MB",
-                        PartitionList->CurrentPartition->SectorCount * DiskEntry->BytesPerSector / MB);
+                        CurrentPartition->SectorCount * DiskEntry->BytesPerSector / MB);
 #endif
 
     CONSOLE_SetStatusText(MUIGetString(STRING_CREATEPARTITION));
 
-    PartEntry = PartitionList->CurrentPartition;
+    PartEntry = CurrentPartition;
     while (TRUE)
     {
         MaxSize = (PartEntry->SectorCount.QuadPart * DiskEntry->BytesPerSector) / MB;  /* in MBytes (rounded) */
@@ -2393,6 +2516,7 @@ CreateLogicalPartitionPage(PINPUT_RECORD Ir)
             DPRINT("Partition size: %I64u bytes\n", PartSize);
 
             CreateLogicalPartition(PartitionList,
+                                   CurrentPartition,
                                    SectorCount,
                                    FALSE);
 
@@ -2458,26 +2582,25 @@ ConfirmDeleteSystemPartitionPage(PINPUT_RECORD Ir)
 static PAGE_NUMBER
 DeletePartitionPage(PINPUT_RECORD Ir)
 {
-    PDISKENTRY DiskEntry;
     PPARTENTRY PartEntry;
+    PDISKENTRY DiskEntry;
     ULONGLONG DiskSize;
     ULONGLONG PartSize;
     PCHAR Unit;
     CHAR PartTypeString[32];
 
-    if (PartitionList == NULL ||
-        PartitionList->CurrentDisk == NULL ||
-        PartitionList->CurrentPartition == NULL)
+    if (PartitionList == NULL || CurrentPartition == NULL)
     {
         /* FIXME: show an error dialog */
         return QUIT_PAGE;
     }
 
-    DiskEntry = PartitionList->CurrentDisk;
-    PartEntry = PartitionList->CurrentPartition;
+    PartEntry = CurrentPartition;
+    DiskEntry = CurrentPartition->DiskEntry;
 
     MUIDisplayPage(DELETE_PARTITION_PAGE);
 
+    /* Adjust partition type */
     GetPartTypeStringFromPartitionType(PartEntry->PartitionType,
                                        PartTypeString,
                                        ARRAYSIZE(PartTypeString));
@@ -2586,10 +2709,11 @@ DeletePartitionPage(PINPUT_RECORD Ir)
         {
             return SELECT_PARTITION_PAGE;
         }
-        else if (Ir->Event.KeyEvent.wVirtualKeyCode == 'D') /* D */
+        else if (Ir->Event.KeyEvent.wVirtualKeyCode == 'L') /* L */
         {
-            DeleteCurrentPartition(PartitionList);
-
+            DeletePartition(PartitionList,
+                            CurrentPartition,
+                            &CurrentPartition);
             return SELECT_PARTITION_PAGE;
         }
     }
@@ -2597,6 +2721,16 @@ DeletePartitionPage(PINPUT_RECORD Ir)
     return DELETE_PARTITION_PAGE;
 }
 
+
+static VOID
+ResetFileSystemList(VOID)
+{
+    if (!FileSystemList)
+        return;
+
+    DestroyFileSystemList(FileSystemList);
+    FileSystemList = NULL;
+}
 
 /*
  * Displays the SelectFileSystemPage.
@@ -2611,7 +2745,7 @@ DeletePartitionPage(PINPUT_RECORD Ir)
  *
  * SIDEEFFECTS
  *  Calls UpdatePartitionType()
- *  Calls CheckActiveSystemPartition()
+ *  Calls FindSupportedSystemPartition()
  *
  * RETURNS
  *   Number of the next page.
@@ -2619,57 +2753,310 @@ DeletePartitionPage(PINPUT_RECORD Ir)
 static PAGE_NUMBER
 SelectFileSystemPage(PINPUT_RECORD Ir)
 {
-    PDISKENTRY DiskEntry;
     PPARTENTRY PartEntry;
+    PDISKENTRY DiskEntry;
     ULONGLONG DiskSize;
     ULONGLONG PartSize;
     PCHAR DiskUnit;
     PCHAR PartUnit;
     CHAR PartTypeString[32];
     FORMATMACHINESTATE PreviousFormatState;
+    PCWSTR DefaultFs;
 
     DPRINT("SelectFileSystemPage()\n");
 
-    if (PartitionList == NULL ||
-        PartitionList->CurrentDisk == NULL ||
-        PartitionList->CurrentPartition == NULL)
+    if (PartitionList == NULL || InstallPartition == NULL)
     {
         /* FIXME: show an error dialog */
         return QUIT_PAGE;
     }
 
-    /* Find or set the active system partition */
-    CheckActiveSystemPartition(PartitionList);
-    if (PartitionList->SystemPartition == NULL)
+    /* Find or set the active system partition when starting formatting */
+    if (FormatState == Start)
     {
-        /* FIXME: show an error dialog */
-        //
-        // Error dialog should say that we cannot find a suitable
-        // system partition and create one on the system. At this point,
-        // it may be nice to ask the user whether he wants to continue,
-        // or use an external drive as the system drive/partition
-        // (e.g. floppy, USB drive, etc...)
-        //
-        return QUIT_PAGE;
+        /*
+         * If we install on a fixed disk, try to find a supported system
+         * partition on the system. Otherwise if we install on a removable disk
+         * use the install partition as the system partition.
+         */
+        // TODO: Include that logic inside the FindSupportedSystemPartition() function?
+        if (InstallPartition->DiskEntry->MediaType == FixedMedia)
+        {
+            SystemPartition = FindSupportedSystemPartition(PartitionList,
+                                                           FALSE,
+                                                           InstallPartition->DiskEntry,
+                                                           InstallPartition);
+            /* Use the original system partition as the old active partition hint */
+            PartEntry = PartitionList->SystemPartition;
+
+            if ( SystemPartition && PartitionList->SystemPartition &&
+                (SystemPartition != PartitionList->SystemPartition) )
+            {
+                DPRINT1("We are using a different system partition!!!!\n");
+
+                MUIDisplayPage(CHANGE_SYSTEM_PARTITION);
+
+                {
+                PPARTENTRY PartEntry; // Shadow variable
+
+                PartEntry = PartitionList->SystemPartition;
+                DiskEntry = PartEntry->DiskEntry;
+
+                /* Adjust partition size */
+                PartSize = PartEntry->SectorCount.QuadPart * DiskEntry->BytesPerSector;
+                if (PartSize >= 10 * GB) /* 10 GB */
+                {
+                    PartSize = PartSize / GB;
+                    PartUnit = MUIGetString(STRING_GB);
+                }
+                else
+                {
+                    PartSize = PartSize / MB;
+                    PartUnit = MUIGetString(STRING_MB);
+                }
+
+                /* Adjust partition type */
+                GetPartTypeStringFromPartitionType(PartEntry->PartitionType,
+                                                   PartTypeString,
+                                                   ARRAYSIZE(PartTypeString));
+
+                if (*PartTypeString == '\0') // STRING_FORMATUNKNOWN ??
+                {
+                    CONSOLE_PrintTextXY(8, 10,
+                                        MUIGetString(STRING_HDDINFOUNK4),
+                                        (PartEntry->DriveLetter == 0) ? '-' : (CHAR)PartEntry->DriveLetter,
+                                        (PartEntry->DriveLetter == 0) ? '-' : ':',
+                                        PartEntry->PartitionType,
+                                        PartSize,
+                                        PartUnit);
+                }
+                else
+                {
+                    CONSOLE_PrintTextXY(8, 10,
+                                        "%c%c  %s    %I64u %s",
+                                        (PartEntry->DriveLetter == 0) ? '-' : (CHAR)PartEntry->DriveLetter,
+                                        (PartEntry->DriveLetter == 0) ? '-' : ':',
+                                        PartTypeString,
+                                        PartSize,
+                                        PartUnit);
+                }
+
+
+                /* Adjust disk size */
+                DiskSize = DiskEntry->SectorCount.QuadPart * DiskEntry->BytesPerSector;
+                if (DiskSize >= 10 * GB) /* 10 GB */
+                {
+                    DiskSize = DiskSize / GB;
+                    DiskUnit = MUIGetString(STRING_GB);
+                }
+                else
+                {
+                    DiskSize = DiskSize / MB;
+                    DiskUnit = MUIGetString(STRING_MB);
+                }
+
+                CONSOLE_PrintTextXY(8, 14, MUIGetString(STRING_HDINFOPARTZEROED_1),
+                                    DiskEntry->DiskNumber,
+                                    DiskSize,
+                                    DiskUnit,
+                                    DiskEntry->Port,
+                                    DiskEntry->Bus,
+                                    DiskEntry->Id,
+                                    &DiskEntry->DriverName,
+                                    DiskEntry->DiskStyle == PARTITION_STYLE_MBR ? "MBR" :
+                                    DiskEntry->DiskStyle == PARTITION_STYLE_GPT ? "GPT" :
+                                                                                  "RAW");
+
+
+                PartEntry = SystemPartition;
+                DiskEntry = PartEntry->DiskEntry;
+
+                /* Adjust partition size */
+                PartSize = PartEntry->SectorCount.QuadPart * DiskEntry->BytesPerSector;
+                if (PartSize >= 10 * GB) /* 10 GB */
+                {
+                    PartSize = PartSize / GB;
+                    PartUnit = MUIGetString(STRING_GB);
+                }
+                else
+                {
+                    PartSize = PartSize / MB;
+                    PartUnit = MUIGetString(STRING_MB);
+                }
+
+                /* Adjust partition type */
+                GetPartTypeStringFromPartitionType(PartEntry->PartitionType,
+                                                   PartTypeString,
+                                                   ARRAYSIZE(PartTypeString));
+
+                if (*PartTypeString == '\0') // STRING_FORMATUNKNOWN ??
+                {
+                    CONSOLE_PrintTextXY(8, 23,
+                                        MUIGetString(STRING_HDDINFOUNK4),
+                                        (PartEntry->DriveLetter == 0) ? '-' : (CHAR)PartEntry->DriveLetter,
+                                        (PartEntry->DriveLetter == 0) ? '-' : ':',
+                                        PartEntry->PartitionType,
+                                        PartSize,
+                                        PartUnit);
+                }
+                else
+                {
+                    CONSOLE_PrintTextXY(8, 23,
+                                        "%c%c  %s    %I64u %s",
+                                        (PartEntry->DriveLetter == 0) ? '-' : (CHAR)PartEntry->DriveLetter,
+                                        (PartEntry->DriveLetter == 0) ? '-' : ':',
+                                        PartTypeString,
+                                        PartSize,
+                                        PartUnit);
+                }
+
+                }
+
+                while (TRUE)
+                {
+                    CONSOLE_ConInKey(Ir);
+
+                    if (Ir->Event.KeyEvent.wVirtualKeyCode == VK_RETURN) /* ENTER */
+                    {
+                        break;
+                    }
+                    else if (Ir->Event.KeyEvent.wVirtualKeyCode == VK_ESCAPE)  /* ESC */
+                    {
+                        return SELECT_PARTITION_PAGE;
+                    }
+                }
+
+                CONSOLE_ClearScreen();
+                CONSOLE_Flush();
+            }
+        }
+        else // if (InstallPartition->DiskEntry->MediaType == RemovableMedia)
+        {
+            SystemPartition = InstallPartition;
+            /* Don't specify any old active partition hint */
+            PartEntry = NULL;
+        }
+
+        if (!SystemPartition)
+        {
+            /* FIXME: improve the error dialog */
+            //
+            // Error dialog should say that we cannot find a suitable
+            // system partition and create one on the system. At this point,
+            // it may be nice to ask the user whether he wants to continue,
+            // or use an external drive as the system drive/partition
+            // (e.g. floppy, USB drive, etc...)
+            //
+            PopupError("The ReactOS Setup could not find a supported system partition\n"
+                       "on your system or could not create a new one. Without such partition\n"
+                       "the Setup program cannot install ReactOS.\n"
+                       "Press ENTER to return to the partition selection list.",
+                       MUIGetString(STRING_CONTINUE),
+                       Ir, POPUP_WAIT_ENTER);
+            return SELECT_PARTITION_PAGE;
+        }
+
+        /*
+         * If the system partition can be created in some
+         * non-partitioned space, create it now.
+         */
+        if (!SystemPartition->IsPartitioned)
+        {
+            // if (IsUnattendedSetup)
+            {
+                CreatePrimaryPartition(PartitionList,
+                                       SystemPartition,
+                                       0LL, // SystemPartition->SectorCount.QuadPart,
+                                       TRUE);
+                ASSERT(SystemPartition->IsPartitioned);
+            }
+            // else
+            {
+            }
+        }
+
+        /* Set it as such */
+        if (!SetActivePartition(PartitionList, SystemPartition, PartEntry))
+        {
+            DPRINT1("SetActivePartition(0x%p) failed?!\n", SystemPartition);
+            ASSERT(FALSE);
+        }
+
+        /* Commit all partition changes to all the disks */
+        if (!WritePartitionsToDisk(PartitionList))
+        {
+            DPRINT("WritePartitionsToDisk() failed\n");
+            MUIDisplayError(ERROR_WRITE_PTABLE, Ir, POPUP_WAIT_ENTER);
+            return QUIT_PAGE;
+        }
+
+        /*
+         * In all cases, whether or not we are going to perform a formatting,
+         * we must perform a filesystem check of both the system and the
+         * installation partitions.
+         */
+        InstallPartition->NeedsCheck = TRUE;
+        if (SystemPartition != InstallPartition)
+            SystemPartition->NeedsCheck = TRUE;
+
+        /*
+         * In case we just repair an existing installation, or make
+         * an unattended setup without formatting, just go to the
+         * filesystem check step.
+         */
+        if (RepairUpdateFlag)
+            return CHECK_FILE_SYSTEM_PAGE;
+
+        if (IsUnattendedSetup && !USetupData.FormatPartition)
+            return CHECK_FILE_SYSTEM_PAGE;
     }
+
+    // ASSERT(SystemPartition->IsPartitioned);
+
+    /* Reset the filesystem list for each partition that is to be formatted */
+    ResetFileSystemList();
 
     PreviousFormatState = FormatState;
     switch (FormatState)
     {
         case Start:
         {
-            if (PartitionList->CurrentPartition != PartitionList->SystemPartition)
+            /*
+             * We start by formatting the system partition in case it is new
+             * (it didn't exist before) and is not the same as the installation
+             * partition. Otherwise we just require a filesystem check on it,
+             * and start by formatting the installation partition instead.
+             */
+
+            ASSERT(SystemPartition->IsPartitioned);
+
+            if ((SystemPartition != InstallPartition) &&
+                (SystemPartition->FormatState == Unformatted))
             {
-                TempPartition = PartitionList->SystemPartition;
+                TempPartition = SystemPartition;
                 TempPartition->NeedsCheck = TRUE;
+
+                // TODO: Should we let the user using a custom file-system,
+                // or should we always use FAT(32) for it?
+                // For "compatibility", FAT(32) would be best indeed.
 
                 FormatState = FormatSystemPartition;
                 DPRINT1("FormatState: Start --> FormatSystemPartition\n");
             }
             else
             {
-                TempPartition = PartitionList->CurrentPartition;
+                TempPartition = InstallPartition;
                 TempPartition->NeedsCheck = TRUE;
+
+                if (SystemPartition != InstallPartition)
+                {
+                    /* The system partition is separate, so it had better be formatted! */
+                    ASSERT((SystemPartition->FormatState == Preformatted) ||
+                           (SystemPartition->FormatState == Formatted));
+
+                    /* Require a filesystem check on the system partition too */
+                    SystemPartition->NeedsCheck = TRUE;
+                }
 
                 FormatState = FormatInstallPartition;
                 DPRINT1("FormatState: Start --> FormatInstallPartition\n");
@@ -2679,7 +3066,7 @@ SelectFileSystemPage(PINPUT_RECORD Ir)
 
         case FormatSystemPartition:
         {
-            TempPartition = PartitionList->CurrentPartition;
+            TempPartition = InstallPartition;
             TempPartition->NeedsCheck = TRUE;
 
             FormatState = FormatInstallPartition;
@@ -2688,24 +3075,6 @@ SelectFileSystemPage(PINPUT_RECORD Ir)
         }
 
         case FormatInstallPartition:
-        {
-            if (GetNextUnformattedPartition(PartitionList,
-                                            NULL,
-                                            &TempPartition))
-            {
-                FormatState = FormatOtherPartition;
-                TempPartition->NeedsCheck = TRUE;
-                DPRINT1("FormatState: FormatInstallPartition --> FormatOtherPartition\n");
-            }
-            else
-            {
-                FormatState = FormatDone;
-                DPRINT1("FormatState: FormatInstallPartition --> FormatDone\n");
-                return CHECK_FILE_SYSTEM_PAGE;
-            }
-            break;
-        }
-
         case FormatOtherPartition:
         {
             if (GetNextUnformattedPartition(PartitionList,
@@ -2714,27 +3083,44 @@ SelectFileSystemPage(PINPUT_RECORD Ir)
             {
                 FormatState = FormatOtherPartition;
                 TempPartition->NeedsCheck = TRUE;
-                DPRINT1("FormatState: FormatOtherPartition --> FormatOtherPartition\n");
+
+                if (FormatState == FormatInstallPartition)
+                    DPRINT1("FormatState: FormatInstallPartition --> FormatOtherPartition\n");
+                else
+                    DPRINT1("FormatState: FormatOtherPartition --> FormatOtherPartition\n");
             }
             else
             {
                 FormatState = FormatDone;
-                DPRINT1("FormatState: FormatOtherPartition --> FormatDone\n");
+
+                if (FormatState == FormatInstallPartition)
+                    DPRINT1("FormatState: FormatInstallPartition --> FormatDone\n");
+                else
+                    DPRINT1("FormatState: FormatOtherPartition --> FormatDone\n");
+
                 return CHECK_FILE_SYSTEM_PAGE;
             }
             break;
         }
 
+        case FormatDone:
+        {
+            DPRINT1("FormatState: FormatDone\n");
+            return CHECK_FILE_SYSTEM_PAGE;
+        }
+
         default:
         {
             DPRINT1("FormatState: Invalid value %ld\n", FormatState);
-            /* FIXME: show an error dialog */
+            ASSERT(FALSE);
             return QUIT_PAGE;
         }
     }
 
     PartEntry = TempPartition;
-    DiskEntry = PartEntry->DiskEntry;
+    DiskEntry = TempPartition->DiskEntry;
+
+    ASSERT(PartEntry->IsPartitioned && PartEntry->PartitionNumber != 0);
 
     /* Adjust disk size */
     DiskSize = DiskEntry->SectorCount.QuadPart * DiskEntry->BytesPerSector;
@@ -2814,10 +3200,23 @@ SelectFileSystemPage(PINPUT_RECORD Ir)
                 break;
 
             default:
+                ASSERT(FALSE);
                 break;
         }
 
-        CONSOLE_SetTextXY(6, 10, MUIGetString(STRING_PARTFORMAT));
+        CONSOLE_PrintTextXY(8, 10, MUIGetString(STRING_HDINFOPARTZEROED_1),
+                            DiskEntry->DiskNumber,
+                            DiskSize,
+                            DiskUnit,
+                            DiskEntry->Port,
+                            DiskEntry->Bus,
+                            DiskEntry->Id,
+                            &DiskEntry->DriverName,
+                            DiskEntry->DiskStyle == PARTITION_STYLE_MBR ? "MBR" :
+                            DiskEntry->DiskStyle == PARTITION_STYLE_GPT ? "GPT" :
+                                                                          "RAW");
+
+        CONSOLE_SetTextXY(6, 12, MUIGetString(STRING_PARTFORMAT));
     }
     else
     {
@@ -2857,54 +3256,47 @@ SelectFileSystemPage(PINPUT_RECORD Ir)
                                                                           "RAW");
     }
 
-    if (FileSystemList == NULL)
+    ASSERT(FileSystemList == NULL);
+
+    if (IsUnattendedSetup)
     {
-        PWSTR DefaultFs;
+        ASSERT(USetupData.FormatPartition);
 
-        if (IsUnattendedSetup)
+        switch (USetupData.FsType)
         {
-            switch (USetupData.FsType)
-            {
-                /* 1 is for BtrFS */
-                case 1:
-                    DefaultFs = L"BTRFS";
-                    break;
+            /* 1 is for BtrFS */
+            case 1:
+                DefaultFs = L"BTRFS";
+                break;
 
-                /* If we don't understand input, default to FAT */
-                default:
-                    DefaultFs = L"FAT";
-                    break;
-            }
-        }
-        else
-        {
-            /* By default select the "FAT" file system */
-            DefaultFs = L"FAT";
-        }
-
-        /* Create the file system list */
-        FileSystemList = CreateFileSystemList(6, 26, PartEntry->New, DefaultFs);
-        if (FileSystemList == NULL)
-        {
-            /* FIXME: show an error dialog */
-            return QUIT_PAGE;
+            /* If we don't understand input, default to FAT */
+            default:
+                DefaultFs = L"FAT";
+                break;
         }
     }
-
-    if (RepairUpdateFlag)
+    else
     {
-        return CHECK_FILE_SYSTEM_PAGE;
-        //return SELECT_PARTITION_PAGE;
+        /* By default select the "FAT" file system */
+        DefaultFs = L"FAT";
+    }
+
+    /* Create the file system list */
+    // TODO: Display only the FSes compatible with the selected partition!
+    FileSystemList = CreateFileSystemList(6, 26,
+                                          PartEntry->New ||
+                                          PartEntry->FormatState == Unformatted,
+                                          DefaultFs);
+    if (FileSystemList == NULL)
+    {
+        /* FIXME: show an error dialog */
+        return QUIT_PAGE;
     }
 
     if (IsUnattendedSetup)
     {
-        if (USetupData.FormatPartition)
-        {
-            return FORMAT_PARTITION_PAGE;
-        }
-
-        return CHECK_FILE_SYSTEM_PAGE;
+        ASSERT(USetupData.FormatPartition);
+        return FORMAT_PARTITION_PAGE;
     }
 
     DrawFileSystemList(FileSystemList);
@@ -2917,14 +3309,24 @@ SelectFileSystemPage(PINPUT_RECORD Ir)
             (Ir->Event.KeyEvent.wVirtualKeyCode == VK_F3))  /* F3 */
         {
             if (ConfirmQuit(Ir))
+            {
+                /* Reset the filesystem list */
+                ResetFileSystemList();
                 return QUIT_PAGE;
+            }
 
             break;
         }
         else if ((Ir->Event.KeyEvent.uChar.AsciiChar == 0x00) &&
                  (Ir->Event.KeyEvent.wVirtualKeyCode == VK_ESCAPE))  /* ESC */
         {
+            /* Reset the formatter machine state */
+            TempPartition = NULL;
             FormatState = Start;
+
+            /* Reset the filesystem list */
+            ResetFileSystemList();
+
             return SELECT_PARTITION_PAGE;
         }
         else if ((Ir->Event.KeyEvent.uChar.AsciiChar == 0x00) &&
@@ -2940,9 +3342,27 @@ SelectFileSystemPage(PINPUT_RECORD Ir)
         else if (Ir->Event.KeyEvent.wVirtualKeyCode == VK_RETURN) /* ENTER */
         {
             if (!FileSystemList->Selected->FileSystem)
+            {
+                ASSERT(!TempPartition->New && TempPartition->FormatState != Unformatted);
+
+                /*
+                 * Skip formatting this partition. We will also ignore
+                 * filesystem checks on it, unless it is either the system
+                 * or the installation partition.
+                 */
+                if (TempPartition != SystemPartition &&
+                    TempPartition != InstallPartition)
+                {
+                    PartEntry->NeedsCheck = FALSE;
+                }
+
                 return SELECT_FILE_SYSTEM_PAGE;
+            }
             else
+            {
+                /* Format this partition */
                 return FORMAT_PARTITION_PAGE;
+            }
         }
     }
 
@@ -2961,7 +3381,7 @@ SelectFileSystemPage(PINPUT_RECORD Ir)
  *  QuitPage
  *
  * SIDEEFFECTS
- *  Sets PartitionList->CurrentPartition->FormatState
+ *  Sets InstallPartition->FormatState
  *  Sets USetupData.DestinationRootPath
  *
  * RETURNS
@@ -2971,8 +3391,8 @@ static PAGE_NUMBER
 FormatPartitionPage(PINPUT_RECORD Ir)
 {
     NTSTATUS Status;
-    PDISKENTRY DiskEntry;
     PPARTENTRY PartEntry;
+    PDISKENTRY DiskEntry;
     PFILE_SYSTEM_ITEM SelectedFileSystem;
     UNICODE_STRING PartitionRootPath;
     WCHAR PathBuffer[MAX_PATH];
@@ -2995,32 +3415,46 @@ FormatPartitionPage(PINPUT_RECORD Ir)
     }
 
     PartEntry = TempPartition;
-    DiskEntry = PartEntry->DiskEntry;
+    DiskEntry = TempPartition->DiskEntry;
+
+    ASSERT(PartEntry->IsPartitioned && PartEntry->PartitionNumber != 0);
 
     SelectedFileSystem = FileSystemList->Selected;
+    ASSERT(SelectedFileSystem && SelectedFileSystem->FileSystem);
 
     while (TRUE)
     {
         if (!IsUnattendedSetup)
-        {
             CONSOLE_ConInKey(Ir);
-        }
 
         if ((Ir->Event.KeyEvent.uChar.AsciiChar == 0x00) &&
             (Ir->Event.KeyEvent.wVirtualKeyCode == VK_F3))  /* F3 */
         {
             if (ConfirmQuit(Ir))
+            {
+                /* Reset the filesystem list */
+                ResetFileSystemList();
                 return QUIT_PAGE;
+            }
 
             break;
         }
         else if (Ir->Event.KeyEvent.wVirtualKeyCode == VK_RETURN || IsUnattendedSetup) /* ENTER */
         {
+            /*
+             * Remove the "Press ENTER to continue" message prompt when the ENTER
+             * key is pressed as the user wants to begin the partition formatting.
+            */
+            MUIClearStyledText(FORMAT_PARTITION_PAGE, TEXT_ID_FORMAT_PROMPT, TEXT_TYPE_REGULAR);
             CONSOLE_SetStatusText(MUIGetString(STRING_PLEASEWAIT));
 
             if (!PreparePartitionForFormatting(PartEntry, SelectedFileSystem->FileSystem))
             {
                 /* FIXME: show an error dialog */
+
+                /* Reset the filesystem list */
+                ResetFileSystemList();
+
                 return QUIT_PAGE;
             }
 
@@ -3052,10 +3486,17 @@ FormatPartitionPage(PINPUT_RECORD Ir)
 #endif
 
             /* Commit the partition changes to the disk */
-            if (!WritePartitionsToDisk(PartitionList))
+            Status = WritePartitions(DiskEntry);
+            if (!NT_SUCCESS(Status))
             {
-                DPRINT("WritePartitionsToDisk() failed\n");
+                DPRINT1("WritePartitions(disk %lu) failed, Status 0x%08lx\n",
+                        DiskEntry->DiskNumber, Status);
+
                 MUIDisplayError(ERROR_WRITE_PTABLE, Ir, POPUP_WAIT_ENTER);
+
+                /* Reset the filesystem list */
+                ResetFileSystemList();
+
                 return QUIT_PAGE;
             }
 
@@ -3068,52 +3509,64 @@ FormatPartitionPage(PINPUT_RECORD Ir)
             DPRINT("PartitionRootPath: %wZ\n", &PartitionRootPath);
 
             /* Format the partition */
-            if (SelectedFileSystem->FileSystem)
+            Status = FormatPartition(&PartitionRootPath,
+                                     SelectedFileSystem->FileSystem,
+                                     SelectedFileSystem->QuickFormat);
+            if (Status == STATUS_NOT_SUPPORTED)
             {
-                Status = FormatPartition(&PartitionRootPath,
-                                         SelectedFileSystem);
-                if (Status == STATUS_NOT_SUPPORTED)
+                sprintf(Buffer,
+                        "Setup is currently unable to format a partition in %S.\n"
+                        "\n"
+                        "  \x07  Press ENTER to continue Setup.\n"
+                        "  \x07  Press F3 to quit Setup.",
+                        SelectedFileSystem->FileSystem);
+
+                PopupError(Buffer,
+                           MUIGetString(STRING_QUITCONTINUE),
+                           NULL, POPUP_WAIT_NONE);
+
+                while (TRUE)
                 {
-                    sprintf(Buffer,
-                            "Setup is currently unable to format a partition in %S.\n"
-                            "\n"
-                            "  \x07  Press ENTER to continue Setup.\n"
-                            "  \x07  Press F3 to quit Setup.",
-                            SelectedFileSystem->FileSystem->FileSystemName);
+                    CONSOLE_ConInKey(Ir);
 
-                    PopupError(Buffer,
-                               MUIGetString(STRING_QUITCONTINUE),
-                               NULL, POPUP_WAIT_NONE);
-
-                    while (TRUE)
+                    if (Ir->Event.KeyEvent.uChar.AsciiChar == 0x00 &&
+                        Ir->Event.KeyEvent.wVirtualKeyCode == VK_F3)  /* F3 */
                     {
-                        CONSOLE_ConInKey(Ir);
-
-                        if (Ir->Event.KeyEvent.uChar.AsciiChar == 0x00 &&
-                            Ir->Event.KeyEvent.wVirtualKeyCode == VK_F3)  /* F3 */
+                        if (ConfirmQuit(Ir))
                         {
-                            if (ConfirmQuit(Ir))
-                                return QUIT_PAGE;
-                            else
-                                return SELECT_FILE_SYSTEM_PAGE;
+                            /* Reset the filesystem list */
+                            ResetFileSystemList();
+                            return QUIT_PAGE;
                         }
-                        else if (Ir->Event.KeyEvent.uChar.AsciiChar == VK_RETURN) /* ENTER */
+                        else
                         {
                             return SELECT_FILE_SYSTEM_PAGE;
                         }
                     }
+                    else if (Ir->Event.KeyEvent.uChar.AsciiChar == VK_RETURN) /* ENTER */
+                    {
+                        return SELECT_FILE_SYSTEM_PAGE;
+                    }
                 }
-                else if (!NT_SUCCESS(Status))
-                {
-                    DPRINT1("FormatPartition() failed with status 0x%08lx\n", Status);
-                    MUIDisplayError(ERROR_FORMATTING_PARTITION, Ir, POPUP_WAIT_ANY_KEY, PathBuffer);
-                    return QUIT_PAGE;
-                }
-
-                PartEntry->FormatState = Formatted;
-                // PartEntry->FileSystem  = FileSystem;
-                PartEntry->New = FALSE;
             }
+            else if (!NT_SUCCESS(Status))
+            {
+                DPRINT1("FormatPartition() failed with status 0x%08lx\n", Status);
+                MUIDisplayError(ERROR_FORMATTING_PARTITION, Ir, POPUP_WAIT_ANY_KEY, PathBuffer);
+
+                /* Reset the filesystem list */
+                ResetFileSystemList();
+
+                return QUIT_PAGE;
+            }
+
+//
+// TODO: Here, call a partlist.c function that update the actual FS name
+// and the label fields of the volume.
+//
+            PartEntry->FormatState = Formatted;
+            // PartEntry->FileSystem  = FileSystem;
+            PartEntry->New = FALSE;
 
 #ifndef NDEBUG
             CONSOLE_SetStatusText("   Done.  Press any key ...");
@@ -3147,7 +3600,6 @@ CheckFileSystemPage(PINPUT_RECORD Ir)
     NTSTATUS Status;
     PDISKENTRY DiskEntry;
     PPARTENTRY PartEntry;
-    PFILE_SYSTEM CurrentFileSystem;
     UNICODE_STRING PartitionRootPath;
     WCHAR PathBuffer[MAX_PATH];
     CHAR Buffer[MAX_PATH];
@@ -3163,6 +3615,22 @@ CheckFileSystemPage(PINPUT_RECORD Ir)
         return INSTALL_DIRECTORY_PAGE;
     }
 
+    ASSERT(PartEntry->IsPartitioned && PartEntry->PartitionNumber != 0);
+
+    CONSOLE_SetTextXY(6, 8, MUIGetString(STRING_CHECKINGPART));
+
+    CONSOLE_SetStatusText(MUIGetString(STRING_PLEASEWAIT));
+
+    DPRINT1("CheckFileSystemPage -- PartitionType: 0x%02X ; FileSystem: %S\n",
+            PartEntry->PartitionType, (*PartEntry->FileSystem ? PartEntry->FileSystem : L"n/a"));
+
+    /* HACK: Do not try to check a partition with an unknown filesystem */
+    if (!*PartEntry->FileSystem)
+    {
+        PartEntry->NeedsCheck = FALSE;
+        return CHECK_FILE_SYSTEM_PAGE;
+    }
+
     /* Set PartitionRootPath */
     RtlStringCchPrintfW(PathBuffer, ARRAYSIZE(PathBuffer),
             L"\\Device\\Harddisk%lu\\Partition%lu",
@@ -3171,30 +3639,23 @@ CheckFileSystemPage(PINPUT_RECORD Ir)
     RtlInitUnicodeString(&PartitionRootPath, PathBuffer);
     DPRINT("PartitionRootPath: %wZ\n", &PartitionRootPath);
 
-    CONSOLE_SetTextXY(6, 8, MUIGetString(STRING_CHECKINGPART));
-
-    CONSOLE_SetStatusText(MUIGetString(STRING_PLEASEWAIT));
-
-    CurrentFileSystem = PartEntry->FileSystem;
-    DPRINT1("CheckFileSystemPage -- PartitionType: 0x%02X ; FileSystemName: %S\n",
-            PartEntry->PartitionType, (CurrentFileSystem ? CurrentFileSystem->FileSystemName : L"n/a"));
-
-    /* HACK: Do not try to check a partition with an unknown filesystem */
-    if (CurrentFileSystem == NULL)
-    {
-        PartEntry->NeedsCheck = FALSE;
-        return CHECK_FILE_SYSTEM_PAGE;
-    }
-
-    Status = ChkdskPartition(&PartitionRootPath, CurrentFileSystem);
+    /* Check the partition */
+    Status = ChkdskPartition(&PartitionRootPath, PartEntry->FileSystem);
     if (Status == STATUS_NOT_SUPPORTED)
     {
-        sprintf(Buffer,
-                "Setup is currently unable to check a partition formatted in %S.\n"
-                "\n"
-                "  \x07  Press ENTER to continue Setup.\n"
-                "  \x07  Press F3 to quit Setup.",
-                CurrentFileSystem->FileSystemName);
+        /*
+         * Partition checking is not supported with the current filesystem,
+         * so disable FS checks on it.
+         */
+        PartEntry->NeedsCheck = FALSE;
+
+        RtlStringCbPrintfA(Buffer,
+                           sizeof(Buffer),
+                           "Setup is currently unable to check a partition formatted in %S.\n"
+                           "\n"
+                           "  \x07  Press ENTER to continue Setup.\n"
+                           "  \x07  Press F3 to quit Setup.",
+                           PartEntry->FileSystem);
 
         PopupError(Buffer,
                    MUIGetString(STRING_QUITCONTINUE),
@@ -3214,7 +3675,6 @@ CheckFileSystemPage(PINPUT_RECORD Ir)
             }
             else if (Ir->Event.KeyEvent.uChar.AsciiChar == VK_RETURN) /* ENTER */
             {
-                PartEntry->NeedsCheck = FALSE;
                 return CHECK_FILE_SYSTEM_PAGE;
             }
         }
@@ -3222,41 +3682,14 @@ CheckFileSystemPage(PINPUT_RECORD Ir)
     else if (!NT_SUCCESS(Status))
     {
         DPRINT("ChkdskPartition() failed with status 0x%08lx\n", Status);
-        // sprintf(Buffer, "Setup failed to verify the selected partition.\n"
-        sprintf(Buffer, "ChkDsk detected some disk errors.\n"
-                "(Status 0x%08lx).\n", Status);
+        sprintf(Buffer, "ChkDsk detected some disk errors.\n(Status 0x%08lx).\n", Status);
         PopupError(Buffer,
-                   // MUIGetString(STRING_REBOOTCOMPUTER),
                    MUIGetString(STRING_CONTINUE),
                    Ir, POPUP_WAIT_ENTER);
-
-        // return QUIT_PAGE;
     }
 
     PartEntry->NeedsCheck = FALSE;
     return CHECK_FILE_SYSTEM_PAGE;
-}
-
-
-static NTSTATUS
-BuildInstallPaths(PWSTR InstallDir,
-                  PDISKENTRY DiskEntry,
-                  PPARTENTRY PartEntry)
-{
-    NTSTATUS Status;
-
-    Status = InitDestinationPaths(&USetupData, InstallDir, DiskEntry, PartEntry);
-
-    if (!NT_SUCCESS(Status))
-    {
-        DPRINT1("InitDestinationPaths() failed with status 0x%08lx\n", Status);
-        return Status;
-    }
-
-    /* Initialize DestinationDriveLetter */
-    DestinationDriveLetter = PartEntry->DriveLetter;
-
-    return STATUS_SUCCESS;
 }
 
 
@@ -3319,30 +3752,19 @@ IsValidPath(
 static PAGE_NUMBER
 InstallDirectoryPage(PINPUT_RECORD Ir)
 {
-    PDISKENTRY DiskEntry;
-    PPARTENTRY PartEntry;
-    WCHAR InstallDir[MAX_PATH];
-    WCHAR c;
-    ULONG Length, Pos;
     NTSTATUS Status;
+    ULONG Length, Pos;
+    WCHAR c;
+    WCHAR InstallDir[MAX_PATH];
 
     /* We do not need the filesystem list anymore */
-    if (FileSystemList != NULL)
-    {
-        DestroyFileSystemList(FileSystemList);
-        FileSystemList = NULL;
-    }
+    ResetFileSystemList();
 
-    if (PartitionList == NULL ||
-        PartitionList->CurrentDisk == NULL ||
-        PartitionList->CurrentPartition == NULL)
+    if (PartitionList == NULL || InstallPartition == NULL)
     {
         /* FIXME: show an error dialog */
         return QUIT_PAGE;
     }
-
-    DiskEntry = PartitionList->CurrentDisk;
-    PartEntry = PartitionList->CurrentPartition;
 
     // if (IsUnattendedSetup)
     if (RepairUpdateFlag)
@@ -3361,15 +3783,11 @@ InstallDirectoryPage(PINPUT_RECORD Ir)
      */
     if ((RepairUpdateFlag || IsUnattendedSetup) && IsValidPath(InstallDir))
     {
-        Status = BuildInstallPaths(InstallDir,
-                                   DiskEntry,
-                                   PartEntry);
+        Status = InitDestinationPaths(&USetupData, InstallDir, InstallPartition);
         if (!NT_SUCCESS(Status))
         {
-            DPRINT1("BuildInstallPaths() failed. Status code: 0x%lx", Status);
-            PopupError("Failed to build the installation paths for the ReactOS installation directory!",
-                       MUIGetString(STRING_CONTINUE),
-                       Ir, POPUP_WAIT_ENTER);
+            DPRINT1("InitDestinationPaths() failed. Status code: 0x%lx", Status);
+            MUIDisplayError(ERROR_NO_BUILD_PATH, Ir, POPUP_WAIT_ENTER);
             return QUIT_PAGE;
         }
 
@@ -3380,9 +3798,7 @@ InstallDirectoryPage(PINPUT_RECORD Ir)
          */
         if (RtlPrefixUnicodeString(&USetupData.SourcePath, &USetupData.DestinationPath, TRUE))
         {
-            PopupError("You cannot install ReactOS within the installation source directory!",
-                       MUIGetString(STRING_CONTINUE),
-                       Ir, POPUP_WAIT_ENTER);
+            MUIDisplayError(ERROR_SOURCE_DIR, Ir, POPUP_WAIT_ENTER);
             return INSTALL_DIRECTORY_PAGE;
         }
 
@@ -3471,15 +3887,11 @@ InstallDirectoryPage(PINPUT_RECORD Ir)
                 return INSTALL_DIRECTORY_PAGE;
             }
 
-            Status = BuildInstallPaths(InstallDir,
-                                       DiskEntry,
-                                       PartEntry);
+            Status = InitDestinationPaths(&USetupData, InstallDir, InstallPartition);
             if (!NT_SUCCESS(Status))
             {
-                DPRINT1("BuildInstallPaths() failed. Status code: 0x%lx", Status);
-                PopupError("Failed to build the installation paths for the ReactOS installation directory!",
-                           MUIGetString(STRING_CONTINUE),
-                           Ir, POPUP_WAIT_ENTER);
+                DPRINT1("InitDestinationPaths() failed. Status code: 0x%lx", Status);
+                MUIDisplayError(ERROR_NO_BUILD_PATH, Ir, POPUP_WAIT_ENTER);
                 return QUIT_PAGE;
             }
 
@@ -3490,9 +3902,7 @@ InstallDirectoryPage(PINPUT_RECORD Ir)
              */
             if (RtlPrefixUnicodeString(&USetupData.SourcePath, &USetupData.DestinationPath, TRUE))
             {
-                PopupError("You cannot install ReactOS within the installation source directory!",
-                           MUIGetString(STRING_CONTINUE),
-                           Ir, POPUP_WAIT_ENTER);
+                MUIDisplayError(ERROR_SOURCE_DIR, Ir, POPUP_WAIT_ENTER);
                 return INSTALL_DIRECTORY_PAGE;
             }
 
@@ -3703,6 +4113,9 @@ FileCopyCallback(PVOID Context,
 
                 CONSOLE_SetStatusText(MUIGetString(STRING_COPYING),
                                       DstFileName);
+#ifdef __REACTOS__ /* HACK */
+                DoWatchDestFileName(DstFileName);
+#endif
             }
 
             SetupUpdateMemoryInfo(CopyContext, FALSE);
@@ -3878,9 +4291,10 @@ RegistryPage(PINPUT_RECORD Ir)
     Error = UpdateRegistry(&USetupData,
                            RepairUpdateFlag,
                            PartitionList,
-                           DestinationDriveLetter,
+                           InstallPartition->DriveLetter,
                            SelectedLanguageId,
-                           RegistryStatus);
+                           RegistryStatus,
+                           &s_SubstSettings);
     if (Error != ERROR_SUCCESS)
     {
         MUIDisplayError(Error, Ir, POPUP_WAIT_ENTER);
@@ -3924,15 +4338,17 @@ BootLoaderPage(PINPUT_RECORD Ir)
 
     CONSOLE_SetStatusText(MUIGetString(STRING_PLEASEWAIT));
 
+    ASSERT(SystemPartition->IsPartitioned && SystemPartition->PartitionNumber != 0);
+
     RtlFreeUnicodeString(&USetupData.SystemRootPath);
     RtlStringCchPrintfW(PathBuffer, ARRAYSIZE(PathBuffer),
             L"\\Device\\Harddisk%lu\\Partition%lu\\",
-            PartitionList->SystemPartition->DiskEntry->DiskNumber,
-            PartitionList->SystemPartition->PartitionNumber);
+            SystemPartition->DiskEntry->DiskNumber,
+            SystemPartition->PartitionNumber);
     RtlCreateUnicodeString(&USetupData.SystemRootPath, PathBuffer);
     DPRINT1("SystemRootPath: %wZ\n", &USetupData.SystemRootPath);
 
-    PartitionType = PartitionList->SystemPartition->PartitionType;
+    PartitionType = SystemPartition->PartitionType;
 
     /* For unattended setup, skip MBR installation or install on floppy if needed */
     if (IsUnattendedSetup)
@@ -4200,11 +4616,11 @@ BootLoaderHarddiskVbrPage(PINPUT_RECORD Ir)
     Status = InstallVBRToPartition(&USetupData.SystemRootPath,
                                    &USetupData.SourceRootPath,
                                    &USetupData.DestinationArcPath,
-                                   PartitionList->SystemPartition->PartitionType);
+                                   SystemPartition->PartitionType);
     if (!NT_SUCCESS(Status))
     {
         MUIDisplayError(ERROR_WRITE_BOOT, Ir, POPUP_WAIT_ENTER,
-                        PartitionList->SystemPartition->FileSystem->FileSystemName);
+                        SystemPartition->FileSystem);
         return QUIT_PAGE;
     }
 
@@ -4237,26 +4653,29 @@ BootLoaderHarddiskMbrPage(PINPUT_RECORD Ir)
     Status = InstallVBRToPartition(&USetupData.SystemRootPath,
                                    &USetupData.SourceRootPath,
                                    &USetupData.DestinationArcPath,
-                                   PartitionList->SystemPartition->PartitionType);
+                                   SystemPartition->PartitionType);
     if (!NT_SUCCESS(Status))
     {
         MUIDisplayError(ERROR_WRITE_BOOT, Ir, POPUP_WAIT_ENTER,
-                        PartitionList->SystemPartition->FileSystem->FileSystemName);
+                        SystemPartition->FileSystem);
         return QUIT_PAGE;
     }
 
-    /* Step 2: Write the MBR */
-    RtlStringCchPrintfW(DestinationDevicePathBuffer, ARRAYSIZE(DestinationDevicePathBuffer),
-            L"\\Device\\Harddisk%d\\Partition0",
-            PartitionList->SystemPartition->DiskEntry->DiskNumber);
-    Status = InstallMbrBootCodeToDisk(&USetupData.SystemRootPath,
-                                      &USetupData.SourceRootPath,
-                                      DestinationDevicePathBuffer);
-    if (!NT_SUCCESS(Status))
+    /* Step 2: Write the MBR if the disk containing the system partition is not a super-floppy */
+    if (!IsSuperFloppy(SystemPartition->DiskEntry))
     {
-        DPRINT1("InstallMbrBootCodeToDisk() failed (Status %lx)\n", Status);
-        MUIDisplayError(ERROR_INSTALL_BOOTCODE, Ir, POPUP_WAIT_ENTER, L"MBR");
-        return QUIT_PAGE;
+        RtlStringCchPrintfW(DestinationDevicePathBuffer, ARRAYSIZE(DestinationDevicePathBuffer),
+                L"\\Device\\Harddisk%d\\Partition0",
+                SystemPartition->DiskEntry->DiskNumber);
+        Status = InstallMbrBootCodeToDisk(&USetupData.SystemRootPath,
+                                          &USetupData.SourceRootPath,
+                                          DestinationDevicePathBuffer);
+        if (!NT_SUCCESS(Status))
+        {
+            DPRINT1("InstallMbrBootCodeToDisk() failed (Status %lx)\n", Status);
+            MUIDisplayError(ERROR_INSTALL_BOOTCODE, Ir, POPUP_WAIT_ENTER, L"MBR");
+            return QUIT_PAGE;
+        }
     }
 
     return SUCCESS_PAGE;
@@ -4489,15 +4908,12 @@ QuitPage(PINPUT_RECORD Ir)
         PartitionList = NULL;
     }
 
+    /* Reset the formatter machine state */
     TempPartition = NULL;
     FormatState = Start;
 
     /* Destroy the filesystem list */
-    if (FileSystemList != NULL)
-    {
-        DestroyFileSystemList(FileSystemList);
-        FileSystemList = NULL;
-    }
+    ResetFileSystemList();
 
     CONSOLE_SetStatusText(MUIGetString(STRING_REBOOTCOMPUTER2));
 
@@ -4751,6 +5167,9 @@ RunUSetup(VOID)
             case SETUP_INIT_PAGE:
             case REBOOT_PAGE:
             case RECOVERY_PAGE:
+                break;
+
+            default:
                 break;
         }
     }

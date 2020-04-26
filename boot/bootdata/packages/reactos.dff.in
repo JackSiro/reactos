@@ -82,6 +82,9 @@ Signature = "$Windows NT$"
 61 = winsxs\x86_microsoft.windows.gdiplus_6595b64144ccf1df_1.0.14393.0_none_deadbeef
 62 = Resources\Themes\Modern
 63 = 3rdParty
+64 = Resources\Themes\Lunar
+65 = Resources\Themes\Mizu
+66 = system32\spool\prtprocs\x64
 
 .InfEnd
 
@@ -92,6 +95,13 @@ Signature = "$Windows NT$"
 
 ; Optional/proprietary files
 "modules/optional/DroidSansFallback.ttf"              4  optional
+"modules/optional/mingliu.ttc"                        4  optional
+"modules/optional/simsun.ttc"                         4  optional
+"modules/optional/mssong.ttf"                         4  optional
+"modules/optional/msgothic.ttc"                       4  optional
+"modules/optional/msmincho.ttc"                       4  optional
+"modules/optional/gulim.ttc"                          4  optional
+"modules/optional/batang.ttc"                         4  optional
 "modules/optional/NOTICE_for_Droid_Font.txt"          1  optional
 "modules/optional/netkvm.inf"                         6  optional
 "modules/optional/netkvm.cat"                         6  optional

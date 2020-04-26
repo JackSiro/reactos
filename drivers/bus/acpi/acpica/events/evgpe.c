@@ -5,7 +5,7 @@
  *****************************************************************************/
 
 /*
- * Copyright (C) 2000 - 2019, Intel Corp.
+ * Copyright (C) 2000 - 2020, Intel Corp.
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -208,6 +208,7 @@ AcpiEvMaskGpe (
  * FUNCTION:    AcpiEvAddGpeReference
  *
  * PARAMETERS:  GpeEventInfo            - Add a reference to this GPE
+ *              ClearOnEnable           - Clear GPE status before enabling it
  *
  * RETURN:      Status
  *
@@ -218,7 +219,8 @@ AcpiEvMaskGpe (
 
 ACPI_STATUS
 AcpiEvAddGpeReference (
-    ACPI_GPE_EVENT_INFO     *GpeEventInfo)
+    ACPI_GPE_EVENT_INFO     *GpeEventInfo,
+    BOOLEAN                 ClearOnEnable)
 {
     ACPI_STATUS             Status = AE_OK;
 
@@ -235,6 +237,11 @@ AcpiEvAddGpeReference (
     if (GpeEventInfo->RuntimeCount == 1)
     {
         /* Enable on first reference */
+
+        if (ClearOnEnable)
+        {
+            (void) AcpiHwClearGpe (GpeEventInfo);
+        }
 
         Status = AcpiEvUpdateGpeEnableMask (GpeEventInfo);
         if (ACPI_SUCCESS (Status))
@@ -732,6 +739,15 @@ AcpiEvDetectGpe (
 
 
     Flags = AcpiOsAcquireLock (AcpiGbl_GpeLock);
+
+    if (!GpeEventInfo)
+    {
+        GpeEventInfo = AcpiEvGetGpeEventInfo (GpeDevice, GpeNumber);
+        if (!GpeEventInfo)
+        {
+            goto ErrorExit;
+        }
+    }
 
     /* Get the info block for the entire GPE register */
 

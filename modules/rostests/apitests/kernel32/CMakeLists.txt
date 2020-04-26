@@ -4,7 +4,7 @@ add_subdirectory(redirptest)
 add_message_headers(ANSI FormatMessage.mc)
 
 list(APPEND SOURCE
-    Console.c
+    ConsoleCP.c
     CreateProcess.c
     DefaultActCtx.c
     DeviceIoControl.c
@@ -20,12 +20,14 @@ list(APPEND SOURCE
     GetVolumeInformation.c
     interlck.c
     IsDBCSLeadByteEx.c
+    JapaneseCalendar.c
     LoadLibraryExW.c
     lstrcpynW.c
     lstrlen.c
     Mailslot.c
     MultiByteToWideChar.c
     PrivMoveFileIdentityW.c
+    SetComputerNameExW.c
     SetConsoleWindowInfo.c
     SetCurrentDirectory.c
     SetUnhandledExceptionFilter.c

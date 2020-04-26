@@ -28,7 +28,7 @@ Revision History:
 
 --*/
 
-#ifdef _MSC_VER
+#if !defined(__REACTOS__) || defined(_MSC_VER)
 #pragma warning(disable:4214) // nonstandard extension used : bit field types other than int
 #pragma warning(disable:4201) // nonstandard extension used : nameless struct/union
 #endif
@@ -276,16 +276,16 @@ DISK_GEOMETRY FloppyGeometries[] =
     {{890,0},   F3_200Mb_512,   13,     34,     512},
     {{262,0},   F3_240M_512,    32,     56,     512}
 #else
-    {{.LowPart = 80, .HighPart = 0},    F3_640_512,     2,      8,      512},
-    {{.LowPart = 80, .HighPart = 0},    F3_720_512,     2,      9,      512},
-    {{.LowPart = 80, .HighPart = 0},    F3_1Pt2_512,    2,      15,     512},
-    {{.LowPart = 77, .HighPart = 0},    F3_1Pt23_1024,  2,      8,      1024},
-    {{.LowPart = 80, .HighPart = 0},    F3_1Pt44_512,   2,      18,     512},
-    {{.LowPart = 80, .HighPart = 0},    F3_1Pt44_512,   2,      21,     512},   // DMF -> F3_1Pt44_512
-    {{.LowPart = 1024, .HighPart = 0},  F3_32M_512,     2,      32,     512},
-    {{.LowPart = 963, .HighPart = 0},   F3_120M_512,    8,      32,     512},
-    {{.LowPart = 890, .HighPart = 0},   F3_200Mb_512,   13,     34,     512},
-    {{.LowPart = 262, .HighPart = 0},   F3_240M_512,    32,     56,     512}
+    {{{80,0}},    F3_640_512,     2,      8,      512},
+    {{{80,0}},    F3_720_512,     2,      9,      512},
+    {{{80,0}},    F3_1Pt2_512,    2,      15,     512},
+    {{{77,0}},    F3_1Pt23_1024,  2,      8,      1024},
+    {{{80,0}},    F3_1Pt44_512,   2,      18,     512},
+    {{{80,0}},    F3_1Pt44_512,   2,      21,     512},   // DMF -> F3_1Pt44_512
+    {{{1024,0}},  F3_32M_512,     2,      32,     512},
+    {{{963,0}},   F3_120M_512,    8,      32,     512},
+    {{{890,0}},   F3_200Mb_512,   13,     34,     512},
+    {{{262,0}},   F3_240M_512,    32,     56,     512}
 #endif
 };
 
@@ -585,7 +585,7 @@ ScsiFlopUnload(
 // using #pragma.
 //
 
-#ifdef _MSC_VER
+#if !defined(__REACTOS__) || defined(_MSC_VER)
 #pragma warning(push)
 #pragma warning(disable:28152)
 #endif
@@ -699,7 +699,7 @@ Return Value:
         DeviceCount++;
 
         status = RtlStringCbPrintfA((PCCHAR) name,
-                                    sizeof(name)/sizeof(UCHAR),
+                                    sizeof(name),
                                     "\\Device\\Floppy%u",
                                     DeviceCount);
         if (NT_SUCCESS(status)) {
@@ -809,7 +809,7 @@ CreateFlopDeviceObjectExit:
     return status;
 
 } // end CreateFlopDeviceObject()
-#ifdef _MSC_VER
+#if !defined(__REACTOS__) || defined(_MSC_VER)
 #pragma warning(pop)
 #endif
 
@@ -934,7 +934,7 @@ ScsiFlopInitDevice(
     return (STATUS_SUCCESS);
 }
 
-#ifdef _MSC_VER
+#if !defined(__REACTOS__) || defined(_MSC_VER)
 #pragma warning(suppress:6262) // This function uses 1096 bytes of stack which exceed default value of 1024 bytes used by Code Analysis for flagging as warning
 #endif
 #ifdef __REACTOS__
@@ -974,7 +974,7 @@ NTSTATUS ScsiFlopStartDevice(
     //
 
     RtlStringCbPrintfW(ntNameBuffer,
-                       sizeof(ntNameBuffer)/sizeof(WCHAR),
+                       sizeof(ntNameBuffer),
                        L"\\Device\\Floppy%u",
                        fdoExtension->DeviceNumber);
 
@@ -1020,7 +1020,7 @@ NTSTATUS ScsiFlopStartDevice(
     if (NT_SUCCESS(status)) {
 
         RtlStringCbPrintfW(arcNameBuffer,
-                           sizeof(arcNameBuffer)/sizeof(WCHAR),
+                           sizeof(arcNameBuffer),
                            L"\\ArcName\\scsi(%u)disk(%u)fdisk(%u)",
                            scsiAddress.PortNumber,
                            scsiAddress.TargetId,
@@ -1042,7 +1042,7 @@ NTSTATUS ScsiFlopStartDevice(
     //
 
     RtlStringCbPrintfW(arcNameBuffer,
-                       sizeof(arcNameBuffer)/sizeof(WCHAR),
+                       sizeof(arcNameBuffer),
                        L"\\ArcName\\multi(%u)disk(%u)fdisk(%u)",
                        0,
                        0,
@@ -2146,7 +2146,7 @@ Return Value:
 
 
      // driveMediaType is bounded below by DriveMediaLimits[].LowestDriveMediaType
-#ifdef _MSC_VER
+#if !defined(__REACTOS__) || defined(_MSC_VER)
 #pragma warning(push)
 #pragma warning(disable:33010) // 33010: Enum used as array index may be negative
 #endif
@@ -2176,7 +2176,7 @@ Return Value:
             return TRUE;
         }
     }
-#ifdef _MSC_VER
+#if !defined(__REACTOS__) || defined(_MSC_VER)
 #pragma warning(pop)
 #endif
 }
@@ -2516,10 +2516,11 @@ Return Value:
 
 #ifndef __REACTOS__
             context = ExAllocatePool(NonPagedPoolNx,
+                                     sizeof(COMPLETION_CONTEXT));
 #else
             context = ExAllocatePool(NonPagedPool,
-#endif
                                      sizeof(COMPLETION_CONTEXT));
+#endif
 
             if (context == NULL) {
 
@@ -3439,10 +3440,11 @@ Return Value:
     //
 #ifndef __REACTOS__
     parameterList = ExAllocatePool(NonPagedPoolNx,
+                                   sizeof(FORMAT_UNIT_PARAMETER_LIST));
 #else
     parameterList = ExAllocatePool(NonPagedPool,
-#endif
                                    sizeof(FORMAT_UNIT_PARAMETER_LIST));
+#endif
 
     if (parameterList == NULL)
     {

@@ -52,6 +52,9 @@ PsInitializeQuotaSystem(VOID);
 
 ULONG ObpInitializationPhase;
 
+ULONG ObpObjectSecurityMode = 0;
+ULONG ObpProtectionMode = 0;
+
 /* PRIVATE FUNCTIONS *********************************************************/
 
 static

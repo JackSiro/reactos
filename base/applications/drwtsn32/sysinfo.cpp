@@ -9,6 +9,7 @@
 #include <udmihelp.h>
 #include <winreg.h>
 #include <reactos/buildno.h>
+#include <reactos/stubs.h>
 
 static const char* Exception2Str(DWORD code)
 {
@@ -36,6 +37,7 @@ static const char* Exception2Str(DWORD code)
     case EXCEPTION_INVALID_DISPOSITION: return "EXCEPTION_INVALID_DISPOSITION";
     case EXCEPTION_GUARD_PAGE: return "EXCEPTION_GUARD_PAGE";
     case EXCEPTION_INVALID_HANDLE: return "EXCEPTION_INVALID_HANDLE";
+    case EXCEPTION_WINE_STUB: return "EXCEPTION_WINE_STUB";
     }
 
     return "--";
@@ -59,8 +61,20 @@ void PrintSystemInfo(FILE* output, DumpData& data)
     xfprintf(output, "    When: %d/%d/%d @ %02d:%02d:%02d.%d" NEWLINE,
              LocalTime.wDay, LocalTime.wMonth, LocalTime.wYear,
              LocalTime.wHour, LocalTime.wMinute, LocalTime.wSecond, LocalTime.wMilliseconds);
-    DWORD ExceptionCode = data.ExceptionInfo.ExceptionRecord.ExceptionCode;
-    xfprintf(output, "    Exception number: 0x%8x (%s)" NEWLINE, ExceptionCode, Exception2Str(ExceptionCode));
+
+    xfprintf(output, "    First chance: %u" NEWLINE, data.ExceptionInfo.dwFirstChance);
+    EXCEPTION_RECORD& Record = data.ExceptionInfo.ExceptionRecord;
+    xfprintf(output, "    Exception number: 0x%08x (%s)" NEWLINE, Record.ExceptionCode, Exception2Str(Record.ExceptionCode));
+    xfprintf(output, "    Exception flags: 0x%08x" NEWLINE, Record.ExceptionFlags);
+    xfprintf(output, "    Exception address: %p" NEWLINE, Record.ExceptionAddress);
+    if (Record.NumberParameters)
+    {
+        xfprintf(output, "    Exception parameters: %u" NEWLINE, Record.NumberParameters);
+        for (DWORD n = 0; n < std::min<DWORD>(EXCEPTION_MAXIMUM_PARAMETERS, Record.NumberParameters); ++n)
+        {
+            xfprintf(output, "      Parameter %u: 0x%p" NEWLINE, n, Record.ExceptionInformation[n]);
+        }
+    }
 
     char Buffer[MAX_PATH];
     DWORD count = sizeof(Buffer);

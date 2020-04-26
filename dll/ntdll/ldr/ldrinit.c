@@ -93,7 +93,7 @@ ULONG RtlpDisableHeapLookaside; // TODO: Move to heap.c
 ULONG RtlpShutdownProcessFlags; // TODO: Use it
 
 NTSTATUS LdrPerformRelocations(PIMAGE_NT_HEADERS NTHeaders, PVOID ImageBase);
-void actctx_init(void);
+void actctx_init(PVOID* pOldShimData);
 extern BOOLEAN RtlpUse16ByteSLists;
 
 #ifdef _WIN64
@@ -1537,13 +1537,55 @@ LdrpValidateImageForMp(IN PLDR_DATA_TABLE_ENTRY LdrDataTableEntry)
     UNIMPLEMENTED;
 }
 
+BOOLEAN
+NTAPI
+LdrpDisableProcessCompatGuidDetection(VOID)
+{
+    UNICODE_STRING PolicyKey = RTL_CONSTANT_STRING(L"\\Registry\\MACHINE\\Software\\Policies\\Microsoft\\Windows\\AppCompat");
+    UNICODE_STRING DisableDetection = RTL_CONSTANT_STRING(L"DisableCompatGuidDetection");
+    OBJECT_ATTRIBUTES PolicyKeyAttributes = RTL_CONSTANT_OBJECT_ATTRIBUTES(&PolicyKey, OBJ_CASE_INSENSITIVE);
+    KEY_VALUE_PARTIAL_INFORMATION KeyInfo;
+    ULONG ResultLength;
+    NTSTATUS Status;
+    HANDLE KeyHandle;
+
+    Status = NtOpenKey(&KeyHandle, KEY_QUERY_VALUE, &PolicyKeyAttributes);
+    if (NT_SUCCESS(Status))
+    {
+        Status = NtQueryValueKey(KeyHandle,
+                                 &DisableDetection,
+                                 KeyValuePartialInformation,
+                                 &KeyInfo,
+                                 sizeof(KeyInfo),
+                                 &ResultLength);
+        NtClose(KeyHandle);
+        if ((NT_SUCCESS(Status)) &&
+            (KeyInfo.Type == REG_DWORD) &&
+            (KeyInfo.DataLength == sizeof(ULONG)) &&
+            (KeyInfo.Data[0] == TRUE))
+        {
+            return TRUE;
+        }
+    }
+    return FALSE;
+}
+
+
 VOID
 NTAPI
-LdrpInitializeProcessCompat(PVOID* pOldShimData)
+LdrpInitializeProcessCompat(PVOID pProcessActctx, PVOID* pOldShimData)
 {
-    static const GUID* GuidOrder[] = { &COMPAT_GUID_WIN10, &COMPAT_GUID_WIN81, &COMPAT_GUID_WIN8,
-                                       &COMPAT_GUID_WIN7, &COMPAT_GUID_VISTA };
-    static const DWORD GuidVersions[] = { WINVER_WIN10, WINVER_WIN81, WINVER_WIN8, WINVER_WIN7, WINVER_VISTA };
+    static const struct
+    {
+        const GUID* Guid;
+        const DWORD Version;
+    } KnownCompatGuids[] = {
+        { &COMPAT_GUID_WIN10, _WIN32_WINNT_WIN10 },
+        { &COMPAT_GUID_WIN81, _WIN32_WINNT_WINBLUE },
+        { &COMPAT_GUID_WIN8, _WIN32_WINNT_WIN8 },
+        { &COMPAT_GUID_WIN7, _WIN32_WINNT_WIN7 },
+        { &COMPAT_GUID_VISTA, _WIN32_WINNT_VISTA },
+    };
 
     ULONG Buffer[(sizeof(COMPATIBILITY_CONTEXT_ELEMENT) * 10 + sizeof(ACTIVATION_CONTEXT_COMPATIBILITY_INFORMATION)) / sizeof(ULONG)];
     ACTIVATION_CONTEXT_COMPATIBILITY_INFORMATION* ContextCompatInfo;
@@ -1551,8 +1593,6 @@ LdrpInitializeProcessCompat(PVOID* pOldShimData)
     NTSTATUS Status;
     DWORD n, cur;
     ReactOS_ShimData* pShimData = *pOldShimData;
-
-    C_ASSERT(RTL_NUMBER_OF(GuidOrder) == RTL_NUMBER_OF(GuidVersions));
 
     if (pShimData)
     {
@@ -1564,14 +1604,21 @@ LdrpInitializeProcessCompat(PVOID* pOldShimData)
         }
         if (pShimData->dwRosProcessCompatVersion)
         {
-            DPRINT1("LdrpInitializeProcessCompat: ProcessCompatVersion already set to 0x%x\n", pShimData->dwRosProcessCompatVersion);
+            if (pShimData->dwRosProcessCompatVersion == REACTOS_COMPATVERSION_IGNOREMANIFEST)
+            {
+                DPRINT1("LdrpInitializeProcessCompat: ProcessCompatVersion set to ignore manifest\n");
+            }
+            else
+            {
+                DPRINT1("LdrpInitializeProcessCompat: ProcessCompatVersion already set to 0x%x\n", pShimData->dwRosProcessCompatVersion);
+            }
             return;
         }
     }
 
     SizeRequired = sizeof(Buffer);
     Status = RtlQueryInformationActivationContext(RTL_QUERY_ACTIVATION_CONTEXT_FLAG_NO_ADDREF,
-                                                  NULL,
+                                                  pProcessActctx,
                                                   NULL,
                                                   CompatibilityInformationInActivationContext,
                                                   Buffer,
@@ -1590,13 +1637,19 @@ LdrpInitializeProcessCompat(PVOID* pOldShimData)
         return;
 
     /* Search for known GUID's, starting from newest to oldest. */
-    for (cur = 0; cur < RTL_NUMBER_OF(GuidOrder); ++cur)
+    for (cur = 0; cur < RTL_NUMBER_OF(KnownCompatGuids); ++cur)
     {
         for (n = 0; n < ContextCompatInfo->ElementCount; ++n)
         {
             if (ContextCompatInfo->Elements[n].Type == ACTCX_COMPATIBILITY_ELEMENT_TYPE_OS &&
-                RtlCompareMemory(&ContextCompatInfo->Elements[n].Id, GuidOrder[cur], sizeof(GUID)) == sizeof(GUID))
+                RtlCompareMemory(&ContextCompatInfo->Elements[n].Id, KnownCompatGuids[cur].Guid, sizeof(GUID)) == sizeof(GUID))
             {
+                if (LdrpDisableProcessCompatGuidDetection())
+                {
+                    DPRINT1("LdrpInitializeProcessCompat: Not applying automatic fix for winver 0x%x due to policy\n", KnownCompatGuids[cur].Version);
+                    return;
+                }
+
                 /* If this process did not need shim data before, allocate and store it */
                 if (pShimData == NULL)
                 {
@@ -1619,8 +1672,8 @@ LdrpInitializeProcessCompat(PVOID* pOldShimData)
                 }
 
                 /* Store the highest found version, and bail out. */
-                pShimData->dwRosProcessCompatVersion = GuidVersions[cur];
-                DPRINT1("LdrpInitializeProcessCompat: Found guid for winver 0x%x\n", GuidVersions[cur]);
+                pShimData->dwRosProcessCompatVersion = KnownCompatGuids[cur].Version;
+                DPRINT1("LdrpInitializeProcessCompat: Found guid for winver 0x%x\n", KnownCompatGuids[cur].Version);
                 return;
             }
         }
@@ -1819,11 +1872,40 @@ LdrpInitializeProcess(IN PCONTEXT Context,
     HeapParameters.Length = sizeof(HeapParameters);
 
     /* Check if we have Configuration Data */
-    if ((LoadConfig) && (ConfigSize == sizeof(IMAGE_LOAD_CONFIG_DIRECTORY)))
+#define VALID_CONFIG_FIELD(Name) (ConfigSize >= (FIELD_OFFSET(IMAGE_LOAD_CONFIG_DIRECTORY, Name) + sizeof(LoadConfig->Name)))
+    /* The 'original' load config ends after SecurityCookie */
+    if ((LoadConfig) && ConfigSize && (VALID_CONFIG_FIELD(SecurityCookie) || ConfigSize == LoadConfig->Size))
     {
-        /* FIXME: Custom heap settings and misc. */
-        DPRINT1("We don't support LOAD_CONFIG data yet\n");
+        if (ConfigSize != sizeof(IMAGE_LOAD_CONFIG_DIRECTORY))
+            DPRINT1("WARN: Accepting different LOAD_CONFIG size!\n");
+        else
+            DPRINT1("Applying LOAD_CONFIG\n");
+
+        if (VALID_CONFIG_FIELD(GlobalFlagsSet) && LoadConfig->GlobalFlagsSet)
+            Peb->NtGlobalFlag |= LoadConfig->GlobalFlagsSet;
+
+        if (VALID_CONFIG_FIELD(GlobalFlagsClear) && LoadConfig->GlobalFlagsClear)
+            Peb->NtGlobalFlag &= ~LoadConfig->GlobalFlagsClear;
+
+        if (VALID_CONFIG_FIELD(CriticalSectionDefaultTimeout) && LoadConfig->CriticalSectionDefaultTimeout)
+            RtlpTimeout.QuadPart = Int32x32To64(LoadConfig->CriticalSectionDefaultTimeout, -10000000);
+
+        if (VALID_CONFIG_FIELD(DeCommitFreeBlockThreshold) && LoadConfig->DeCommitFreeBlockThreshold)
+            HeapParameters.DeCommitFreeBlockThreshold = LoadConfig->DeCommitFreeBlockThreshold;
+
+        if (VALID_CONFIG_FIELD(DeCommitTotalFreeThreshold) && LoadConfig->DeCommitTotalFreeThreshold)
+            HeapParameters.DeCommitTotalFreeThreshold = LoadConfig->DeCommitTotalFreeThreshold;
+
+        if (VALID_CONFIG_FIELD(MaximumAllocationSize) && LoadConfig->MaximumAllocationSize)
+            HeapParameters.MaximumAllocationSize = LoadConfig->MaximumAllocationSize;
+
+        if (VALID_CONFIG_FIELD(VirtualMemoryThreshold) && LoadConfig->VirtualMemoryThreshold)
+            HeapParameters.VirtualMemoryThreshold = LoadConfig->VirtualMemoryThreshold;
+
+        if (VALID_CONFIG_FIELD(ProcessHeapFlags) && LoadConfig->ProcessHeapFlags)
+            HeapFlags = LoadConfig->ProcessHeapFlags;
     }
+#undef VALID_CONFIG_FIELD
 
     /* Check for custom affinity mask */
     if (Peb->ImageProcessAffinityMask)
@@ -2174,10 +2256,7 @@ LdrpInitializeProcess(IN PCONTEXT Context,
                    &LdrpNtDllDataTableEntry->InInitializationOrderLinks);
 
     /* Initialize Wine's active context implementation for the current process */
-    actctx_init();
-
-    /* ReactOS specific */
-    LdrpInitializeProcessCompat(&OldShimData);
+    actctx_init(&OldShimData);
 
     /* Set the current directory */
     Status = RtlSetCurrentDirectory_U(&CurrentDirectory);
@@ -2365,7 +2444,7 @@ LdrpInitializeProcess(IN PCONTEXT Context,
     {
         WCHAR szCSDVersion[128];
         LONG i;
-        ULONG Length = ARRAYSIZE(szCSDVersion) - 1;
+        USHORT Length = (USHORT)ARRAYSIZE(szCSDVersion) - 1;
         i = _snwprintf(szCSDVersion, Length,
                        L"Service Pack %d",
                        ((Peb->OSCSDVersion >> 8) & 0xFF));

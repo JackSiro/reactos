@@ -178,6 +178,7 @@ BEGIN
     IDS_CAT_SCIENCE "Sciences"
     IDS_CAT_TOOLS "Outils"
     IDS_CAT_VIDEO "Vidéo"
+    IDS_CAT_THEMES "Themes"
 END
 
 STRINGTABLE
@@ -190,7 +191,7 @@ BEGIN
     IDS_APPS_COUNT "Nombre d'applications : %d ; Sélectionnées : %d"
     IDS_WELCOME_TITLE "Bienvenue dans ReactOS Applications Manager !\n\n"
     IDS_WELCOME_TEXT "Choisissez une catégorie à gauche, ensuite choisissez une application à installer ou désinstaller.\nSite internet de ReactOS : "
-    IDS_WELCOME_URL "http://www.reactos.org"
+    IDS_WELCOME_URL "https://reactos.org/"
     IDS_INSTALLED "Installé"
     IDS_AVAILABLEFORINST "Disponible pour installation"
     IDS_UPDATES "Mises à jour"

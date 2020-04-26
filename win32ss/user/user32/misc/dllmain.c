@@ -2,6 +2,23 @@
 
 #include <ndk/cmfuncs.h>
 
+#define MAX_USER_MODE_DRV_BUFFER 526
+
+//
+// UMPD Packet Header should match win32ss/include/ntumpd.h
+//
+typedef struct _UMPDPKTHEAD
+{
+    INT       Size;
+    INT       Index;
+    INT       RetSize;
+    DWORD     Reserved;
+    HUMPD     humpd;
+    ULONG_PTR Buffer[];
+} UMPDPKTHEAD, *PUMPDPKTHEAD;
+
+INT WINAPI GdiPrinterThunk(PUMPDPKTHEAD,PVOID,INT);
+
 WINE_DEFAULT_DEBUG_CHANNEL(user32);
 
 #define KEY_LENGTH 1024
@@ -206,6 +223,7 @@ PVOID apfnDispatch[USER32_CALLBACK_MAXIMUM + 1] =
     User32CallDDEGetFromKernel,
     User32CallOBMFromKernel,
     User32CallLPKFromKernel,
+    User32CallUMPDFromKernel,
 };
 
 
@@ -662,4 +680,34 @@ NTSTATUS WINAPI User32CallLPKFromKernel(PVOID Arguments, ULONG ArgumentLength)
                           NULL);
 
     return ZwCallbackReturn(&bResult, sizeof(BOOL), STATUS_SUCCESS);
+}
+
+NTSTATUS WINAPI User32CallUMPDFromKernel(PVOID Arguments, ULONG ArgumentLength)
+{
+    DWORD Buffer[MAX_USER_MODE_DRV_BUFFER];
+    INT cbSize = 0;
+    NTSTATUS Status = STATUS_SUCCESS;
+    PUMPDPKTHEAD pkt, pktOut = NULL;
+
+    pkt = (PUMPDPKTHEAD)Arguments;
+
+    if ( pkt->RetSize <= sizeof(Buffer) )
+    {
+        pktOut = (PUMPDPKTHEAD)Buffer;
+
+        if ( (GdiPrinterThunk( pkt, pktOut, pkt->RetSize ) == GDI_ERROR) )
+        {
+            pktOut = NULL;
+            Status = STATUS_UNSUCCESSFUL;
+        }
+        else
+        {
+            cbSize = pkt->RetSize;
+        }
+    }
+    else
+    {
+       Status = STATUS_NO_MEMORY;   
+    }
+    return ZwCallbackReturn( pktOut, cbSize, Status );
 }

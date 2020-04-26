@@ -117,6 +117,8 @@ NET ACCOUNTS to take effect.
                                controller of the current domain. Otherwise,
                                the operation is performed on the local
                                computer.
+
+NET HELP command | MORE displays one screen at a time.
 .
 Language=Polish
 NET ACCOUNTS uaktualnia bazę kont użytkowników i zmienia hasło oraz wymagania
@@ -161,6 +163,8 @@ spełnione dwa warunki.
                                w bieżącej domenie. W innym wypadku,
                                operacje te są dokonywane na komputerze
                                lokalnym.
+
+NET HELP polecenie | MORE wyświetla informacje na jednym ekranie na raz.
 .
 Language=Romanian
 NET ACCOUNTS actualizează baza de utilizatori și modifică parola și
@@ -202,6 +206,8 @@ NET ACCOUNTS să aibă efect.
                                controller of the current domain. Otherwise,
                                the operation is performed on the local
                                computer.
+
+NET HELP comandă | MORE (pentru afișare paginată).
 .
 Language=Russian
 NET ACCOUNTS updates the user accounts database and modifies password
@@ -243,6 +249,8 @@ NET ACCOUNTS to take effect.
                                controller of the current domain. Otherwise,
                                the operation is performed on the local
                                computer.
+
+NET HELP имя_команды | MORE - постраничный просмотр справки.
 .
 Language=Spanish
 NET ACCOUNTS updates the user accounts database and modifies password
@@ -284,6 +292,8 @@ NET ACCOUNTS to take effect.
                                controller of the current domain. Otherwise,
                                the operation is performed on the local
                                computer.
+
+NET HELP command | MORE displays one screen at a time.
 .
 Language=Turkish
 NET ACCOUNTS updates the user accounts database and modifies password
@@ -325,6 +335,8 @@ NET ACCOUNTS to take effect.
                                controller of the current domain. Otherwise,
                                the operation is performed on the local
                                computer.
+
+NET HELP command | MORE displays one screen at a time.
 .
 Language=Chinese
 NET ACCOUNTS updates the user accounts database and modifies password
@@ -366,6 +378,8 @@ NET ACCOUNTS to take effect.
                                controller of the current domain. Otherwise,
                                the operation is performed on the local
                                computer.
+
+NET HELP command | MORE displays one screen at a time.
 .
 Language=Taiwanese
 NET ACCOUNTS updates the user accounts database and modifies password
@@ -407,6 +421,8 @@ NET ACCOUNTS to take effect.
                                controller of the current domain. Otherwise,
                                the operation is performed on the local
                                computer.
+
+NET HELP command | MORE displays one screen at a time.
 .
 
 
@@ -562,6 +578,8 @@ SERVER        Displays information about the configuration of the
               Server service.
 WORKSTATION   Displays information about the configuration of the
               Workstation service.
+
+NET HELP command | MORE displays one screen at a time.
 .
 Language=Polish
 NET CONFIG wyświetla informacje o konfiguracji usług Stacja robocza lub
@@ -571,6 +589,8 @@ konfigurowania usługi, wpisz polecenie NET HELP CONFIG usługa.
 
 SERVER        Wyświetla informacje o konfiguracji usługi Serwer
 WORKSTATION   Wyświetla informacje o konfiguracji usługi Stacja robocza.
+
+NET HELP polecenie | MORE wyświetla informacje na jednym ekranie na raz.
 .
 Language=Romanian
 NET CONFIG displays coniguration information of the Workstation or
@@ -582,6 +602,8 @@ SERVER        Displays information about the configuration of the
               Server service.
 WORKSTATION   Displays information about the configuration of the
               Workstation service.
+
+NET HELP comandă | MORE (pentru afișare paginată).
 .
 Language=Russian
 NET CONFIG displays coniguration information of the Workstation or
@@ -593,6 +615,8 @@ SERVER        Displays information about the configuration of the
               Server service.
 WORKSTATION   Displays information about the configuration of the
               Workstation service.
+
+NET HELP имя_команды | MORE - постраничный просмотр справки.
 .
 Language=Spanish
 NET CONFIG displays coniguration information of the Workstation or
@@ -604,6 +628,8 @@ SERVER        Displays information about the configuration of the
               Server service.
 WORKSTATION   Displays information about the configuration of the
               Workstation service.
+
+NET HELP command | MORE displays one screen at a time.
 .
 Language=Turkish
 NET CONFIG displays coniguration information of the Workstation or
@@ -615,6 +641,8 @@ SERVER        Displays information about the configuration of the
               Server service.
 WORKSTATION   Displays information about the configuration of the
               Workstation service.
+
+NET HELP command | MORE displays one screen at a time.
 .
 Language=Chinese
 NET CONFIG displays coniguration information of the Workstation or
@@ -626,6 +654,8 @@ SERVER        Displays information about the configuration of the
               Server service.
 WORKSTATION   Displays information about the configuration of the
               Workstation service.
+
+NET HELP command | MORE displays one screen at a time.
 .
 Language=Taiwanese
 NET CONFIG displays coniguration information of the Workstation or
@@ -637,6 +667,8 @@ SERVER        Displays information about the configuration of the
               Server service.
 WORKSTATION   Displays information about the configuration of the
               Workstation service.
+
+NET HELP command | MORE displays one screen at a time.
 .
 
 
@@ -699,6 +731,8 @@ NET CONFIG SERVER displays or changes settings for the Server service.
 
 To display the current configuration for the Server service,
 type NET CONFIG SERVER without parameters.
+
+NET HELP command | MORE displays one screen at a time.
 .
 Language=Polish
 NET CONFIG SERVER wyświetla lub zmienia ustawienia usługi Serwer.
@@ -718,6 +752,8 @@ NET CONFIG SERVER wyświetla lub zmienia ustawienia usługi Serwer.
 
 Aby wyświetlić bieżącą konfigurację usługi Serwer,
 wpisz NET CONFIG SERVER bez parametrów.
+
+NET HELP polecenie | MORE wyświetla informacje na jednym ekranie na raz.
 .
 Language=Romanian
 NET CONFIG SERVER displays or changes settings for the Server service.
@@ -736,6 +772,8 @@ NET CONFIG SERVER displays or changes settings for the Server service.
 
 To display the current configuration for the Server service,
 type NET CONFIG SERVER without parameters.
+
+NET HELP comandă | MORE (pentru afișare paginată).
 .
 Language=Russian
 NET CONFIG SERVER displays or changes settings for the Server service.
@@ -754,6 +792,8 @@ NET CONFIG SERVER displays or changes settings for the Server service.
 
 To display the current configuration for the Server service,
 type NET CONFIG SERVER without parameters.
+
+NET HELP имя_команды | MORE - постраничный просмотр справки.
 .
 Language=Spanish
 NET CONFIG SERVER displays or changes settings for the Server service.
@@ -772,6 +812,8 @@ NET CONFIG SERVER displays or changes settings for the Server service.
 
 To display the current configuration for the Server service,
 type NET CONFIG SERVER without parameters.
+
+NET HELP command | MORE displays one screen at a time.
 .
 Language=Turkish
 NET CONFIG SERVER displays or changes settings for the Server service.
@@ -790,6 +832,8 @@ NET CONFIG SERVER displays or changes settings for the Server service.
 
 To display the current configuration for the Server service,
 type NET CONFIG SERVER without parameters.
+
+NET HELP command | MORE displays one screen at a time.
 .
 Language=Chinese
 NET CONFIG SERVER displays or changes settings for the Server service.
@@ -808,6 +852,8 @@ NET CONFIG SERVER displays or changes settings for the Server service.
 
 To display the current configuration for the Server service,
 type NET CONFIG SERVER without parameters.
+
+NET HELP command | MORE displays one screen at a time.
 .
 Language=Taiwanese
 NET CONFIG SERVER displays or changes settings for the Server service.
@@ -826,6 +872,8 @@ NET CONFIG SERVER displays or changes settings for the Server service.
 
 To display the current configuration for the Server service,
 type NET CONFIG SERVER without parameters.
+
+NET HELP command | MORE displays one screen at a time.
 .
 
 
@@ -873,6 +921,8 @@ service             Is the paused service
                     SCHEDULE
                     SERVER
                     WORKSTATION
+
+NET HELP command | MORE displays one screen at a time.
 .
 Language=Polish
 NET CONTINUE wznawia działanie usługi, która została.
@@ -885,6 +935,8 @@ usługa              Wstrzymana usługa
                     SCHEDULE
                     SERVER
                     WORKSTATION
+
+NET HELP polecenie | MORE wyświetla informacje na jednym ekranie na raz.
 .
 Language=Romanian
 NET CONTINUE reactivates a service that has been suspended by NET PAUSE.
@@ -896,6 +948,8 @@ service             Is the paused service
                     SCHEDULE
                     SERVER
                     WORKSTATION
+
+NET HELP comandă | MORE (pentru afișare paginată).
 .
 Language=Russian
 NET CONTINUE reactivates a service that has been suspended by NET PAUSE.
@@ -907,6 +961,8 @@ service             Is the paused service
                     SCHEDULE
                     SERVER
                     WORKSTATION
+
+NET HELP имя_команды | MORE - постраничный просмотр справки.
 .
 Language=Spanish
 NET CONTINUE reactivates a service that has been suspended by NET PAUSE.
@@ -918,6 +974,8 @@ service             Is the paused service
                     SCHEDULE
                     SERVER
                     WORKSTATION
+
+NET HELP command | MORE displays one screen at a time.
 .
 Language=Turkish
 NET CONTINUE reactivates a service that has been suspended by NET PAUSE.
@@ -929,6 +987,7 @@ service             Is the paused service
                     SCHEDULE
                     SERVER
                     WORKSTATION
+NET HELP command | MORE displays one screen at a time.
 .
 Language=Chinese
 NET CONTINUE reactivates a service that has been suspended by NET PAUSE.
@@ -940,6 +999,8 @@ service             Is the paused service
                     SCHEDULE
                     SERVER
                     WORKSTATION
+
+NET HELP command | MORE displays one screen at a time.
 .
 Language=Taiwanese
 NET CONTINUE reactivates a service that has been suspended by NET PAUSE.
@@ -951,6 +1012,8 @@ service             Is the paused service
                     SCHEDULE
                     SERVER
                     WORKSTATION
+
+NET HELP command | MORE displays one screen at a time.
 .
 
 
@@ -1088,6 +1151,8 @@ username[ ...]   List one or more usernames to add to or remove from
                  a group. Separate multiple username entries with a space.
 /ADD             Adds a group, or adds a username to a group.
 /DELETE          Removes a group, or removes a username from a group.
+
+NET HELP command | MORE displays one screen at a time.
 .
 Language=Polish
 NET GROUP dodaje, wyświetla lub modyfikuje grupy globalne na serwerach.
@@ -1106,6 +1171,8 @@ nazwa_użytkownika[ ...]  Lista zawierająca nazwy jednego lub kilku
                          Rozdziel kolejne nazwy znakiem spacji.
 /ADD                     Dodaje grupę lub dodaje nazwę użytkownika do grupy.
 /DELETE                  Usuwa grupę lub usuwa nazwę użytkownika z grupy.
+
+NET HELP polecenie | MORE wyświetla informacje na jednym ekranie na raz.
 .
 Language=Romanian
 NET GROUP adds, displays or modifies global groups on servers. When
@@ -1123,6 +1190,8 @@ username[ ...]   List one or more usernames to add to or remove from
                  a group. Separate multiple username entries with a space.
 /ADD             Adds a group, or adds a username to a group.
 /DELETE          Removes a group, or removes a username from a group.
+
+NET HELP comandă | MORE (pentru afișare paginată).
 .
 Language=Russian
 NET GROUP adds, displays or modifies global groups on servers. When
@@ -1140,6 +1209,8 @@ username[ ...]   List one or more usernames to add to or remove from
                  a group. Separate multiple username entries with a space.
 /ADD             Adds a group, or adds a username to a group.
 /DELETE          Removes a group, or removes a username from a group.
+
+NET HELP имя_команды | MORE - постраничный просмотр справки.
 .
 Language=Spanish
 NET GROUP adds, displays or modifies global groups on servers. When
@@ -1157,6 +1228,8 @@ username[ ...]   List one or more usernames to add to or remove from
                  a group. Separate multiple username entries with a space.
 /ADD             Adds a group, or adds a username to a group.
 /DELETE          Removes a group, or removes a username from a group.
+
+NET HELP command | MORE displays one screen at a time.
 .
 Language=Turkish
 NET GROUP adds, displays or modifies global groups on servers. When
@@ -1174,6 +1247,8 @@ username[ ...]   List one or more usernames to add to or remove from
                  a group. Separate multiple username entries with a space.
 /ADD             Adds a group, or adds a username to a group.
 /DELETE          Removes a group, or removes a username from a group.
+
+NET HELP command | MORE displays one screen at a time.
 .
 Language=Chinese
 NET GROUP adds, displays or modifies global groups on servers. When
@@ -1191,6 +1266,8 @@ username[ ...]   List one or more usernames to add to or remove from
                  a group. Separate multiple username entries with a space.
 /ADD             Adds a group, or adds a username to a group.
 /DELETE          Removes a group, or removes a username from a group.
+
+NET HELP command | MORE displays one screen at a time.
 .
 Language=Taiwanese
 NET GROUP adds, displays or modifies global groups on servers. When
@@ -1208,6 +1285,8 @@ username[ ...]   List one or more usernames to add to or remove from
                  a group. Separate multiple username entries with a space.
 /ADD             Adds a group, or adds a username to a group.
 /DELETE          Removes a group, or removes a username from a group.
+
+NET HELP command | MORE displays one screen at a time.
 .
 
 
@@ -1273,7 +1352,8 @@ Language=English
    NET FILE                 NET SEND                 NET USER
    NET GROUP                NET SESSION              NET VIEW
 
-   ...
+   NET HELP SYNTAX explains how to read NET HELP syntax lines.
+   NET HELP command | MORE displays Help one screen at a time.
 .
 Language=Polish
    Dostępne polecenia to:
@@ -1287,7 +1367,8 @@ Language=Polish
    NET FILE                 NET SEND                 NET USER
    NET GROUP                NET SESSION              NET VIEW
 
-   ...
+   NET HELP SYNTAX explains how to read NET HELP syntax lines.
+   NET HELP polecenie | MORE wyświetla informacje na jednym ekranie na raz.
 .
 Language=Romanian
    Sunt disponibile următoarele comenzi:
@@ -1301,7 +1382,8 @@ Language=Romanian
    NET FILE                 NET SEND                 NET USER
    NET GROUP                NET SESSION              NET VIEW
 
-   ...
+   NET HELP SYNTAX explains how to read NET HELP syntax lines.
+   NET HELP comandă | MORE (pentru afișare paginată).
 .
 Language=Russian
    Доступны следующие команды:
@@ -1315,7 +1397,8 @@ Language=Russian
    NET FILE                 NET SEND                 NET USER
    NET GROUP                NET SESSION              NET VIEW
 
-   ...
+   NET HELP SYNTAX explains how to read NET HELP syntax lines.
+   NET HELP имя_команды | MORE - постраничный просмотр справки.
 .
 Language=Spanish
    Éstos son los argumentos de línea de comandos disponibles:
@@ -1329,7 +1412,8 @@ Language=Spanish
    NET FILE                 NET SEND                 NET USER
    NET GROUP                NET SESSION              NET VIEW
 
-   ...
+   NET HELP SYNTAX explains how to read NET HELP syntax lines.
+   NET HELP command | MORE displays Help one screen at a time.
 .
 Language=Turkish
    Aşağıdaki komutlar kullanılabilir:
@@ -1343,7 +1427,8 @@ Language=Turkish
    NET FILE                 NET SEND                 NET USER
    NET GROUP                NET SESSION              NET VIEW
 
-   ...
+   NET HELP SYNTAX explains how to read NET HELP syntax lines.
+   NET HELP command | MORE displays Help one screen at a time.
 .
 Language=Chinese
    以下命令可用:
@@ -1357,7 +1442,8 @@ Language=Chinese
    NET FILE                 NET SEND                 NET USER
    NET GROUP                NET SESSION              NET VIEW
 
-   ...
+   NET HELP SYNTAX explains how to read NET HELP syntax lines.
+   NET HELP command | MORE displays Help one screen at a time.
 .
 Language=Taiwanese
    以下命令是可用的:
@@ -1371,7 +1457,8 @@ Language=Taiwanese
    NET FILE                 NET SEND                 NET USER
    NET GROUP                NET SESSION              NET VIEW
 
-   ...
+   NET HELP SYNTAX explains how to read NET HELP syntax lines.
+   NET HELP command | MORE displays Help one screen at a time.
 .
 
 
@@ -1547,6 +1634,8 @@ name[ ...]       List one or more usernames or groupnams to add to or
                  must be established for users or global groups added to a
                  local group with this command.
 /DELETE          Removes a groupname or username from a local group.
+
+NET HELP command | MORE displays one screen at a time.
 .
 Language=Polish
 NET LOCALGROUP dodaje, wyświetla, lub modyfikuje grupy lokalne na komputerach
@@ -1572,6 +1661,8 @@ nazwa[ ...]       Lista zawierająca nazwy jednego lub kilku użytkowników
                   poleceniem do grupy lokalnej należy wcześniej utworzyć
                   odpowiednie konto.
 /DELETE           Usuwa nazwę grupy lub użytkownika z grupy lokalnej.
+
+NET HELP polecenie | MORE wyświetla informacje na jednym ekranie na raz.
 .
 Language=Romanian
 NET LOCALGROUP adds, displays or modifies local groups on computers. When
@@ -1595,6 +1686,8 @@ name[ ...]       List one or more usernames or groupnams to add to or
                  must be established for users or global groups added to a
                  local group with this command.
 /DELETE          Removes a groupname or username from a local group.
+
+NET HELP comandă | MORE (pentru afișare paginată).
 .
 Language=Russian
 NET LOCALGROUP adds, displays or modifies local groups on computers. When
@@ -1618,6 +1711,8 @@ name[ ...]       List one or more usernames or groupnams to add to or
                  must be established for users or global groups added to a
                  local group with this command.
 /DELETE          Removes a groupname or username from a local group.
+
+NET HELP имя_команды | MORE - постраничный просмотр справки.
 .
 Language=Spanish
 NET LOCALGROUP adds, displays or modifies local groups on computers. When
@@ -1641,6 +1736,8 @@ name [ ...]      List one or more usernames or groupnams to add to or
                  must be established for users or global groups added to a
                  local group with this command.
 /DELETE          Removes a groupname or username from a local group.
+
+NET HELP command | MORE displays one screen at a time.
 .
 Language=Turkish
 NET LOCALGROUP adds, displays or modifies local groups on computers. When
@@ -1664,6 +1761,8 @@ name[ ...]       List one or more usernames or groupnams to add to or
                  must be established for users or global groups added to a
                  local group with this command.
 /DELETE          Removes a groupname or username from a local group.
+
+NET HELP command | MORE displays one screen at a time.
 .
 Language=Chinese
 NET LOCALGROUP adds, displays or modifies local groups on computers. When
@@ -1687,6 +1786,8 @@ name[ ...]       List one or more usernames or groupnams to add to or
                  must be established for users or global groups added to a
                  local group with this command.
 /DELETE          Removes a groupname or username from a local group.
+
+NET HELP command | MORE displays one screen at a time.
 .
 Language=Taiwanese
 NET LOCALGROUP adds, displays or modifies local groups on computers. When
@@ -1710,6 +1811,8 @@ name[ ...]       List one or more usernames or groupnams to add to or
                  must be established for users or global groups added to a
                  local group with this command.
 /DELETE          Removes a groupname or username from a local group.
+
+NET HELP command | MORE displays one screen at a time.
 .
 
 
@@ -1819,40 +1922,56 @@ Language=English
 NET PAUSE suspends a service. Pausing a service puts it on hold.
 
 service   The name of the service to be paused.
+
+NET HELP command | MORE displays one screen at a time.
 .
 Language=Polish
 NET PAUSE wstrzymuje usługę.
 
 usługa   Nazwa wstrzymywanej usługi.
+
+NET HELP polecenie | MORE wyświetla informacje na jednym ekranie na raz.
 .
 Language=Romanian
 NET PAUSE suspends a service. Pausing a service puts it on hold.
 
 service   The name of the service to be paused.
+
+NET HELP comandă | MORE (pentru afișare paginată).
 .
 Language=Russian
 NET PAUSE suspends a service. Pausing a service puts it on hold.
 
 service   The name of the service to be paused.
+
+NET HELP имя_команды | MORE - постраничный просмотр справки.
 .
 Language=Spanish
 NET PAUSE suspends a service. Pausing a service puts it on hold.
 service   The name of the service to be paused.
+
+NET HELP command | MORE displays one screen at a time.
 .
 Language=Turkish
 NET PAUSE suspends a service. Pausing a service puts it on hold.
 
 service   The name of the service to be paused.
+
+NET HELP command | MORE displays one screen at a time.
 .
 Language=Chinese
 NET PAUSE suspends a service. Pausing a service puts it on hold.
 
 service   The name of the service to be paused.
+
+NET HELP command | MORE displays one screen at a time.
 .
 Language=Taiwanese
 NET PAUSE suspends a service. Pausing a service puts it on hold.
 
 service   The name of the service to be paused.
+
+NET HELP command | MORE displays one screen at a time.
 .
 
 
@@ -2065,28 +2184,84 @@ SymbolicName=MSG_SHARE_SYNTAX
 Severity=Success
 Facility=System
 Language=English
-NET SHARE ...
+NET SHARE sharename=drive:path [/GRANT:user,[READ | CHANGE | FULL]]
+                               [/USERS:number | /UNLIMITED]
+                               [/REMARK:"text"]
+                               [/CACHE:Manual | Documents| Programs | None]
+          sharename [/USERS:number | /UNLIMITED]
+                    [/REMARK:"text"]
+                    [/CACHE:Manual | Documents | Programs | None]
+          {sharename | devicename | drive:path} /DELETE
 .
 Language=Polish
-NET SHARE ...
+NET SHARE sharename=drive:path [/GRANT:user,[READ | CHANGE | FULL]]
+                               [/USERS:number | /UNLIMITED]
+                               [/REMARK:"text"]
+                               [/CACHE:Manual | Documents| Programs | None]
+          sharename [/USERS:number | /UNLIMITED]
+                    [/REMARK:"text"]
+                    [/CACHE:Manual | Documents | Programs | None]
+          {sharename | devicename | drive:path} /DELETE
 .
 Language=Romanian
-NET SHARE ...
+NET SHARE sharename=drive:path [/GRANT:user,[READ | CHANGE | FULL]]
+                               [/USERS:number | /UNLIMITED]
+                               [/REMARK:"text"]
+                               [/CACHE:Manual | Documents| Programs | None]
+          sharename [/USERS:number | /UNLIMITED]
+                    [/REMARK:"text"]
+                    [/CACHE:Manual | Documents | Programs | None]
+          {sharename | devicename | drive:path} /DELETE
 .
 Language=Russian
-NET SHARE ...
+NET SHARE sharename=drive:path [/GRANT:user,[READ | CHANGE | FULL]]
+                               [/USERS:number | /UNLIMITED]
+                               [/REMARK:"text"]
+                               [/CACHE:Manual | Documents| Programs | None]
+          sharename [/USERS:number | /UNLIMITED]
+                    [/REMARK:"text"]
+                    [/CACHE:Manual | Documents | Programs | None]
+          {sharename | devicename | drive:path} /DELETE
 .
 Language=Spanish
-NET SHARE ...
+NET SHARE sharename=drive:path [/GRANT:user,[READ | CHANGE | FULL]]
+                               [/USERS:number | /UNLIMITED]
+                               [/REMARK:"text"]
+                               [/CACHE:Manual | Documents| Programs | None]
+          sharename [/USERS:number | /UNLIMITED]
+                    [/REMARK:"text"]
+                    [/CACHE:Manual | Documents | Programs | None]
+          {sharename | devicename | drive:path} /DELETE
 .
 Language=Turkish
-NET SHARE ...
+NET SHARE sharename=drive:path [/GRANT:user,[READ | CHANGE | FULL]]
+                               [/USERS:number | /UNLIMITED]
+                               [/REMARK:"text"]
+                               [/CACHE:Manual | Documents| Programs | None]
+          sharename [/USERS:number | /UNLIMITED]
+                    [/REMARK:"text"]
+                    [/CACHE:Manual | Documents | Programs | None]
+          {sharename | devicename | drive:path} /DELETE
 .
 Language=Chinese
-NET SHARE ...
+NET SHARE sharename=drive:path [/GRANT:user,[READ | CHANGE | FULL]]
+                               [/USERS:number | /UNLIMITED]
+                               [/REMARK:"text"]
+                               [/CACHE:Manual | Documents| Programs | None]
+          sharename [/USERS:number | /UNLIMITED]
+                    [/REMARK:"text"]
+                    [/CACHE:Manual | Documents | Programs | None]
+          {sharename | devicename | drive:path} /DELETE
 .
 Language=Taiwanese
-NET SHARE ...
+NET SHARE sharename=drive:path [/GRANT:user,[READ | CHANGE | FULL]]
+                               [/USERS:number | /UNLIMITED]
+                               [/REMARK:"text"]
+                               [/CACHE:Manual | Documents| Programs | None]
+          sharename [/USERS:number | /UNLIMITED]
+                    [/REMARK:"text"]
+                    [/CACHE:Manual | Documents | Programs | None]
+          {sharename | devicename | drive:path} /DELETE
 .
 
 
@@ -2095,36 +2270,268 @@ SymbolicName=MSG_SHARE_HELP
 Severity=Success
 Facility=System
 Language=English
-SHARE
-...
+NET SHARE makes a server's resources available to network users. When
+used without options, it lists information about all resources being
+shared on the computer. For each resource, Windows reports the
+devicename(s) or pathname(s) and a descriptive comment associated with it.
+
+sharename          Is the network name of the shared resource. Type
+                   NET SHARE with a sharename only to display information
+                   about that share.
+drive:path         Specifies the absolute path of the directory to
+                   be shared.
+/GRANT:user,perm   Creates the share with a security descriptor that gives
+                   the requested permissions to the specified user. This
+                   option may be used more than once to give share permissions
+                   to multiple users.
+/USERS:number      Sets the maximum number of users who can
+                   simultaneously access the shared resource.
+/UNLIMITED         Specifies an unlimited number of users can
+                   simultaneously access the shared resource.
+/REMARK:"text"     Adds a descriptive comment about the resource.
+                   Enclose the text in quotation marks.
+devicename         Is one or more printers (LPT1: through LPT9:)
+                   shared by sharename.
+/DELETE            Stops sharing the resource.
+/CACHE:Manual      Enables manual client caching of programs and documents
+                   from this share.
+/CACHE:Documents   Enables automatic caching of documents from this share.
+/CACHE:Programs    Enables automatic caching of documents and programs
+                   from this share.
+/CACHE:None        Disables caching from this share.
+
+NET HELP command | MORE displays Help one screen at a time.
 .
 Language=Polish
-SHARE
-...
+NET SHARE makes a server's resources available to network users. When
+used without options, it lists information about all resources being
+shared on the computer. For each resource, Windows reports the
+devicename(s) or pathname(s) and a descriptive comment associated with it.
+
+sharename          Is the network name of the shared resource. Type
+                   NET SHARE with a sharename only to display information
+                   about that share.
+drive:path         Specifies the absolute path of the directory to
+                   be shared.
+/GRANT:user,perm   Creates the share with a security descriptor that gives
+                   the requested permissions to the specified user. This
+                   option may be used more than once to give share permissions
+                   to multiple users.
+/USERS:number      Sets the maximum number of users who can
+                   simultaneously access the shared resource.
+/UNLIMITED         Specifies an unlimited number of users can
+                   simultaneously access the shared resource.
+/REMARK:"text"     Adds a descriptive comment about the resource.
+                   Enclose the text in quotation marks.
+devicename         Is one or more printers (LPT1: through LPT9:)
+                   shared by sharename.
+/DELETE            Stops sharing the resource.
+/CACHE:Manual      Enables manual client caching of programs and documents
+                   from this share.
+/CACHE:Documents   Enables automatic caching of documents from this share.
+/CACHE:Programs    Enables automatic caching of documents and programs
+                   from this share.
+/CACHE:None        Disables caching from this share.
+
+NET HELP command | MORE displays Help one screen at a time.
 .
 Language=Romanian
-SHARE
-...
+NET SHARE makes a server's resources available to network users. When
+used without options, it lists information about all resources being
+shared on the computer. For each resource, Windows reports the
+devicename(s) or pathname(s) and a descriptive comment associated with it.
+
+sharename          Is the network name of the shared resource. Type
+                   NET SHARE with a sharename only to display information
+                   about that share.
+drive:path         Specifies the absolute path of the directory to
+                   be shared.
+/GRANT:user,perm   Creates the share with a security descriptor that gives
+                   the requested permissions to the specified user. This
+                   option may be used more than once to give share permissions
+                   to multiple users.
+/USERS:number      Sets the maximum number of users who can
+                   simultaneously access the shared resource.
+/UNLIMITED         Specifies an unlimited number of users can
+                   simultaneously access the shared resource.
+/REMARK:"text"     Adds a descriptive comment about the resource.
+                   Enclose the text in quotation marks.
+devicename         Is one or more printers (LPT1: through LPT9:)
+                   shared by sharename.
+/DELETE            Stops sharing the resource.
+/CACHE:Manual      Enables manual client caching of programs and documents
+                   from this share.
+/CACHE:Documents   Enables automatic caching of documents from this share.
+/CACHE:Programs    Enables automatic caching of documents and programs
+                   from this share.
+/CACHE:None        Disables caching from this share.
+
+NET HELP command | MORE displays Help one screen at a time.
 .
 Language=Russian
-SHARE
-...
+NET SHARE makes a server's resources available to network users. When
+used without options, it lists information about all resources being
+shared on the computer. For each resource, Windows reports the
+devicename(s) or pathname(s) and a descriptive comment associated with it.
+
+sharename          Is the network name of the shared resource. Type
+                   NET SHARE with a sharename only to display information
+                   about that share.
+drive:path         Specifies the absolute path of the directory to
+                   be shared.
+/GRANT:user,perm   Creates the share with a security descriptor that gives
+                   the requested permissions to the specified user. This
+                   option may be used more than once to give share permissions
+                   to multiple users.
+/USERS:number      Sets the maximum number of users who can
+                   simultaneously access the shared resource.
+/UNLIMITED         Specifies an unlimited number of users can
+                   simultaneously access the shared resource.
+/REMARK:"text"     Adds a descriptive comment about the resource.
+                   Enclose the text in quotation marks.
+devicename         Is one or more printers (LPT1: through LPT9:)
+                   shared by sharename.
+/DELETE            Stops sharing the resource.
+/CACHE:Manual      Enables manual client caching of programs and documents
+                   from this share.
+/CACHE:Documents   Enables automatic caching of documents from this share.
+/CACHE:Programs    Enables automatic caching of documents and programs
+                   from this share.
+/CACHE:None        Disables caching from this share.
+
+NET HELP command | MORE displays Help one screen at a time.
 .
 Language=Spanish
-SHARE
-...
+NET SHARE makes a server's resources available to network users. When
+used without options, it lists information about all resources being
+shared on the computer. For each resource, Windows reports the
+devicename(s) or pathname(s) and a descriptive comment associated with it.
+
+sharename          Is the network name of the shared resource. Type
+                   NET SHARE with a sharename only to display information
+                   about that share.
+drive:path         Specifies the absolute path of the directory to
+                   be shared.
+/GRANT:user,perm   Creates the share with a security descriptor that gives
+                   the requested permissions to the specified user. This
+                   option may be used more than once to give share permissions
+                   to multiple users.
+/USERS:number      Sets the maximum number of users who can
+                   simultaneously access the shared resource.
+/UNLIMITED         Specifies an unlimited number of users can
+                   simultaneously access the shared resource.
+/REMARK:"text"     Adds a descriptive comment about the resource.
+                   Enclose the text in quotation marks.
+devicename         Is one or more printers (LPT1: through LPT9:)
+                   shared by sharename.
+/DELETE            Stops sharing the resource.
+/CACHE:Manual      Enables manual client caching of programs and documents
+                   from this share.
+/CACHE:Documents   Enables automatic caching of documents from this share.
+/CACHE:Programs    Enables automatic caching of documents and programs
+                   from this share.
+/CACHE:None        Disables caching from this share.
+
+NET HELP command | MORE displays Help one screen at a time.
 .
 Language=Turkish
-SHARE
-...
+NET SHARE makes a server's resources available to network users. When
+used without options, it lists information about all resources being
+shared on the computer. For each resource, Windows reports the
+devicename(s) or pathname(s) and a descriptive comment associated with it.
+
+sharename          Is the network name of the shared resource. Type
+                   NET SHARE with a sharename only to display information
+                   about that share.
+drive:path         Specifies the absolute path of the directory to
+                   be shared.
+/GRANT:user,perm   Creates the share with a security descriptor that gives
+                   the requested permissions to the specified user. This
+                   option may be used more than once to give share permissions
+                   to multiple users.
+/USERS:number      Sets the maximum number of users who can
+                   simultaneously access the shared resource.
+/UNLIMITED         Specifies an unlimited number of users can
+                   simultaneously access the shared resource.
+/REMARK:"text"     Adds a descriptive comment about the resource.
+                   Enclose the text in quotation marks.
+devicename         Is one or more printers (LPT1: through LPT9:)
+                   shared by sharename.
+/DELETE            Stops sharing the resource.
+/CACHE:Manual      Enables manual client caching of programs and documents
+                   from this share.
+/CACHE:Documents   Enables automatic caching of documents from this share.
+/CACHE:Programs    Enables automatic caching of documents and programs
+                   from this share.
+/CACHE:None        Disables caching from this share.
+
+NET HELP command | MORE displays Help one screen at a time.
 .
 Language=Chinese
-SHARE
-...
+NET SHARE makes a server's resources available to network users. When
+used without options, it lists information about all resources being
+shared on the computer. For each resource, Windows reports the
+devicename(s) or pathname(s) and a descriptive comment associated with it.
+
+sharename          Is the network name of the shared resource. Type
+                   NET SHARE with a sharename only to display information
+                   about that share.
+drive:path         Specifies the absolute path of the directory to
+                   be shared.
+/GRANT:user,perm   Creates the share with a security descriptor that gives
+                   the requested permissions to the specified user. This
+                   option may be used more than once to give share permissions
+                   to multiple users.
+/USERS:number      Sets the maximum number of users who can
+                   simultaneously access the shared resource.
+/UNLIMITED         Specifies an unlimited number of users can
+                   simultaneously access the shared resource.
+/REMARK:"text"     Adds a descriptive comment about the resource.
+                   Enclose the text in quotation marks.
+devicename         Is one or more printers (LPT1: through LPT9:)
+                   shared by sharename.
+/DELETE            Stops sharing the resource.
+/CACHE:Manual      Enables manual client caching of programs and documents
+                   from this share.
+/CACHE:Documents   Enables automatic caching of documents from this share.
+/CACHE:Programs    Enables automatic caching of documents and programs
+                   from this share.
+/CACHE:None        Disables caching from this share.
+
+NET HELP command | MORE displays Help one screen at a time.
 .
 Language=Taiwanese
-SHARE
-...
+NET SHARE makes a server's resources available to network users. When
+used without options, it lists information about all resources being
+shared on the computer. For each resource, Windows reports the
+devicename(s) or pathname(s) and a descriptive comment associated with it.
+
+sharename          Is the network name of the shared resource. Type
+                   NET SHARE with a sharename only to display information
+                   about that share.
+drive:path         Specifies the absolute path of the directory to
+                   be shared.
+/GRANT:user,perm   Creates the share with a security descriptor that gives
+                   the requested permissions to the specified user. This
+                   option may be used more than once to give share permissions
+                   to multiple users.
+/USERS:number      Sets the maximum number of users who can
+                   simultaneously access the shared resource.
+/UNLIMITED         Specifies an unlimited number of users can
+                   simultaneously access the shared resource.
+/REMARK:"text"     Adds a descriptive comment about the resource.
+                   Enclose the text in quotation marks.
+devicename         Is one or more printers (LPT1: through LPT9:)
+                   shared by sharename.
+/DELETE            Stops sharing the resource.
+/CACHE:Manual      Enables manual client caching of programs and documents
+                   from this share.
+/CACHE:Documents   Enables automatic caching of documents from this share.
+/CACHE:Programs    Enables automatic caching of documents and programs
+                   from this share.
+/CACHE:None        Disables caching from this share.
+
+NET HELP command | MORE displays Help one screen at a time.
 .
 
 
@@ -2170,6 +2577,8 @@ service   The name of the service to be started.
 When typed at the command prompt, service name of two words or more must
 be enclosed in quotation marks. For example, NET START "NET LOGON"
 starts the net logon service.
+
+NET HELP command | MORE displays one screen at a time.
 .
 Language=Polish
 NET START uruchamia usługi lub wyświetla uruchomione usługi.
@@ -2179,6 +2588,8 @@ usługa   Nazwa uruchamianej usługi.
 Nazwy usług mające dwa lub więcej słów wpisywane w.
 wierszu polecenia muszą być ujęte w cudzysłów. Przykładowo,
 NET START "NET LOGON" uruchamia usługę logowania w sieci.
+
+NET HELP polecenie | MORE wyświetla informacje na jednym ekranie na raz.
 .
 Language=Romanian
 NET START starts services or lists running services.
@@ -2188,6 +2599,8 @@ service   The name of the service to be started.
 When typed at the command prompt, service name of two words or more must
 be enclosed in quotation marks. For example, NET START "NET LOGON"
 starts the net logon service.
+
+NET HELP comandă | MORE (pentru afișare paginată).
 .
 Language=Russian
 NET START starts services or lists running services.
@@ -2197,6 +2610,8 @@ service   The name of the service to be started.
 When typed at the command prompt, service name of two words or more must
 be enclosed in quotation marks. For example, NET START "NET LOGON"
 starts the net logon service.
+
+NET HELP имя_команды | MORE - постраничный просмотр справки.
 .
 Language=Spanish
 NET START starts services or lists running services.
@@ -2206,6 +2621,8 @@ service   The name of the service to be started.
 When typed at the command prompt, service name of two words or more must
 be enclosed in quotation marks. For example, NET START "NET LOGON"
 starts the net logon service.
+
+NET HELP command | MORE displays one screen at a time.
 .
 Language=Turkish
 NET START starts services or lists running services.
@@ -2215,6 +2632,8 @@ service   The name of the service to be started.
 When typed at the command prompt, service name of two words or more must
 be enclosed in quotation marks. For example, NET START "NET LOGON"
 starts the net logon service.
+
+NET HELP command | MORE displays one screen at a time.
 .
 Language=Chinese
 NET START starts services or lists running services.
@@ -2224,6 +2643,8 @@ service   The name of the service to be started.
 When typed at the command prompt, service name of two words or more must
 be enclosed in quotation marks. For example, NET START "NET LOGON"
 starts the net logon service.
+
+NET HELP command | MORE displays one screen at a time.
 .
 Language=Taiwanese
 NET START starts services or lists running services.
@@ -2233,6 +2654,8 @@ service   The name of the service to be started.
 When typed at the command prompt, service name of two words or more must
 be enclosed in quotation marks. For example, NET START "NET LOGON"
 starts the net logon service.
+
+NET HELP command | MORE displays one screen at a time.
 .
 
 
@@ -2277,6 +2700,8 @@ the services for which statistics are available.
 
 SERVER        Displays the Server service statistics.
 WORKSTATION   Displays the Workstation service statistics.
+
+NET HELP command | MORE displays one screen at a time.
 .
 Language=Polish
 NET STATISTICS wyświetla dziennik statystyki dla lokalnej usługi
@@ -2285,6 +2710,8 @@ usługi dla których statystyka jest dostępna.
 
 SERVER        Wyświetla statystykę usługi Serwer.
 WORKSTATION   Wyświetla statystykę usługi Stacja robocza.
+
+NET HELP polecenie | MORE wyświetla informacje na jednym ekranie na raz.
 .
 Language=Romanian
 NET STATISTICS displays the statisticslog for the local Workstation or
@@ -2293,6 +2720,8 @@ the services for which statistics are available.
 
 SERVER        Displays the Server service statistics.
 WORKSTATION   Displays the Workstation service statistics.
+
+NET HELP comandă | MORE (pentru afișare paginată).
 .
 Language=Russian
 NET STATISTICS displays the statisticslog for the local Workstation or
@@ -2301,6 +2730,8 @@ the services for which statistics are available.
 
 SERVER        Displays the Server service statistics.
 WORKSTATION   Displays the Workstation service statistics.
+
+NET HELP имя_команды | MORE - постраничный просмотр справки.
 .
 Language=Spanish
 NET STATISTICS displays the statisticslog for the local Workstation or
@@ -2309,6 +2740,8 @@ the services for which statistics are available.
 
 SERVER        Displays the Server service statistics.
 WORKSTATION   Displays the Workstation service statistics.
+
+NET HELP command | MORE displays one screen at a time.
 .
 Language=Turkish
 NET STATISTICS displays the statisticslog for the local Workstation or
@@ -2317,6 +2750,8 @@ the services for which statistics are available.
 
 SERVER        Displays the Server service statistics.
 WORKSTATION   Displays the Workstation service statistics.
+
+NET HELP command | MORE displays one screen at a time.
 .
 Language=Chinese
 NET STATISTICS displays the statisticslog for the local Workstation or
@@ -2325,6 +2760,8 @@ the services for which statistics are available.
 
 SERVER        Displays the Server service statistics.
 WORKSTATION   Displays the Workstation service statistics.
+
+NET HELP command | MORE displays one screen at a time.
 .
 Language=Taiwanese
 NET STATISTICS displays the statisticslog for the local Workstation or
@@ -2333,6 +2770,8 @@ the services for which statistics are available.
 
 SERVER        Displays the Server service statistics.
 WORKSTATION   Displays the Workstation service statistics.
+
+NET HELP command | MORE displays one screen at a time.
 .
 
 
@@ -2378,6 +2817,8 @@ service   The name of the service to be stopped.
 Stopping a service cancels any network connection the service is
 using. Also, some services are dependent on others. Stopping one
 service can stop others. Some services cannot be stopped.
+
+NET HELP command | MORE displays one screen at a time.
 .
 Language=Polish
 NET STOP zatrzymuje usługi.
@@ -2387,6 +2828,8 @@ usługa   Nazwa zatrzymywanej usługi.
 Zatrzymanie usługi rozłącza wszystkie połączenia sieciowe
 używane przez usługę. Niektóre usługi zależą od innych. Zatrzymanie jednej
 może też zatrzymać inne. Niektóre usługi nie mogą być zatrzymane.
+
+NET HELP polecenie | MORE wyświetla informacje na jednym ekranie na raz.
 .
 Language=Romanian
 NET STOP stops services.
@@ -2396,6 +2839,8 @@ service   The name of the service to be stopped.
 Stopping a service cancels any network connection the service is
 using. Also, some services are dependent on others. Stopping one
 service can stop others. Some services cannot be stopped.
+
+NET HELP comandă | MORE (pentru afișare paginată).
 .
 Language=Russian
 NET STOP stops services.
@@ -2405,6 +2850,8 @@ service   The name of the service to be stopped.
 Stopping a service cancels any network connection the service is
 using. Also, some services are dependent on others. Stopping one
 service can stop others. Some services cannot be stopped.
+
+NET HELP имя_команды | MORE - постраничный просмотр справки.
 .
 Language=Spanish
 NET STOP stops services.
@@ -2414,6 +2861,8 @@ service   The name of the service to be stopped.
 Stopping a service cancels any network connection the service is
 using. Also, some services are dependent on others. Stopping one
 service can stop others. Some services cannot be stopped.
+
+NET HELP command | MORE displays one screen at a time.
 .
 Language=Turkish
 NET STOP stops services.
@@ -2423,6 +2872,8 @@ service   The name of the service to be stopped.
 Stopping a service cancels any network connection the service is
 using. Also, some services are dependent on others. Stopping one
 service can stop others. Some services cannot be stopped.
+
+NET HELP command | MORE displays one screen at a time.
 .
 Language=Chinese
 NET STOP stops services.
@@ -2432,6 +2883,8 @@ service   The name of the service to be stopped.
 Stopping a service cancels any network connection the service is
 using. Also, some services are dependent on others. Stopping one
 service can stop others. Some services cannot be stopped.
+
+NET HELP command | MORE displays one screen at a time.
 .
 Language=Taiwanese
 NET STOP stops services.
@@ -2441,6 +2894,8 @@ service   The name of the service to be stopped.
 Stopping a service cancels any network connection the service is
 using. Also, some services are dependent on others. Stopping one
 service can stop others. Some services cannot be stopped.
+
+NET HELP command | MORE displays one screen at a time.
 .
 
 
@@ -2631,36 +3086,596 @@ SymbolicName=MSG_USER_HELP
 Severity=Success
 Facility=System
 Language=English
-USER
-...
+NET USER creates and modifies user accounts on computers. When used
+without switches, it lists the user accounts for the computer. The 
+user account information is stored in the user accounts database.
+
+username     Is the name of the user account to add, delete, modify, or 
+             view. The name of the user account can have as many as 
+             20 characters. 
+password     Assigns or changes a password for the user's account. 
+             A password must satisfy the minimum length set with the 
+             /MINPWLEN option of the NET ACCOUNTS command. It can have as 
+             many as 14 characters. 
+*            Produces a prompt for the password. The password is not 
+             displayed when you type it at a password prompt. 
+/DOMAIN      Performs the operation on a domain controller of 
+             the current domain. 
+/ADD         Adds a user account to the user accounts database. 
+/DELETE      Removes a user account from the user accounts database. 
+
+Options      Are as follows:
+
+   Options                    Description
+   --------------------------------------------------------------------
+   /ACTIVE:{YES | NO}         Activates or deactivates the account. If 
+                              the account is not active, the user cannot
+                              access the server. The default is YES.
+   /COMMENT:"text"            Provides a descriptive comment about the
+                              user's account.  Enclose the text in
+                              quotation marks. 
+   /COUNTRYCODE:nnn           Uses the operating system country code to
+                              implement the specified language files for a
+                              user's help and error messages. A value of
+                              0 signifies the default country code. 
+   /EXPIRES:{date | NEVER}    Causes the account to expire if date is
+                              set. NEVER sets no time limit on the
+                              account. An expiration date is in the
+                              form mm/dd/yy(yy). Months can be a number,
+                              spelled out, or abbreviated with three
+                              letters. Year can be two or four numbers.
+                              Use slashes(/) (no spaces) to separate
+                              parts of the date. 
+   /FULLNAME:"name"           Is a user's full name (rather than a 
+                              username). Enclose the name in quotation
+                              marks.
+   /HOMEDIR:pathname          Sets the path for the user's home directory. 
+                              The path must exist.
+   /PASSWORDCHG:{YES | NO}    Specifies whether users can change their
+                              own password. The default is YES.
+   /PASSWORDREQ:{YES | NO}    Specifies whether a user account must have
+                              a password. The default is YES.
+   /PROFILEPATH[:path]        Sets a path for the user's logon profile.
+   /SCRIPTPATH:pathname       Is the location of the user's logon
+                              script.
+   /TIMES:{times | ALL}       Is the logon hours. TIMES is expressed as
+                              day[-day][,day[-day]],time[-time][,time
+                              [-time]], limited to 1-hour increments.
+                              Days can be spelled out or abbreviated.
+                              Hours can be 12- or 24-hour notation. For
+                              12-hour notation, use am, pm, a.m., or
+                              p.m. ALL means a user can always log on,
+                              and a blank value means a user can never 
+                              log on. Separate day and time entries with 
+                              a comma, and separate multiple day and time
+                              entries with a semicolon.
+   /USERCOMMENT:"text"        Lets an administrator add or change the User 
+                              Comment for the account. 
+   /WORKSTATIONS:{computername[,...] | *}
+                              Lists as many as eight computers from
+                              which a user can log on to the network. If 
+                              /WORKSTATIONS has no list or if the list is *,
+                              the user can log on from any computer.
+
+NET HELP command | MORE displays Help one screen at a time.
 .
 Language=Polish
-USER
-...
+NET USER creates and modifies user accounts on computers. When used
+without switches, it lists the user accounts for the computer. The 
+user account information is stored in the user accounts database.
+
+username     Is the name of the user account to add, delete, modify, or 
+             view. The name of the user account can have as many as 
+             20 characters. 
+password     Assigns or changes a password for the user's account. 
+             A password must satisfy the minimum length set with the 
+             /MINPWLEN option of the NET ACCOUNTS command. It can have as 
+             many as 14 characters. 
+*            Produces a prompt for the password. The password is not 
+             displayed when you type it at a password prompt. 
+/DOMAIN      Performs the operation on a domain controller of 
+             the current domain. 
+/ADD         Adds a user account to the user accounts database. 
+/DELETE      Removes a user account from the user accounts database. 
+
+Options      Are as follows:
+
+   Options                    Description
+   --------------------------------------------------------------------
+   /ACTIVE:{YES | NO}         Activates or deactivates the account. If 
+                              the account is not active, the user cannot
+                              access the server. The default is YES.
+   /COMMENT:"text"            Provides a descriptive comment about the
+                              user's account.  Enclose the text in
+                              quotation marks. 
+   /COUNTRYCODE:nnn           Uses the operating system country code to
+                              implement the specified language files for a
+                              user's help and error messages. A value of
+                              0 signifies the default country code. 
+   /EXPIRES:{date | NEVER}    Causes the account to expire if date is
+                              set. NEVER sets no time limit on the
+                              account. An expiration date is in the
+                              form mm/dd/yy(yy). Months can be a number,
+                              spelled out, or abbreviated with three
+                              letters. Year can be two or four numbers.
+                              Use slashes(/) (no spaces) to separate
+                              parts of the date. 
+   /FULLNAME:"name"           Is a user's full name (rather than a 
+                              username). Enclose the name in quotation
+                              marks.
+   /HOMEDIR:pathname          Sets the path for the user's home directory. 
+                              The path must exist.
+   /PASSWORDCHG:{YES | NO}    Specifies whether users can change their
+                              own password. The default is YES.
+   /PASSWORDREQ:{YES | NO}    Specifies whether a user account must have
+                              a password. The default is YES.
+   /PROFILEPATH[:path]        Sets a path for the user's logon profile.
+   /SCRIPTPATH:pathname       Is the location of the user's logon
+                              script.
+   /TIMES:{times | ALL}       Is the logon hours. TIMES is expressed as
+                              day[-day][,day[-day]],time[-time][,time
+                              [-time]], limited to 1-hour increments.
+                              Days can be spelled out or abbreviated.
+                              Hours can be 12- or 24-hour notation. For
+                              12-hour notation, use am, pm, a.m., or
+                              p.m. ALL means a user can always log on,
+                              and a blank value means a user can never 
+                              log on. Separate day and time entries with 
+                              a comma, and separate multiple day and time
+                              entries with a semicolon.
+   /USERCOMMENT:"text"        Lets an administrator add or change the User 
+                              Comment for the account. 
+   /WORKSTATIONS:{computername[,...] | *}
+                              Lists as many as eight computers from
+                              which a user can log on to the network. If 
+                              /WORKSTATIONS has no list or if the list is *,
+                              the user can log on from any computer.
+
+NET HELP command | MORE displays Help one screen at a time.
 .
 Language=Romanian
-USER
-...
+NET USER creates and modifies user accounts on computers. When used
+without switches, it lists the user accounts for the computer. The 
+user account information is stored in the user accounts database.
+
+username     Is the name of the user account to add, delete, modify, or 
+             view. The name of the user account can have as many as 
+             20 characters. 
+password     Assigns or changes a password for the user's account. 
+             A password must satisfy the minimum length set with the 
+             /MINPWLEN option of the NET ACCOUNTS command. It can have as 
+             many as 14 characters. 
+*            Produces a prompt for the password. The password is not 
+             displayed when you type it at a password prompt. 
+/DOMAIN      Performs the operation on a domain controller of 
+             the current domain. 
+/ADD         Adds a user account to the user accounts database. 
+/DELETE      Removes a user account from the user accounts database. 
+
+Options      Are as follows:
+
+   Options                    Description
+   --------------------------------------------------------------------
+   /ACTIVE:{YES | NO}         Activates or deactivates the account. If 
+                              the account is not active, the user cannot
+                              access the server. The default is YES.
+   /COMMENT:"text"            Provides a descriptive comment about the
+                              user's account.  Enclose the text in
+                              quotation marks. 
+   /COUNTRYCODE:nnn           Uses the operating system country code to
+                              implement the specified language files for a
+                              user's help and error messages. A value of
+                              0 signifies the default country code. 
+   /EXPIRES:{date | NEVER}    Causes the account to expire if date is
+                              set. NEVER sets no time limit on the
+                              account. An expiration date is in the
+                              form mm/dd/yy(yy). Months can be a number,
+                              spelled out, or abbreviated with three
+                              letters. Year can be two or four numbers.
+                              Use slashes(/) (no spaces) to separate
+                              parts of the date. 
+   /FULLNAME:"name"           Is a user's full name (rather than a 
+                              username). Enclose the name in quotation
+                              marks.
+   /HOMEDIR:pathname          Sets the path for the user's home directory. 
+                              The path must exist.
+   /PASSWORDCHG:{YES | NO}    Specifies whether users can change their
+                              own password. The default is YES.
+   /PASSWORDREQ:{YES | NO}    Specifies whether a user account must have
+                              a password. The default is YES.
+   /PROFILEPATH[:path]        Sets a path for the user's logon profile.
+   /SCRIPTPATH:pathname       Is the location of the user's logon
+                              script.
+   /TIMES:{times | ALL}       Is the logon hours. TIMES is expressed as
+                              day[-day][,day[-day]],time[-time][,time
+                              [-time]], limited to 1-hour increments.
+                              Days can be spelled out or abbreviated.
+                              Hours can be 12- or 24-hour notation. For
+                              12-hour notation, use am, pm, a.m., or
+                              p.m. ALL means a user can always log on,
+                              and a blank value means a user can never 
+                              log on. Separate day and time entries with 
+                              a comma, and separate multiple day and time
+                              entries with a semicolon.
+   /USERCOMMENT:"text"        Lets an administrator add or change the User 
+                              Comment for the account. 
+   /WORKSTATIONS:{computername[,...] | *}
+                              Lists as many as eight computers from
+                              which a user can log on to the network. If 
+                              /WORKSTATIONS has no list or if the list is *,
+                              the user can log on from any computer.
+
+NET HELP command | MORE displays Help one screen at a time.
 .
 Language=Russian
-USER
-...
+NET USER creates and modifies user accounts on computers. When used
+without switches, it lists the user accounts for the computer. The 
+user account information is stored in the user accounts database.
+
+username     Is the name of the user account to add, delete, modify, or 
+             view. The name of the user account can have as many as 
+             20 characters. 
+password     Assigns or changes a password for the user's account. 
+             A password must satisfy the minimum length set with the 
+             /MINPWLEN option of the NET ACCOUNTS command. It can have as 
+             many as 14 characters. 
+*            Produces a prompt for the password. The password is not 
+             displayed when you type it at a password prompt. 
+/DOMAIN      Performs the operation on a domain controller of 
+             the current domain. 
+/ADD         Adds a user account to the user accounts database. 
+/DELETE      Removes a user account from the user accounts database. 
+
+Options      Are as follows:
+
+   Options                    Description
+   --------------------------------------------------------------------
+   /ACTIVE:{YES | NO}         Activates or deactivates the account. If 
+                              the account is not active, the user cannot
+                              access the server. The default is YES.
+   /COMMENT:"text"            Provides a descriptive comment about the
+                              user's account.  Enclose the text in
+                              quotation marks. 
+   /COUNTRYCODE:nnn           Uses the operating system country code to
+                              implement the specified language files for a
+                              user's help and error messages. A value of
+                              0 signifies the default country code. 
+   /EXPIRES:{date | NEVER}    Causes the account to expire if date is
+                              set. NEVER sets no time limit on the
+                              account. An expiration date is in the
+                              form mm/dd/yy(yy). Months can be a number,
+                              spelled out, or abbreviated with three
+                              letters. Year can be two or four numbers.
+                              Use slashes(/) (no spaces) to separate
+                              parts of the date. 
+   /FULLNAME:"name"           Is a user's full name (rather than a 
+                              username). Enclose the name in quotation
+                              marks.
+   /HOMEDIR:pathname          Sets the path for the user's home directory. 
+                              The path must exist.
+   /PASSWORDCHG:{YES | NO}    Specifies whether users can change their
+                              own password. The default is YES.
+   /PASSWORDREQ:{YES | NO}    Specifies whether a user account must have
+                              a password. The default is YES.
+   /PROFILEPATH[:path]        Sets a path for the user's logon profile.
+   /SCRIPTPATH:pathname       Is the location of the user's logon
+                              script.
+   /TIMES:{times | ALL}       Is the logon hours. TIMES is expressed as
+                              day[-day][,day[-day]],time[-time][,time
+                              [-time]], limited to 1-hour increments.
+                              Days can be spelled out or abbreviated.
+                              Hours can be 12- or 24-hour notation. For
+                              12-hour notation, use am, pm, a.m., or
+                              p.m. ALL means a user can always log on,
+                              and a blank value means a user can never 
+                              log on. Separate day and time entries with 
+                              a comma, and separate multiple day and time
+                              entries with a semicolon.
+   /USERCOMMENT:"text"        Lets an administrator add or change the User 
+                              Comment for the account. 
+   /WORKSTATIONS:{computername[,...] | *}
+                              Lists as many as eight computers from
+                              which a user can log on to the network. If 
+                              /WORKSTATIONS has no list or if the list is *,
+                              the user can log on from any computer.
+
+NET HELP command | MORE displays Help one screen at a time.
 .
 Language=Spanish
-USER
-...
+NET USER creates and modifies user accounts on computers. When used
+without switches, it lists the user accounts for the computer. The 
+user account information is stored in the user accounts database.
+
+username     Is the name of the user account to add, delete, modify, or 
+             view. The name of the user account can have as many as 
+             20 characters. 
+password     Assigns or changes a password for the user's account. 
+             A password must satisfy the minimum length set with the 
+             /MINPWLEN option of the NET ACCOUNTS command. It can have as 
+             many as 14 characters. 
+*            Produces a prompt for the password. The password is not 
+             displayed when you type it at a password prompt. 
+/DOMAIN      Performs the operation on a domain controller of 
+             the current domain. 
+/ADD         Adds a user account to the user accounts database. 
+/DELETE      Removes a user account from the user accounts database. 
+
+Options      Are as follows:
+
+   Options                    Description
+   --------------------------------------------------------------------
+   /ACTIVE:{YES | NO}         Activates or deactivates the account. If 
+                              the account is not active, the user cannot
+                              access the server. The default is YES.
+   /COMMENT:"text"            Provides a descriptive comment about the
+                              user's account.  Enclose the text in
+                              quotation marks. 
+   /COUNTRYCODE:nnn           Uses the operating system country code to
+                              implement the specified language files for a
+                              user's help and error messages. A value of
+                              0 signifies the default country code. 
+   /EXPIRES:{date | NEVER}    Causes the account to expire if date is
+                              set. NEVER sets no time limit on the
+                              account. An expiration date is in the
+                              form mm/dd/yy(yy). Months can be a number,
+                              spelled out, or abbreviated with three
+                              letters. Year can be two or four numbers.
+                              Use slashes(/) (no spaces) to separate
+                              parts of the date. 
+   /FULLNAME:"name"           Is a user's full name (rather than a 
+                              username). Enclose the name in quotation
+                              marks.
+   /HOMEDIR:pathname          Sets the path for the user's home directory. 
+                              The path must exist.
+   /PASSWORDCHG:{YES | NO}    Specifies whether users can change their
+                              own password. The default is YES.
+   /PASSWORDREQ:{YES | NO}    Specifies whether a user account must have
+                              a password. The default is YES.
+   /PROFILEPATH[:path]        Sets a path for the user's logon profile.
+   /SCRIPTPATH:pathname       Is the location of the user's logon
+                              script.
+   /TIMES:{times | ALL}       Is the logon hours. TIMES is expressed as
+                              day[-day][,day[-day]],time[-time][,time
+                              [-time]], limited to 1-hour increments.
+                              Days can be spelled out or abbreviated.
+                              Hours can be 12- or 24-hour notation. For
+                              12-hour notation, use am, pm, a.m., or
+                              p.m. ALL means a user can always log on,
+                              and a blank value means a user can never 
+                              log on. Separate day and time entries with 
+                              a comma, and separate multiple day and time
+                              entries with a semicolon.
+   /USERCOMMENT:"text"        Lets an administrator add or change the User 
+                              Comment for the account. 
+   /WORKSTATIONS:{computername[,...] | *}
+                              Lists as many as eight computers from
+                              which a user can log on to the network. If 
+                              /WORKSTATIONS has no list or if the list is *,
+                              the user can log on from any computer.
+
+NET HELP command | MORE displays Help one screen at a time.
 .
 Language=Turkish
-USER
-...
+NET USER creates and modifies user accounts on computers. When used
+without switches, it lists the user accounts for the computer. The 
+user account information is stored in the user accounts database.
+
+username     Is the name of the user account to add, delete, modify, or 
+             view. The name of the user account can have as many as 
+             20 characters. 
+password     Assigns or changes a password for the user's account. 
+             A password must satisfy the minimum length set with the 
+             /MINPWLEN option of the NET ACCOUNTS command. It can have as 
+             many as 14 characters. 
+*            Produces a prompt for the password. The password is not 
+             displayed when you type it at a password prompt. 
+/DOMAIN      Performs the operation on a domain controller of 
+             the current domain. 
+/ADD         Adds a user account to the user accounts database. 
+/DELETE      Removes a user account from the user accounts database. 
+
+Options      Are as follows:
+
+   Options                    Description
+   --------------------------------------------------------------------
+   /ACTIVE:{YES | NO}         Activates or deactivates the account. If 
+                              the account is not active, the user cannot
+                              access the server. The default is YES.
+   /COMMENT:"text"            Provides a descriptive comment about the
+                              user's account.  Enclose the text in
+                              quotation marks. 
+   /COUNTRYCODE:nnn           Uses the operating system country code to
+                              implement the specified language files for a
+                              user's help and error messages. A value of
+                              0 signifies the default country code. 
+   /EXPIRES:{date | NEVER}    Causes the account to expire if date is
+                              set. NEVER sets no time limit on the
+                              account. An expiration date is in the
+                              form mm/dd/yy(yy). Months can be a number,
+                              spelled out, or abbreviated with three
+                              letters. Year can be two or four numbers.
+                              Use slashes(/) (no spaces) to separate
+                              parts of the date. 
+   /FULLNAME:"name"           Is a user's full name (rather than a 
+                              username). Enclose the name in quotation
+                              marks.
+   /HOMEDIR:pathname          Sets the path for the user's home directory. 
+                              The path must exist.
+   /PASSWORDCHG:{YES | NO}    Specifies whether users can change their
+                              own password. The default is YES.
+   /PASSWORDREQ:{YES | NO}    Specifies whether a user account must have
+                              a password. The default is YES.
+   /PROFILEPATH[:path]        Sets a path for the user's logon profile.
+   /SCRIPTPATH:pathname       Is the location of the user's logon
+                              script.
+   /TIMES:{times | ALL}       Is the logon hours. TIMES is expressed as
+                              day[-day][,day[-day]],time[-time][,time
+                              [-time]], limited to 1-hour increments.
+                              Days can be spelled out or abbreviated.
+                              Hours can be 12- or 24-hour notation. For
+                              12-hour notation, use am, pm, a.m., or
+                              p.m. ALL means a user can always log on,
+                              and a blank value means a user can never 
+                              log on. Separate day and time entries with 
+                              a comma, and separate multiple day and time
+                              entries with a semicolon.
+   /USERCOMMENT:"text"        Lets an administrator add or change the User 
+                              Comment for the account. 
+   /WORKSTATIONS:{computername[,...] | *}
+                              Lists as many as eight computers from
+                              which a user can log on to the network. If 
+                              /WORKSTATIONS has no list or if the list is *,
+                              the user can log on from any computer.
+
+NET HELP command | MORE displays Help one screen at a time.
 .
 Language=Chinese
-USER
-...
+NET USER creates and modifies user accounts on computers. When used
+without switches, it lists the user accounts for the computer. The 
+user account information is stored in the user accounts database.
+
+username     Is the name of the user account to add, delete, modify, or 
+             view. The name of the user account can have as many as 
+             20 characters. 
+password     Assigns or changes a password for the user's account. 
+             A password must satisfy the minimum length set with the 
+             /MINPWLEN option of the NET ACCOUNTS command. It can have as 
+             many as 14 characters. 
+*            Produces a prompt for the password. The password is not 
+             displayed when you type it at a password prompt. 
+/DOMAIN      Performs the operation on a domain controller of 
+             the current domain. 
+/ADD         Adds a user account to the user accounts database. 
+/DELETE      Removes a user account from the user accounts database. 
+
+Options      Are as follows:
+
+   Options                    Description
+   --------------------------------------------------------------------
+   /ACTIVE:{YES | NO}         Activates or deactivates the account. If 
+                              the account is not active, the user cannot
+                              access the server. The default is YES.
+   /COMMENT:"text"            Provides a descriptive comment about the
+                              user's account.  Enclose the text in
+                              quotation marks. 
+   /COUNTRYCODE:nnn           Uses the operating system country code to
+                              implement the specified language files for a
+                              user's help and error messages. A value of
+                              0 signifies the default country code. 
+   /EXPIRES:{date | NEVER}    Causes the account to expire if date is
+                              set. NEVER sets no time limit on the
+                              account. An expiration date is in the
+                              form mm/dd/yy(yy). Months can be a number,
+                              spelled out, or abbreviated with three
+                              letters. Year can be two or four numbers.
+                              Use slashes(/) (no spaces) to separate
+                              parts of the date. 
+   /FULLNAME:"name"           Is a user's full name (rather than a 
+                              username). Enclose the name in quotation
+                              marks.
+   /HOMEDIR:pathname          Sets the path for the user's home directory. 
+                              The path must exist.
+   /PASSWORDCHG:{YES | NO}    Specifies whether users can change their
+                              own password. The default is YES.
+   /PASSWORDREQ:{YES | NO}    Specifies whether a user account must have
+                              a password. The default is YES.
+   /PROFILEPATH[:path]        Sets a path for the user's logon profile.
+   /SCRIPTPATH:pathname       Is the location of the user's logon
+                              script.
+   /TIMES:{times | ALL}       Is the logon hours. TIMES is expressed as
+                              day[-day][,day[-day]],time[-time][,time
+                              [-time]], limited to 1-hour increments.
+                              Days can be spelled out or abbreviated.
+                              Hours can be 12- or 24-hour notation. For
+                              12-hour notation, use am, pm, a.m., or
+                              p.m. ALL means a user can always log on,
+                              and a blank value means a user can never 
+                              log on. Separate day and time entries with 
+                              a comma, and separate multiple day and time
+                              entries with a semicolon.
+   /USERCOMMENT:"text"        Lets an administrator add or change the User 
+                              Comment for the account. 
+   /WORKSTATIONS:{computername[,...] | *}
+                              Lists as many as eight computers from
+                              which a user can log on to the network. If 
+                              /WORKSTATIONS has no list or if the list is *,
+                              the user can log on from any computer.
+
+NET HELP command | MORE displays Help one screen at a time.
 .
 Language=Taiwanese
-USER
-...
+NET USER creates and modifies user accounts on computers. When used
+without switches, it lists the user accounts for the computer. The 
+user account information is stored in the user accounts database.
+
+username     Is the name of the user account to add, delete, modify, or 
+             view. The name of the user account can have as many as 
+             20 characters. 
+password     Assigns or changes a password for the user's account. 
+             A password must satisfy the minimum length set with the 
+             /MINPWLEN option of the NET ACCOUNTS command. It can have as 
+             many as 14 characters. 
+*            Produces a prompt for the password. The password is not 
+             displayed when you type it at a password prompt. 
+/DOMAIN      Performs the operation on a domain controller of 
+             the current domain. 
+/ADD         Adds a user account to the user accounts database. 
+/DELETE      Removes a user account from the user accounts database. 
+
+Options      Are as follows:
+
+   Options                    Description
+   --------------------------------------------------------------------
+   /ACTIVE:{YES | NO}         Activates or deactivates the account. If 
+                              the account is not active, the user cannot
+                              access the server. The default is YES.
+   /COMMENT:"text"            Provides a descriptive comment about the
+                              user's account.  Enclose the text in
+                              quotation marks. 
+   /COUNTRYCODE:nnn           Uses the operating system country code to
+                              implement the specified language files for a
+                              user's help and error messages. A value of
+                              0 signifies the default country code. 
+   /EXPIRES:{date | NEVER}    Causes the account to expire if date is
+                              set. NEVER sets no time limit on the
+                              account. An expiration date is in the
+                              form mm/dd/yy(yy). Months can be a number,
+                              spelled out, or abbreviated with three
+                              letters. Year can be two or four numbers.
+                              Use slashes(/) (no spaces) to separate
+                              parts of the date. 
+   /FULLNAME:"name"           Is a user's full name (rather than a 
+                              username). Enclose the name in quotation
+                              marks.
+   /HOMEDIR:pathname          Sets the path for the user's home directory. 
+                              The path must exist.
+   /PASSWORDCHG:{YES | NO}    Specifies whether users can change their
+                              own password. The default is YES.
+   /PASSWORDREQ:{YES | NO}    Specifies whether a user account must have
+                              a password. The default is YES.
+   /PROFILEPATH[:path]        Sets a path for the user's logon profile.
+   /SCRIPTPATH:pathname       Is the location of the user's logon
+                              script.
+   /TIMES:{times | ALL}       Is the logon hours. TIMES is expressed as
+                              day[-day][,day[-day]],time[-time][,time
+                              [-time]], limited to 1-hour increments.
+                              Days can be spelled out or abbreviated.
+                              Hours can be 12- or 24-hour notation. For
+                              12-hour notation, use am, pm, a.m., or
+                              p.m. ALL means a user can always log on,
+                              and a blank value means a user can never 
+                              log on. Separate day and time entries with 
+                              a comma, and separate multiple day and time
+                              entries with a semicolon.
+   /USERCOMMENT:"text"        Lets an administrator add or change the User 
+                              Comment for the account. 
+   /WORKSTATIONS:{computername[,...] | *}
+                              Lists as many as eight computers from
+                              which a user can log on to the network. If 
+                              /WORKSTATIONS has no list or if the list is *,
+                              the user can log on from any computer.
+
+NET HELP command | MORE displays Help one screen at a time.
 .
 
 
@@ -2775,4 +3790,250 @@ Language=Taiwanese
 NET [ ACCOUNTS | COMPUTER | CONFIG | CONTINUE | FILE | GROUP | HELP |
       HELPMSG | LOCALGROUP | NAME | PAUSE | PRINT | SEND | SESSION |
       SHARE | START | STATISTICS | STOP | TIME | USE | USER | VIEW ]
+.
+
+
+MessageId=10047
+SymbolicName=MSG_SYNTAX_HELP
+Severity=Success
+Facility=System
+Language=English
+SYNTAX
+The following conventions are used to indicate command syntax:
+
+-  Capital letters represent words that must be typed as shown. Lower-
+   case letters represent names of items that may vary, such as filenames.
+
+-  The [ and ] characters surround optional items that can be supplied
+   with the command.
+
+-  The { and } characters surround lists of items. You must supply one
+   of the items with the command.
+
+-  The | character separates items in a list. Only one of the items can
+   be supplied with the command.
+
+   For example, in the following syntax, you must type NET COMMAND and
+   either SWITCH1 or SWITCH2. Supplying a name is optional.
+       NET COMMAND [name] {SWITCH1 | SWITCH2}
+
+-  The [...] characters mean you can repeat the previous item.
+   Separate items with spaces.
+
+-  The [,...] characters mean you can repeat the previous item, but
+   you must separate items with commas or semicolons, not spaces.
+
+-  When typed at the command prompt, service names of two words or 
+   more must be enclosed in quotation marks. For example, 
+   NET START "COMPUTER BROWSER" starts the computer browser service.
+.
+Language=Polish
+SYNTAX
+The following conventions are used to indicate command syntax:
+
+-  Capital letters represent words that must be typed as shown. Lower-
+   case letters represent names of items that may vary, such as filenames.
+
+-  The [ and ] characters surround optional items that can be supplied
+   with the command.
+
+-  The { and } characters surround lists of items. You must supply one
+   of the items with the command.
+
+-  The | character separates items in a list. Only one of the items can
+   be supplied with the command.
+
+   For example, in the following syntax, you must type NET COMMAND and
+   either SWITCH1 or SWITCH2. Supplying a name is optional.
+       NET COMMAND [name] {SWITCH1 | SWITCH2}
+
+-  The [...] characters mean you can repeat the previous item.
+   Separate items with spaces.
+
+-  The [,...] characters mean you can repeat the previous item, but
+   you must separate items with commas or semicolons, not spaces.
+
+-  When typed at the command prompt, service names of two words or 
+   more must be enclosed in quotation marks. For example, 
+   NET START "COMPUTER BROWSER" starts the computer browser service.
+.
+Language=Romanian
+SYNTAX
+The following conventions are used to indicate command syntax:
+
+-  Capital letters represent words that must be typed as shown. Lower-
+   case letters represent names of items that may vary, such as filenames.
+
+-  The [ and ] characters surround optional items that can be supplied
+   with the command.
+
+-  The { and } characters surround lists of items. You must supply one
+   of the items with the command.
+
+-  The | character separates items in a list. Only one of the items can
+   be supplied with the command.
+
+   For example, in the following syntax, you must type NET COMMAND and
+   either SWITCH1 or SWITCH2. Supplying a name is optional.
+       NET COMMAND [name] {SWITCH1 | SWITCH2}
+
+-  The [...] characters mean you can repeat the previous item.
+   Separate items with spaces.
+
+-  The [,...] characters mean you can repeat the previous item, but
+   you must separate items with commas or semicolons, not spaces.
+
+-  When typed at the command prompt, service names of two words or 
+   more must be enclosed in quotation marks. For example, 
+   NET START "COMPUTER BROWSER" starts the computer browser service.
+.
+Language=Russian
+SYNTAX
+The following conventions are used to indicate command syntax:
+
+-  Capital letters represent words that must be typed as shown. Lower-
+   case letters represent names of items that may vary, such as filenames.
+
+-  The [ and ] characters surround optional items that can be supplied
+   with the command.
+
+-  The { and } characters surround lists of items. You must supply one
+   of the items with the command.
+
+-  The | character separates items in a list. Only one of the items can
+   be supplied with the command.
+
+   For example, in the following syntax, you must type NET COMMAND and
+   either SWITCH1 or SWITCH2. Supplying a name is optional.
+       NET COMMAND [name] {SWITCH1 | SWITCH2}
+
+-  The [...] characters mean you can repeat the previous item.
+   Separate items with spaces.
+
+-  The [,...] characters mean you can repeat the previous item, but
+   you must separate items with commas or semicolons, not spaces.
+
+-  When typed at the command prompt, service names of two words or 
+   more must be enclosed in quotation marks. For example, 
+   NET START "COMPUTER BROWSER" starts the computer browser service.
+.
+Language=Spanish
+SYNTAX
+The following conventions are used to indicate command syntax:
+
+-  Capital letters represent words that must be typed as shown. Lower-
+   case letters represent names of items that may vary, such as filenames.
+
+-  The [ and ] characters surround optional items that can be supplied
+   with the command.
+
+-  The { and } characters surround lists of items. You must supply one
+   of the items with the command.
+
+-  The | character separates items in a list. Only one of the items can
+   be supplied with the command.
+
+   For example, in the following syntax, you must type NET COMMAND and
+   either SWITCH1 or SWITCH2. Supplying a name is optional.
+       NET COMMAND [name] {SWITCH1 | SWITCH2}
+
+-  The [...] characters mean you can repeat the previous item.
+   Separate items with spaces.
+
+-  The [,...] characters mean you can repeat the previous item, but
+   you must separate items with commas or semicolons, not spaces.
+
+-  When typed at the command prompt, service names of two words or 
+   more must be enclosed in quotation marks. For example, 
+   NET START "COMPUTER BROWSER" starts the computer browser service.
+.
+Language=Turkish
+SYNTAX
+The following conventions are used to indicate command syntax:
+
+-  Capital letters represent words that must be typed as shown. Lower-
+   case letters represent names of items that may vary, such as filenames.
+
+-  The [ and ] characters surround optional items that can be supplied
+   with the command.
+
+-  The { and } characters surround lists of items. You must supply one
+   of the items with the command.
+
+-  The | character separates items in a list. Only one of the items can
+   be supplied with the command.
+
+   For example, in the following syntax, you must type NET COMMAND and
+   either SWITCH1 or SWITCH2. Supplying a name is optional.
+       NET COMMAND [name] {SWITCH1 | SWITCH2}
+
+-  The [...] characters mean you can repeat the previous item.
+   Separate items with spaces.
+
+-  The [,...] characters mean you can repeat the previous item, but
+   you must separate items with commas or semicolons, not spaces.
+
+-  When typed at the command prompt, service names of two words or 
+   more must be enclosed in quotation marks. For example, 
+   NET START "COMPUTER BROWSER" starts the computer browser service.
+.
+Language=Chinese
+SYNTAX
+The following conventions are used to indicate command syntax:
+
+-  Capital letters represent words that must be typed as shown. Lower-
+   case letters represent names of items that may vary, such as filenames.
+
+-  The [ and ] characters surround optional items that can be supplied
+   with the command.
+
+-  The { and } characters surround lists of items. You must supply one
+   of the items with the command.
+
+-  The | character separates items in a list. Only one of the items can
+   be supplied with the command.
+
+   For example, in the following syntax, you must type NET COMMAND and
+   either SWITCH1 or SWITCH2. Supplying a name is optional.
+       NET COMMAND [name] {SWITCH1 | SWITCH2}
+
+-  The [...] characters mean you can repeat the previous item.
+   Separate items with spaces.
+
+-  The [,...] characters mean you can repeat the previous item, but
+   you must separate items with commas or semicolons, not spaces.
+
+-  When typed at the command prompt, service names of two words or 
+   more must be enclosed in quotation marks. For example, 
+   NET START "COMPUTER BROWSER" starts the computer browser service.
+.
+Language=Taiwanese
+SYNTAX
+The following conventions are used to indicate command syntax:
+
+-  Capital letters represent words that must be typed as shown. Lower-
+   case letters represent names of items that may vary, such as filenames.
+
+-  The [ and ] characters surround optional items that can be supplied
+   with the command.
+
+-  The { and } characters surround lists of items. You must supply one
+   of the items with the command.
+
+-  The | character separates items in a list. Only one of the items can
+   be supplied with the command.
+
+   For example, in the following syntax, you must type NET COMMAND and
+   either SWITCH1 or SWITCH2. Supplying a name is optional.
+       NET COMMAND [name] {SWITCH1 | SWITCH2}
+
+-  The [...] characters mean you can repeat the previous item.
+   Separate items with spaces.
+
+-  The [,...] characters mean you can repeat the previous item, but
+   you must separate items with commas or semicolons, not spaces.
+
+-  When typed at the command prompt, service names of two words or 
+   more must be enclosed in quotation marks. For example, 
+   NET START "COMPUTER BROWSER" starts the computer browser service.
 .

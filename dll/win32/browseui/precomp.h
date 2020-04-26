@@ -11,6 +11,7 @@
 #include <winbase.h>
 #include <wincon.h>
 #include <wingdi.h>
+#include <winnetwk.h>
 #include <shlobj.h>
 #include <tlogstg.h>
 #include <shellapi.h>
@@ -46,6 +47,8 @@
 #include "shellbars/CBandSite.h"
 #include "shellbars/CBandSiteMenu.h"
 #include "shellbars/CISFBand.h"
+#include "shellfind/CFindFolder.h"
+#include "shellfind/CSearchBar.h"
 #include "brandband.h"
 #include "internettoolbar.h"
 #include "commonbrowser.h"

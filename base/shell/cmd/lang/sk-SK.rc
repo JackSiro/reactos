@@ -15,19 +15,6 @@ assoc (print all associations)\n\
 assoc .ext (print specific association)\n\
 assoc .ext= (remove specific association)\n\
 assoc .ext=FileType (add new association)\n"
-    STRING_ATTRIB_HELP "Displays or changes file attributes.\n\n\
-ATTRIB [+R | -R] [+A | -A] [+S | -S] [+H | -H] file ...\n\
-       [/S [/D]]\n\n\
-  +   Sets an attribute\n\
-  -   Clears an attribute\n\
-  R   Read-only file attribute\n\
-  A   Archive file attribute\n\
-  S   System file attribute\n\
-  H   Hidden file attribute\n\
-  /S  Processes matching files in the current directory\n\
-      and all subdirectories\n\
-  /D  Processes directories as well\n\n\
-Type ATTRIB without a parameter to display the attributes of all files.\n"
     STRING_ALIAS_HELP "Sets, removes or shows aliases.\n\n\
 ALIAS [alias=[command]]\n\n\
   alias    Name for an alias.\n\
@@ -214,7 +201,7 @@ PUSHD [path | ..]\n\n\
 Type ECHO without a parameter to display the current ECHO setting."
     STRING_ECHO_HELP5 "ECHO je %s\n"
     STRING_EXIT_HELP "Exits the command line interpreter.\n\nEXIT [/b] [ExitCode]\n\n\
-  /B            Exits a batch file only.  \n\
+  /B            Exits a batch file only.\n\
                 If run outside of a batch file it will exit cmd.exe\n\
   ExitCode      This value will be assigned to ERRORLEVEL on exit\n"
     STRING_FOR_HELP1 "Runs a specified command for each file in a set of files.\n\n\
@@ -263,11 +250,6 @@ string1==string2  Specifies a true condition if the specified text strings\n\
 EXIST filename    Specifies a true condition if the specified filename exists.\n\
 DEFINED variable  Specifies a true condition if the specified variable is\n\
                   defined.\n"
-    STRING_LABEL_HELP1 "Displays or changes drive label.\n\nLABEL [drive:][label]\n"
-    STRING_LABEL_HELP2 "Volume in drive %c: is %s\n"
-    STRING_LABEL_HELP3 "Volume in drive %c: has no label\n"
-    STRING_LABEL_HELP4 "Volume Serial Number is %04X-%04X\n"
-    STRING_LABEL_HELP5 "Drive label (11 Characters, ENTER if none)? "
     STRING_LOCALE_HELP1 "Aktuálny čas je"
     STRING_MKDIR_HELP "Creates a directory.\n\n\
 MKDIR [drive:]path\nMD [drive:]path"
@@ -437,7 +419,7 @@ TIMER  [ON|OFF] [/S] [/n] [/Fn]\n\n\
                     1    hh%cmm%css%cdd\n\n\
 if none of ON, OFF or /S is specified the command\n\
 will toggle stopwatch state\n\n"
-    STRING_TYPE_HELP1 "Displays the contents of text files.\n\nTYPE [drive:][path]filename \n\
+    STRING_TYPE_HELP1 "Displays the contents of text files.\n\nTYPE [drive:][path]filename\n\
   /P          Shows one screen of output at a time.\n"
     STRING_VERIFY_HELP1 "This command is just a dummy!!\n\
 Sets whether to verify that your files are written correctly to a\n\

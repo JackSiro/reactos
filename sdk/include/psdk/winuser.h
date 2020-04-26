@@ -1551,8 +1551,8 @@ extern "C" {
 #endif
 
 #define SPIF_UPDATEINIFILE 1
-#define SPIF_SENDWININICHANGE 2
 #define SPIF_SENDCHANGE 2
+#define SPIF_SENDWININICHANGE SPIF_SENDCHANGE
 #define ATF_ONOFFFEEDBACK 2
 #define ATF_TIMEOUTON 1
 
@@ -1687,6 +1687,12 @@ extern "C" {
 #define WM_NCXBUTTONDBLCLK 173
 #endif /* (_WIN32_WINNT >= 0x0500) */
 
+#define GIDC_ARRIVAL 1
+#define GIDC_REMOVAL 2
+
+#define WM_INPUT_DEVICE_CHANGE 254
+#define WM_INPUT 255
+
 #define WM_KEYFIRST 256
 #define WM_KEYDOWN 256
 #define WM_KEYUP 257
@@ -1818,6 +1824,21 @@ extern "C" {
 #define WM_NCMOUSELEAVE             0x02A2
 #define WM_MOUSEHOVER               0x02A1
 #define WM_MOUSELEAVE               0x02A3
+
+#if (_WIN32_WINNT >= 0x0501)
+#define WTS_CONSOLE_CONNECT 0x1
+#define WTS_CONSOLE_DISCONNECT 0x2
+#define WTS_REMOTE_CONNECT 0x3
+#define WTS_REMOTE_DISCONNECT 0x4
+#define WTS_SESSION_LOGON 0x5
+#define WTS_SESSION_LOGOFF 0x6
+#define WTS_SESSION_LOCK 0x7
+#define WTS_SESSION_UNLOCK 0x8
+#define WTS_SESSION_REMOTE_CONTROL 0x9
+#define WTS_SESSION_CREATE 0xA
+#define WTS_SESSION_TERMINATE 0xB
+#define WM_WTSSESSION_CHANGE 0x02B1
+#endif
 
 #define WM_CUT 768
 #define WM_COPY 769
@@ -2747,6 +2768,7 @@ extern "C" {
 #define MONITOR_DEFAULTTOPRIMARY 1
 #define MONITOR_DEFAULTTONEAREST 2
 #define MONITORINFOF_PRIMARY 1
+#define EDD_GET_DEVICE_INTERFACE_NAME 0x00000001
 #define EDS_RAWMODE 0x00000002
 #define EDS_ROTATEDMODE 0x00000004
 #define ISMEX_NOSEND 0x00000000
@@ -3179,6 +3201,17 @@ typedef struct _WNDCLASSEXW {
 	LPCWSTR lpszClassName;
 	HICON hIconSm;
 } WNDCLASSEXW,*LPWNDCLASSEXW,*PWNDCLASSEXW;
+
+#define MNGOF_TOPGAP 0x00000001
+#define MNGOF_BOTTOMGAP 0x00000002
+
+typedef struct tagMENUGETOBJECTINFO {
+	DWORD dwFlags;
+	UINT uPos;
+	HMENU hmenu;
+	PVOID riid;
+	PVOID pvObj;
+} MENUGETOBJECTINFO,*PMENUGETOBJECTINFO;
 
 typedef struct tagMENUITEMINFOA {
 	UINT cbSize;
@@ -3900,6 +3933,41 @@ typedef struct tagRAWINPUTDEVICELIST {
 	HANDLE hDevice;
 	DWORD dwType;
 } RAWINPUTDEVICELIST,*PRAWINPUTDEVICELIST;
+
+typedef struct tagRID_DEVICE_INFO_MOUSE {
+  DWORD dwId;
+  DWORD dwNumberOfButtons;
+  DWORD dwSampleRate;
+  BOOL fHasHorizontalWheel;
+} RID_DEVICE_INFO_MOUSE, *PRID_DEVICE_INFO_MOUSE;
+
+typedef struct tagRID_DEVICE_INFO_KEYBOARD {
+  DWORD dwType;
+  DWORD dwSubType;
+  DWORD dwKeyboardMode;
+  DWORD dwNumberOfFunctionKeys;
+  DWORD dwNumberOfIndicators;
+  DWORD dwNumberOfKeysTotal;
+} RID_DEVICE_INFO_KEYBOARD, *PRID_DEVICE_INFO_KEYBOARD;
+
+typedef struct tagRID_DEVICE_INFO_HID {
+  DWORD dwVendorId;
+  DWORD dwProductId;
+  DWORD dwVersionNumber;
+  USHORT usUsagePage;
+  USHORT usUsage;
+} RID_DEVICE_INFO_HID, *PRID_DEVICE_INFO_HID;
+
+typedef struct tagRID_DEVICE_INFO {
+  DWORD cbSize;
+  DWORD dwType;
+  union {
+    RID_DEVICE_INFO_MOUSE mouse;
+    RID_DEVICE_INFO_KEYBOARD keyboard;
+    RID_DEVICE_INFO_HID hid;
+  } DUMMYUNIONNAME;
+} RID_DEVICE_INFO, *PRID_DEVICE_INFO, *LPRID_DEVICE_INFO;
+
 #endif /* (_WIN32_WINNT >= 0x0501) */
 
 #define AnsiToOem CharToOemA
@@ -3920,6 +3988,44 @@ typedef struct tagRAWINPUTDEVICELIST {
   (p).y=HIWORD(*(DWORD *)&ps); \
 }
 #define POINTTOPOINTS(p) ((POINTS)MAKELONG((p).x,(p).y))
+
+#if (WINVER >= 0x0601)
+
+typedef enum tagINPUT_MESSAGE_DEVICE_TYPE {
+  IMDT_UNAVAILABLE = 0x00,
+  IMDT_KEYBOARD = 0x01,
+  IMDT_MOUSE = 0x02,
+  IMDT_TOUCH = 0x04,
+  IMDT_PEN = 0x08,
+  IMDT_TOUCHPAD = 0x10
+} INPUT_MESSAGE_DEVICE_TYPE;
+
+typedef enum tagINPUT_MESSAGE_ORIGIN_ID {
+  IMO_UNAVAILABLE = 0x00,
+  IMO_HARDWARE = 0x01,
+  IMO_INJECTED = 0x02,
+  IMO_SYSTEM = 0x04
+} INPUT_MESSAGE_ORIGIN_ID;
+
+typedef struct tagINPUT_MESSAGE_SOURCE {
+  INPUT_MESSAGE_DEVICE_TYPE deviceType;
+  INPUT_MESSAGE_ORIGIN_ID originId;
+} INPUT_MESSAGE_SOURCE;
+
+#endif /* WINVER >= 0x0601 */
+
+#if(WINVER >= 0x0602)
+
+enum tagPOINTER_INPUT_TYPE {
+  PT_POINTER = 1,
+  PT_TOUCH,
+  PT_PEN,
+  PT_MOUSE,
+  PT_TOUCHPAD
+};
+typedef DWORD POINTER_INPUT_TYPE;
+
+#endif /* WINVER >= 0x0602 */
 
 HKL WINAPI ActivateKeyboardLayout(_In_ HKL, _In_ UINT);
 BOOL WINAPI AdjustWindowRect(_Inout_ LPRECT, _In_ DWORD, _In_ BOOL);
@@ -5312,6 +5418,9 @@ BOOL WINAPI UnionRect(_Out_ LPRECT, _In_ LPCRECT, _In_ LPCRECT);
 BOOL WINAPI UnloadKeyboardLayout(_In_ HKL);
 BOOL WINAPI UnregisterClassA(_In_ LPCSTR,HINSTANCE);
 BOOL WINAPI UnregisterClassW(_In_ LPCWSTR,HINSTANCE);
+#if (WINVER >= 0x0500)
+BOOL WINAPI UnregisterDeviceNotification(_In_ HDEVNOTIFY);
+#endif
 BOOL WINAPI UnregisterHotKey(_In_opt_ HWND, _In_ int);
 BOOL WINAPI UpdateWindow(_In_ HWND);
 #if (_WIN32_WINNT >= 0x0500)
@@ -5565,14 +5674,14 @@ typedef MONITORINFOEXW MONITORINFOEX, *LPMONITORINFOEX;
 #define wsprintf wsprintfW
 #define wvsprintf wvsprintfW
 
-#ifndef NOGDI
+#if defined(_WINGDI_) && !defined(NOGDI)
 #define ChangeDisplaySettings ChangeDisplaySettingsW
 #define ChangeDisplaySettingsEx ChangeDisplaySettingsExW
 #define CreateDesktop CreateDesktopW
 #define EnumDisplaySettings EnumDisplaySettingsW
 #define EnumDisplaySettingsEx EnumDisplaySettingsExW
 #define EnumDisplayDevices EnumDisplayDevicesW
-#endif /* NOGDI */
+#endif /* _WINGDI_ && !NOGDI */
 #else /* UNICODE */
 #define EDITWORDBREAKPROC EDITWORDBREAKPROCA
 #define PROPENUMPROC PROPENUMPROCA
@@ -5737,7 +5846,7 @@ typedef MONITORINFOEXA MONITORINFOEX, *LPMONITORINFOEX;
 #define EnumDisplaySettings EnumDisplaySettingsA
 #define EnumDisplaySettingsEx EnumDisplaySettingsExA
 #define EnumDisplayDevices EnumDisplayDevicesA
-#endif /* NOGDI */
+#endif /* _WINGDI_ && !NOGDI */
 #endif /* UNICODE */
 #endif /* RC_INVOKED */
 

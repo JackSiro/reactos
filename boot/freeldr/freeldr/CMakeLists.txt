@@ -2,6 +2,7 @@
 if(SEPARATE_DBG)
     # FIXME: http://sourceware.org/bugzilla/show_bug.cgi?id=11822
     set(CMAKE_LDR_PE_HELPER_LINK_EXECUTABLE "<CMAKE_C_COMPILER> <CMAKE_C_LINK_FLAGS> <LINK_FLAGS> <OBJECTS> -o <TARGET> <LINK_LIBRARIES>")
+    set(CMAKE_LDR_PE_HELPER_STANDARD_LIBRARIES_INIT "")
     set(CMAKE_LDR_PE_HELPER_STANDARD_LIBRARIES "-lgcc" CACHE STRING "Standard C Libraries")
 endif()
 
@@ -36,8 +37,11 @@ include_directories(${REACTOS_SOURCE_DIR}/sdk/include/reactos/elf)
 add_definitions(-D_NTHAL_ -D_BLDR_ -D_NTSYSTEM_)
 
 list(APPEND FREELDR_BOOTLIB_SOURCE
+    lib/arcsupp.c
     lib/debug.c
     lib/peloader.c
+    lib/cache/blocklist.c
+    lib/cache/cache.c
     lib/comm/rs232.c
     ## add KD support
     lib/fs/btrfs.c
@@ -62,10 +66,9 @@ list(APPEND FREELDR_NTLDR_SOURCE
 
 list(APPEND FREELDR_ARC_SOURCE
     arcname.c
-    machine.c
+    arch/drivers/hwide.c
+    arch/arcemul.c
     arch/archwsup.c
-    cache/blocklist.c
-    cache/cache.c
     disk/disk.c
     disk/partition.c
     disk/ramdisk.c)
@@ -79,7 +82,6 @@ list(APPEND FREELDR_BOOTMGR_SOURCE
     miscboot.c
     options.c
     oslist.c
-    version.c
     ui/directui.c
     ui/gui.c
     ui/minitui.c
@@ -87,9 +89,7 @@ list(APPEND FREELDR_BOOTMGR_SOURCE
     ui/tui.c
     ui/tuimenu.c
     ui/ui.c
-    video/fade.c
-    video/palette.c
-    video/video.c)
+    ui/video.c)
 
 list(APPEND FREELDR_BASE_ASM_SOURCE)
 
@@ -113,38 +113,67 @@ if(ARCH STREQUAL "i386")
         lib/fs/pxe.c
         arch/i386/halstub.c
         arch/i386/ntoskrnl.c
-        arch/i386/archmach.c
         arch/i386/drivemap.c
-        arch/i386/hardware.c
         arch/i386/hwacpi.c
         arch/i386/hwapm.c
         arch/i386/hwdisk.c
         arch/i386/hwpci.c
         arch/i386/i386bug.c
         arch/i386/i386idt.c
-        arch/i386/i386rtl.c
-        arch/i386/i386vid.c
-        arch/i386/machpc.c
-        arch/i386/pccons.c
-        arch/i386/pcdisk.c
-        arch/i386/pcmem.c
-        arch/i386/pcrtc.c
-        arch/i386/pcvideo.c
-        arch/i386/machxbox.c
-        arch/i386/xboxcons.c
-        arch/i386/xboxdisk.c
-        arch/i386/xboxfont.c
-        arch/i386/xboxi2c.c
-        arch/i386/xboxmem.c
-        arch/i386/xboxrtc.c
-        arch/i386/xboxvideo.c
         disk/scsiport.c)
+
+    if(SARCH STREQUAL "pc98" OR SARCH STREQUAL "xbox")
+        # These machine types require built-in bitmap font
+        list(APPEND FREELDR_ARC_SOURCE
+            arch/vgafont.c)
+    endif()
+
+    if(SARCH STREQUAL "xbox")
+        list(APPEND FREELDR_ARC_SOURCE
+            # FIXME: Abstract things better so we don't need to include /pc/* here
+            arch/i386/pc/machpc.c       # machxbox.c depends on it
+            arch/i386/pc/pcbeep.c       # machxbox.c depends on it
+            arch/i386/pc/pcdisk.c       # hwdisk.c depends on it
+            arch/i386/pc/pchw.c         # Many files depends on it
+            arch/i386/pc/pcmem.c        # hwacpi.c/xboxmem.c depends on it
+            arch/i386/pc/pcvesa.c       # machpc.c depends on it
+            arch/i386/xbox/machxbox.c
+            arch/i386/xbox/xboxcons.c
+            arch/i386/xbox/xboxdisk.c
+            arch/i386/xbox/xboxi2c.c
+            arch/i386/xbox/xboxmem.c
+            arch/i386/xbox/xboxrtc.c
+            arch/i386/xbox/xboxvideo.c)
+    elseif(SARCH STREQUAL "pc98")
+        list(APPEND FREELDR_ARC_SOURCE
+            arch/i386/pc/pcmem.c
+            arch/i386/pc98/machpc98.c
+            arch/i386/pc98/pc98beep.c
+            arch/i386/pc98/pc98cons.c
+            arch/i386/pc98/pc98disk.c
+            arch/i386/pc98/pc98hw.c
+            arch/i386/pc98/pc98mem.c
+            arch/i386/pc98/pc98rtc.c
+            arch/i386/pc98/pc98video.c)
+    else()
+        list(APPEND FREELDR_ARC_SOURCE
+            arch/i386/pc/machpc.c
+            arch/i386/pc/pcbeep.c
+            arch/i386/pc/pccons.c
+            arch/i386/pc/pcdisk.c
+            arch/i386/pc/pchw.c
+            arch/i386/pc/pcmem.c
+            arch/i386/pc/pcrtc.c
+            arch/i386/pc/pcvesa.c
+            arch/i386/pc/pcvideo.c)
+    endif()
 
 elseif(ARCH STREQUAL "amd64")
     list(APPEND FREELDR_COMMON_ASM_SOURCE
         arch/amd64/entry.S
         arch/amd64/int386.S
-        arch/amd64/pnpbios.S)
+        arch/amd64/pnpbios.S
+        arch/amd64/linux.S)
 
     list(APPEND FREELDR_NTLDR_SOURCE
         ntldr/arch/amd64/winldr.c)
@@ -153,20 +182,20 @@ elseif(ARCH STREQUAL "amd64")
         lib/fs/pxe.c
         arch/i386/ntoskrnl.c
         arch/i386/drivemap.c
-        arch/i386/hardware.c
         arch/i386/hwacpi.c
         arch/i386/hwapm.c
         arch/i386/hwdisk.c
         arch/i386/hwpci.c
         arch/i386/i386bug.c
-        arch/i386/i386rtl.c
-        arch/i386/i386vid.c
-        arch/i386/machpc.c
-        arch/i386/pccons.c
-        arch/i386/pcdisk.c
-        arch/i386/pcmem.c
-        arch/i386/pcrtc.c
-        arch/i386/pcvideo.c)
+        arch/i386/pc/machpc.c
+        arch/i386/pc/pcbeep.c
+        arch/i386/pc/pccons.c
+        arch/i386/pc/pcdisk.c
+        arch/i386/pc/pchw.c
+        arch/i386/pc/pcmem.c
+        arch/i386/pc/pcrtc.c
+        arch/i386/pc/pcvesa.c
+        arch/i386/pc/pcvideo.c)
 
 elseif(ARCH STREQUAL "arm")
     list(APPEND FREELDR_COMMON_ASM_SOURCE
@@ -193,7 +222,11 @@ add_library(freeldr_common
 
 if(USE_CLANG_CL)
     # We need to reduce the binary size
-    add_target_compile_flags(freeldr_common "/Os")
+    target_compile_options(freeldr_common PRIVATE "/Os")
+endif()
+if(NOT MSVC AND ARCH STREQUAL "i386" AND SARCH STREQUAL "xbox")
+  # Prevent a warning when doing a memcmp with address 0
+  set_source_files_properties(arch/i386/xbox/xboxmem.c PROPERTIES COMPILE_FLAGS "-Wno-nonnull")
 endif()
 
 set(PCH_SOURCE
@@ -220,7 +253,7 @@ list(APPEND FREELDR_BASE_SOURCE
                      ## even if ${FREELDR_NTLDR_SOURCE} is not added,
                      ## otherwise we get linking errors with Rtl**Bitmap** APIs.
                      ## Do not happen on MSVC builds however...
-    lib/inffile/inffile.c
+    ntldr/inffile.c
     lib/rtl/libsupp.c)
 
 if(ARCH STREQUAL "i386")
@@ -232,8 +265,10 @@ endif()
 add_executable(freeldr_pe ${FREELDR_BASE_SOURCE})
 add_executable(freeldr_pe_dbg EXCLUDE_FROM_ALL ${FREELDR_BASE_SOURCE})
 
-set_property(TARGET freeldr_pe PROPERTY ENABLE_EXPORTS TRUE)
-set_property(TARGET freeldr_pe_dbg PROPERTY ENABLE_EXPORTS TRUE)
+set_target_properties(freeldr_pe freeldr_pe_dbg
+    PROPERTIES
+    ENABLE_EXPORTS TRUE
+    DEFINE_SYMBOL "")
 
 if(NOT MSVC AND SEPARATE_DBG)
     set_target_properties(freeldr_pe PROPERTIES LINKER_LANGUAGE LDR_PE_HELPER)
@@ -273,10 +308,13 @@ endif()
 target_link_libraries(freeldr_pe freeldr_common cportlib cmlib rtl libcntpr)
 target_link_libraries(freeldr_pe_dbg freeldr_common cportlib cmlib rtl libcntpr)
 
+# dynamic analysis switches
 if(STACK_PROTECTOR)
     target_link_libraries(freeldr_pe gcc_ssp)
     target_link_libraries(freeldr_pe_dbg gcc_ssp)
-elseif(RUNTIME_CHECKS)
+endif()
+
+if(RUNTIME_CHECKS)
     target_link_libraries(freeldr_pe runtmchk)
     target_link_libraries(freeldr_pe_dbg runtmchk)
     add_target_link_flags(freeldr_pe "/MERGE:.rtc=.text")
@@ -284,6 +322,14 @@ endif()
 
 add_dependencies(freeldr_pe asm)
 add_dependencies(freeldr_pe_dbg asm)
+
+if(SARCH STREQUAL "pc98")
+    file(MAKE_DIRECTORY ${REACTOS_BINARY_DIR}/PC98)
+    add_custom_target(pc98bootfdd
+        COMMAND native-fatten ${REACTOS_BINARY_DIR}/PC98/ReactOS-98.IMG -format 2880 ROS98BOOT -boot ${CMAKE_BINARY_DIR}/boot/freeldr/bootsect/pc98/fat12fdd.bin -add ${CMAKE_CURRENT_BINARY_DIR}/freeldr.sys FREELDR.SYS -add ${CMAKE_SOURCE_DIR}/boot/bootdata/floppy_pc98.ini FREELDR.INI
+        DEPENDS native-fatten fat12pc98 freeldr
+        VERBATIM)
+endif()
 
 if(NOT ARCH STREQUAL "arm")
     concatenate_files(

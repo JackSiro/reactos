@@ -178,6 +178,7 @@ BEGIN
     IDS_CAT_SCIENCE "Наука"
     IDS_CAT_TOOLS "Инструменты"
     IDS_CAT_VIDEO "Видео"
+    IDS_CAT_THEMES "Темы"
 END
 
 STRINGTABLE
@@ -190,7 +191,7 @@ BEGIN
     IDS_APPS_COUNT "Количество приложений: %d; Выбрано: %d"
     IDS_WELCOME_TITLE "Добро пожаловать в ""Менеджер приложений ReactOS""!\n\n"
     IDS_WELCOME_TEXT "Выберите категорию слева и приложение для установки или удаления.\nСайт ReactOS: "
-    IDS_WELCOME_URL "http://www.reactos.org"
+    IDS_WELCOME_URL "https://reactos.org/"
     IDS_INSTALLED "Установленные"
     IDS_AVAILABLEFORINST "Доступно для установки"
     IDS_UPDATES "Обновления"
@@ -211,7 +212,7 @@ BEGIN
     IDS_SELECT_ALL "Выбрать все"
     IDS_INSTALL_SELECTED "Установить выбранное"
     IDS_SELECTEDFORINST "Выбрано для установки"
-    IDS_MISMATCH_CERT_INFO "The certificate used is unknown:\nSubject: %s\nIssuer: %s\nDo you want to continue anyway?"
+    IDS_MISMATCH_CERT_INFO "Используемый сертификат не опознан:\nНазначение: %s\nВыдан: %s\nВы хотите продолжить в любом случае?"
 END
 
 STRINGTABLE

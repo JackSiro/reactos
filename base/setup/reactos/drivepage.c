@@ -791,13 +791,15 @@ DisableWizNext:
                     DISKENTRY DiskEntry;
                     PARTENTRY PartEntry;
                     DiskEntry.DiskNumber = 0;
-                    DiskEntry.BiosDiskNumber = 0;
+                    DiskEntry.HwDiskNumber = 0;
+                    DiskEntry.HwFixedDiskNumber = 0;
+                    PartEntry.DiskEntry = &DiskEntry;
                     PartEntry.PartitionNumber = 1; // 4;
                     /****/
 
                     Status = InitDestinationPaths(&pSetupData->USetupData,
                                                   NULL, // pSetupData->USetupData.InstallationDirectory,
-                                                  &DiskEntry, &PartEntry);
+                                                  &PartEntry);
 
                     if (!NT_SUCCESS(Status))
                     {

@@ -13,14 +13,14 @@ HDA_InterruptService(
     IN PKINTERRUPT  Interrupt,
     IN PVOID  ServiceContext)
 {
+    PDEVICE_OBJECT DeviceObject;
     PHDA_FDO_DEVICE_EXTENSION DeviceExtension;
-    ULONG InterruptStatus, Response, ResponseFlags, Cad;
+    ULONG InterruptStatus;
     UCHAR RirbStatus, CorbStatus;
-    USHORT WritePos;
-    PHDA_CODEC_ENTRY Codec;
 
     /* get device extension */
-    DeviceExtension = (PHDA_FDO_DEVICE_EXTENSION)ServiceContext;
+    DeviceObject = static_cast<PDEVICE_OBJECT>(ServiceContext);
+    DeviceExtension = static_cast<PHDA_FDO_DEVICE_EXTENSION>(DeviceObject->DeviceExtension);
     ASSERT(DeviceExtension->IsFDO == TRUE);
 
     // Check if this interrupt is ours
@@ -46,38 +46,7 @@ HDA_InterruptService(
             }
 
             if ((RirbStatus & RIRB_STATUS_RESPONSE) != 0) {
-                WritePos = (READ_REGISTER_USHORT((PUSHORT)(DeviceExtension->RegBase + HDAC_RIRB_WRITE_POS)) + 1) % DeviceExtension->RirbLength;
-
-                for (; DeviceExtension->RirbReadPos != WritePos; DeviceExtension->RirbReadPos = (DeviceExtension->RirbReadPos + 1) % DeviceExtension->RirbLength)
-                {
-
-                    Response = DeviceExtension->RirbBase[DeviceExtension->RirbReadPos].response;
-                    ResponseFlags = DeviceExtension->RirbBase[DeviceExtension->RirbReadPos].flags;
-                    Cad = ResponseFlags & RESPONSE_FLAGS_CODEC_MASK;
-                    DPRINT1("Response %lx ResponseFlags %lx Cad %lx\n", Response, ResponseFlags, Cad);
-
-                    /* get codec */
-                    Codec = DeviceExtension->Codecs[Cad];
-                    if (Codec == NULL)
-                    {
-                        DPRINT1("hda: response for unknown codec %x Response %x ResponseFlags %x\n", Cad, Response, ResponseFlags);
-                        continue;
-                    }
-
-                    /* check response count */
-                    if (Codec->ResponseCount >= MAX_CODEC_RESPONSES)
-                    {
-                        DPRINT1("too many responses for codec %x Response %x ResponseFlags %x\n", Cad, Response, ResponseFlags);
-                        continue;
-                    }
-
-                    // FIXME handle unsolicited responses
-                    ASSERT((ResponseFlags & RESPONSE_FLAGS_UNSOLICITED) == 0);
-
-                    /* store response */
-                    Codec->Responses[Codec->ResponseCount] = Response;
-                    Codec->ResponseCount++;
-                }
+                IoRequestDpc(DeviceObject, NULL, NULL);
             }
 
             if ((RirbStatus & RIRB_STATUS_OVERRUN) != 0)
@@ -111,6 +80,57 @@ HDA_InterruptService(
     }
 #endif
     return TRUE;
+}
+
+VOID
+NTAPI
+HDA_DpcForIsr(
+    _In_ PKDPC Dpc,
+    _In_opt_ PDEVICE_OBJECT DeviceObject,
+    _Inout_ PIRP Irp,
+    _In_opt_ PVOID Context)
+{
+    PHDA_FDO_DEVICE_EXTENSION DeviceExtension;
+    ULONG Response, ResponseFlags, Cad;
+    USHORT WritePos;
+    PHDA_CODEC_ENTRY Codec;
+
+    /* get device extension */
+    DeviceExtension = static_cast<PHDA_FDO_DEVICE_EXTENSION>(DeviceObject->DeviceExtension);
+    ASSERT(DeviceExtension->IsFDO == TRUE);
+
+    WritePos = (READ_REGISTER_USHORT((PUSHORT)(DeviceExtension->RegBase + HDAC_RIRB_WRITE_POS)) + 1) % DeviceExtension->RirbLength;
+
+    for (; DeviceExtension->RirbReadPos != WritePos; DeviceExtension->RirbReadPos = (DeviceExtension->RirbReadPos + 1) % DeviceExtension->RirbLength)
+    {
+        Response = DeviceExtension->RirbBase[DeviceExtension->RirbReadPos].response;
+        ResponseFlags = DeviceExtension->RirbBase[DeviceExtension->RirbReadPos].flags;
+        Cad = ResponseFlags & RESPONSE_FLAGS_CODEC_MASK;
+        DPRINT1("Response %lx ResponseFlags %lx Cad %lx\n", Response, ResponseFlags, Cad);
+
+        /* get codec */
+        Codec = DeviceExtension->Codecs[Cad];
+        if (Codec == NULL)
+        {
+            DPRINT1("hda: response for unknown codec %x Response %x ResponseFlags %x\n", Cad, Response, ResponseFlags);
+            continue;
+        }
+
+        /* check response count */
+        if (Codec->ResponseCount >= MAX_CODEC_RESPONSES)
+        {
+            DPRINT1("too many responses for codec %x Response %x ResponseFlags %x\n", Cad, Response, ResponseFlags);
+            continue;
+        }
+
+        // FIXME handle unsolicited responses
+        ASSERT((ResponseFlags & RESPONSE_FLAGS_UNSOLICITED) == 0);
+
+        /* store response */
+        Codec->Responses[Codec->ResponseCount] = Response;
+        Codec->ResponseCount++;
+        KeReleaseSemaphore(&Codec->ResponseSemaphore, IO_NO_INCREMENT, 1, FALSE);
+    }
 }
 
 
@@ -148,15 +168,19 @@ HDA_SendVerbs(
 
             DeviceExtension->CorbBase[WritePosition] = Verbs[Sent++];
             DeviceExtension->CorbWritePos = WritePosition;
-
-            // FIXME HACK
-            // do proper synchronization
-            WRITE_REGISTER_USHORT((PUSHORT)(DeviceExtension->RegBase + HDAC_CORB_WRITE_POS), DeviceExtension->CorbWritePos);
-            KeStallExecutionProcessor(30);
             Queued++;
         }
 
         WRITE_REGISTER_USHORT((PUSHORT)(DeviceExtension->RegBase + HDAC_CORB_WRITE_POS), DeviceExtension->CorbWritePos);
+    }
+
+    while (Queued--)
+    {
+        KeWaitForSingleObject(&Codec->ResponseSemaphore,
+                              Executive,
+                              KernelMode,
+                              FALSE,
+                              NULL);
     }
 
     if (Responses != NULL) {
@@ -188,6 +212,7 @@ HDA_InitCodec(
 
     /* init codec */
     Entry->Addr = codecAddress;
+    KeInitializeSemaphore(&Entry->ResponseSemaphore, 0, MAX_CODEC_RESPONSES);
 
     /* get device extension */
     DeviceExtension = (PHDA_FDO_DEVICE_EXTENSION)DeviceObject->DeviceExtension;
@@ -222,6 +247,11 @@ HDA_InitCodec(
         DPRINT1("NodeId %u GroupType %x\n", NodeId, GroupType);
 
         if ((GroupType & FUNCTION_GROUP_NODETYPE_MASK) == FUNCTION_GROUP_NODETYPE_AUDIO) {
+            if (Entry->AudioGroupCount >= HDA_MAX_AUDIO_GROUPS)
+            {
+                DPRINT1("Too many audio groups in node %u. Skipping.\n", NodeId);
+                break;
+            }
 
             AudioGroup = (PHDA_CODEC_AUDIO_GROUP)AllocateItem(NonPagedPool, sizeof(HDA_CODEC_AUDIO_GROUP));
             if (!AudioGroup)
@@ -235,7 +265,7 @@ HDA_InitCodec(
             AudioGroup->FunctionGroup = FUNCTION_GROUP_NODETYPE_AUDIO;
 
             // Found an Audio Function Group!
-            DPRINT1("NodeId %x found an audio function group!\n");
+            DPRINT1("NodeId %x found an audio function group!\n", NodeId);
 
             Status = IoCreateDevice(DeviceObject->DriverObject, sizeof(HDA_PDO_DEVICE_EXTENSION), NULL, FILE_DEVICE_SOUND, FILE_AUTOGENERATED_DEVICE_NAME, FALSE, &AudioGroup->ChildPDO);
             if (!NT_SUCCESS(Status))
@@ -361,8 +391,8 @@ HDA_InitCorbRirbPos(
     corbReadPointer |= CORB_READ_POS_RESET;
     WRITE_REGISTER_USHORT((PUSHORT)(DeviceExtension->RegBase + HDAC_CORB_READ_POS), corbReadPointer);
 
-    for (Index = 0; Index < 100; Index++) {
-        KeStallExecutionProcessor(10);
+    for (Index = 0; Index < 10; Index++) {
+        KeStallExecutionProcessor(100);
         corbReadPointer = READ_REGISTER_USHORT((PUSHORT)(DeviceExtension->RegBase + HDAC_CORB_READ_POS));
         if ((corbReadPointer & CORB_READ_POS_RESET) != 0)
             break;
@@ -381,7 +411,7 @@ HDA_InitCorbRirbPos(
     corbReadPointer &= ~CORB_READ_POS_RESET;
     WRITE_REGISTER_USHORT((PUSHORT)(DeviceExtension->RegBase + HDAC_CORB_READ_POS), corbReadPointer);
     for (Index = 0; Index < 10; Index++) {
-        KeStallExecutionProcessor(10);
+        KeStallExecutionProcessor(100);
         corbReadPointer = READ_REGISTER_USHORT((PUSHORT)(DeviceExtension->RegBase + HDAC_CORB_READ_POS));
         if ((corbReadPointer & CORB_READ_POS_RESET) == 0)
             break;
@@ -463,7 +493,7 @@ HDA_ResetController(
     WRITE_REGISTER_UCHAR(DeviceExtension->RegBase + HDAC_RIRB_CONTROL, Control);
 
     for (int timeout = 0; timeout < 10; timeout++) {
-        KeStallExecutionProcessor(10);
+        KeStallExecutionProcessor(100);
 
         corbControl = READ_REGISTER_UCHAR(DeviceExtension->RegBase + HDAC_CORB_CONTROL);
         rirbControl = READ_REGISTER_UCHAR(DeviceExtension->RegBase + HDAC_RIRB_CONTROL);
@@ -484,7 +514,7 @@ HDA_ResetController(
     WRITE_REGISTER_ULONG((PULONG)(DeviceExtension->RegBase + HDAC_GLOBAL_CONTROL), Control & ~GLOBAL_CONTROL_RESET);
 
     for (int timeout = 0; timeout < 10; timeout++) {
-        KeStallExecutionProcessor(10);
+        KeStallExecutionProcessor(100);
 
         Control = READ_REGISTER_ULONG((PULONG)(DeviceExtension->RegBase + HDAC_GLOBAL_CONTROL));
         if ((Control & GLOBAL_CONTROL_RESET) == 0)
@@ -501,7 +531,7 @@ HDA_ResetController(
     WRITE_REGISTER_ULONG((PULONG)(DeviceExtension->RegBase + HDAC_GLOBAL_CONTROL), Control | GLOBAL_CONTROL_RESET);
 
     for (int timeout = 0; timeout < 10; timeout++) {
-        KeStallExecutionProcessor(10);
+        KeStallExecutionProcessor(100);
 
         Control = READ_REGISTER_ULONG((PULONG)(DeviceExtension->RegBase + HDAC_GLOBAL_CONTROL));
         if ((Control & GLOBAL_CONTROL_RESET) != 0)
@@ -514,7 +544,7 @@ HDA_ResetController(
 
     // Wait for codecs to finish their own reset (apparently needs more
     // time than documented in the specs)
-    KeStallExecutionProcessor(100);
+    KeStallExecutionProcessor(1000);
 
     // Enable unsolicited responses
     Control = READ_REGISTER_ULONG((PULONG)(DeviceExtension->RegBase + HDAC_GLOBAL_CONTROL));
@@ -577,7 +607,7 @@ HDA_FDOStartDevice(
         {
             Status = IoConnectInterrupt(&DeviceExtension->Interrupt,
                 HDA_InterruptService,
-                (PVOID)DeviceExtension,
+                DeviceObject,
                 NULL,
                 Descriptor->u.Interrupt.Vector,
                 Descriptor->u.Interrupt.Level,
@@ -616,7 +646,7 @@ HDA_FDOStartDevice(
         // Enable controller interrupts
         WRITE_REGISTER_ULONG((PULONG)(DeviceExtension->RegBase + HDAC_INTR_CONTROL), INTR_CONTROL_GLOBAL_ENABLE | INTR_CONTROL_CONTROLLER_ENABLE);
 
-        KeStallExecutionProcessor(100);
+        KeStallExecutionProcessor(1000);
 
         Value = READ_REGISTER_USHORT((PUSHORT)(DeviceExtension->RegBase + HDAC_STATE_STATUS));
         if (!Value) {
@@ -682,6 +712,7 @@ HDA_FDORemoveDevice(
             continue;
         }
 
+        ASSERT(CodecEntry->AudioGroupCount <= HDA_MAX_AUDIO_GROUPS);
         for (AFGIndex = 0; AFGIndex < CodecEntry->AudioGroupCount; AFGIndex++)
         {
             ChildPDO = CodecEntry->AudioGroups[AFGIndex]->ChildPDO;
@@ -743,6 +774,7 @@ HDA_FDOQueryBusRelations(
             continue;
 
         Codec = DeviceExtension->Codecs[CodecIndex];
+        ASSERT(Codec->AudioGroupCount <= HDA_MAX_AUDIO_GROUPS);
         for (AFGIndex = 0; AFGIndex < Codec->AudioGroupCount; AFGIndex++)
         {
             DeviceRelations->Objects[DeviceRelations->Count] = Codec->AudioGroups[AFGIndex]->ChildPDO;

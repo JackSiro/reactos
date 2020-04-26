@@ -28,6 +28,9 @@
 DEBUG_CHANNEL(nls);
 
 #include "lcformat_private.h"
+#ifdef __REACTOS__
+    #include "japanese.h"
+#endif
 
 #define REG_SZ 1
 extern int wine_fold_string(int flags, const WCHAR *src, int srclen, WCHAR *dst, int dstlen);
@@ -2366,14 +2369,22 @@ INT WINAPI CompareStringA(LCID lcid, DWORD flags,
     return ret;
 }
 
+#ifdef __REACTOS__
+HANDLE NLS_RegOpenKey(HANDLE hRootKey, LPCWSTR szKeyName)
+#else
 static HANDLE NLS_RegOpenKey(HANDLE hRootKey, LPCWSTR szKeyName)
+#endif
 {
     UNICODE_STRING keyName;
     OBJECT_ATTRIBUTES attr;
     HANDLE hkey;
 
     RtlInitUnicodeString( &keyName, szKeyName );
+#ifdef __REACTOS__
+    InitializeObjectAttributes(&attr, &keyName, OBJ_CASE_INSENSITIVE, hRootKey, NULL);
+#else
     InitializeObjectAttributes(&attr, &keyName, 0, hRootKey, NULL);
+#endif
 
     if (NtOpenKey( &hkey, KEY_READ, &attr ) != STATUS_SUCCESS)
         hkey = 0;
@@ -2381,9 +2392,15 @@ static HANDLE NLS_RegOpenKey(HANDLE hRootKey, LPCWSTR szKeyName)
     return hkey;
 }
 
+#ifdef __REACTOS__
+BOOL NLS_RegEnumValue(HANDLE hKey, UINT ulIndex,
+                      LPWSTR szValueName, ULONG valueNameSize,
+                      LPWSTR szValueData, ULONG valueDataSize)
+#else
 static BOOL NLS_RegEnumValue(HANDLE hKey, UINT ulIndex,
                              LPWSTR szValueName, ULONG valueNameSize,
                              LPWSTR szValueData, ULONG valueDataSize)
+#endif
 {
     BYTE buffer[80];
     KEY_VALUE_FULL_INFORMATION *info = (KEY_VALUE_FULL_INFORMATION *)buffer;
@@ -3312,8 +3329,13 @@ BOOL WINAPI EnumSystemGeoID(GEOCLASS geoclass, GEOID parent, GEO_ENUMPROC enumpr
  */
 BOOL WINAPI InvalidateNLSCache(void)
 {
+#ifdef __REACTOS__
+    JapaneseEra_ClearCache();
+    return TRUE;
+#else
   FIXME("() stub\n");
   return FALSE;
+#endif
 }
 
 /******************************************************************************

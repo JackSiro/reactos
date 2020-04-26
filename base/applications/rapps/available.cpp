@@ -19,7 +19,7 @@
 
  // CAvailableApplicationInfo
 CAvailableApplicationInfo::CAvailableApplicationInfo(const ATL::CStringW& sFileNameParam)
-    : m_IsSelected(FALSE), m_LicenseType(LICENSE_NONE), m_sFileName(sFileNameParam),
+    : m_IsSelected(FALSE), m_LicenseType(LICENSE_NONE), m_SizeBytes(0), m_sFileName(sFileNameParam),
     m_IsInstalled(FALSE), m_HasLanguageInfo(FALSE), m_HasInstalledVersion(FALSE)
 {
     RetrieveGeneralInfo();
@@ -153,7 +153,8 @@ VOID CAvailableApplicationInfo::RetrieveSize()
         GetString(L"Size", m_szSize);
         return;
     }
- 
+
+    m_SizeBytes = iSizeBytes;
     StrFormatByteSizeW(iSizeBytes, m_szSize.GetBuffer(MAX_PATH), MAX_PATH);
     m_szSize.ReleaseBuffer();
 }
@@ -300,7 +301,7 @@ BOOL CAvailableApps::UpdateAppsDB()
         return TRUE;
     }
 
-    CDownloadManager::DownloadApplicationsDB(APPLICATION_DATABASE_URL);
+    DownloadApplicationsDB(APPLICATION_DATABASE_URL);
 
     if (!ExtractFilesFromCab(m_Strings.szCabName, 
                              m_Strings.szCabDir,
@@ -320,7 +321,7 @@ BOOL CAvailableApps::ForceUpdateAppsDB()
     return UpdateAppsDB();
 }
 
-BOOL CAvailableApps::Enum(INT EnumType, AVAILENUMPROC lpEnumProc)
+BOOL CAvailableApps::Enum(INT EnumType, AVAILENUMPROC lpEnumProc, PVOID param)
 {
 
     HANDLE hFind = INVALID_HANDLE_VALUE;
@@ -381,7 +382,7 @@ skip_if_cached:
             Info->RefreshAppInfo();
 
             if (lpEnumProc)
-                lpEnumProc(Info, m_Strings.szAppsPath.GetString());
+                lpEnumProc(Info, m_Strings.szAppsPath.GetString(), param);
         }
     } while (FindNextFileW(hFind, &FindFileData) != 0);
 

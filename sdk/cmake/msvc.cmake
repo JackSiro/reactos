@@ -26,6 +26,7 @@ add_compile_flags("/GF")
 # Enable function level linking and comdat folding
 add_compile_flags("/Gy")
 set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} /OPT:REF /OPT:ICF")
+set(CMAKE_MODULE_LINKER_FLAGS "${CMAKE_MODULE_LINKER_FLAGS} /OPT:REF /OPT:ICF")
 set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} /OPT:REF /OPT:ICF")
 
 if(ARCH STREQUAL "i386")
@@ -63,6 +64,13 @@ if(MSVC_VERSION GREATER 1899)
     add_compile_flags("/Zc:threadSafeInit-")
 endif ()
 
+# HACK: Disable use of __CxxFrameHandler4 on VS 16.3+ (x64 only)
+# See https://developercommunity.visualstudio.com/content/problem/746534/visual-c-163-runtime-uses-an-unsupported-api-for-u.html
+if(ARCH STREQUAL "amd64" AND MSVC_VERSION GREATER 1922)
+    add_compile_flags("/d2FH4-")
+    add_link_options("/d2:-FH4-")
+endif ()
+
 # Generate Warnings Level 3
 add_compile_flags("/W3")
 
@@ -87,19 +95,21 @@ add_compile_flags("/wd4018")
 # - TODO: C4090: different 'modifier' qualifiers (for C programs only;
 #          for C++ programs, the compiler error C2440 is issued)
 # - C4098: void function returning a value
+# - C4101: unreferenced local variable
 # - C4113: parameter lists differ
 # - C4129: unrecognized escape sequence
-# - TODO: C4133: incompatible types
+# - C4133: incompatible types - from '<x> *' to '<y> *'
 # - C4163: 'identifier': not available as an intrinsic function
 # - C4229: modifiers on data are ignored
-# - C4700: uninitialized variable usage
+# - C4311: pointer truncation from '<pointer>' to '<integer>'
+# - C4312: conversion from '<integer>' to '<pointer>' of greater size
+# - C4313: 'fprintf': '%x' in format string conflicts with argument n of type 'HANDLE'
+# - C4477: '_snprintf' : format string '%ld' requires an argument of type 'long', but variadic argument 1 has type 'DWORD_PTR'
 # - C4603: macro is not defined or definition is different after precompiled header use
+# - C4700: uninitialized variable usage
+# - C4715: 'function': not all control paths return a value
 # - C4716: function must return a value
-add_compile_flags("/we4013 /we4020 /we4022 /we4047 /we4098 /we4113 /we4129 /we4163 /we4229 /we4700 /we4603 /we4716")
-# TODO: Check and fix other architectures.
-if(ARCH STREQUAL "i386")
-    add_compile_flags("/we4028")
-endif()
+add_compile_flags("/we4013 /we4020 /we4022 /we4028 /we4047 /we4098 /we4101 /we4113 /we4129 /we4133 /we4163 /we4229 /we4311 /we4312 /we4313 /we4477 /we4603 /we4700 /we4715 /we4716")
 
 # - C4189: local variable initialized but not referenced
 # Not in Release mode and not with MSVC 2010
@@ -141,10 +151,6 @@ if(MSVC_IDE AND (NOT DEFINED USE_FOLDER_STRUCTURE))
     set(USE_FOLDER_STRUCTURE TRUE)
 endif()
 
-if(NOT DEFINED RUNTIME_CHECKS)
-    set(RUNTIME_CHECKS FALSE)
-endif()
-
 if(RUNTIME_CHECKS)
     add_definitions(-D__RUNTIME_CHECKS__)
     add_compile_flags("/RTC1")
@@ -159,6 +165,8 @@ string(REPLACE "/implib:<TARGET_IMPLIB>" "" CMAKE_C_LINK_EXECUTABLE "${CMAKE_C_L
 string(REPLACE "/implib:<TARGET_IMPLIB>" "" CMAKE_CXX_LINK_EXECUTABLE "${CMAKE_CXX_LINK_EXECUTABLE}")
 string(REPLACE "/implib:<TARGET_IMPLIB>" "" CMAKE_C_CREATE_SHARED_LIBRARY "${CMAKE_C_CREATE_SHARED_LIBRARY}")
 string(REPLACE "/implib:<TARGET_IMPLIB>" "" CMAKE_CXX_CREATE_SHARED_LIBRARY "${CMAKE_CXX_CREATE_SHARED_LIBRARY}")
+string(REPLACE "/implib:<TARGET_IMPLIB>" "" CMAKE_C_CREATE_SHARED_MODULE "${CMAKE_C_CREATE_SHARED_MODULE}")
+string(REPLACE "/implib:<TARGET_IMPLIB>" "" CMAKE_CXX_CREATE_SHARED_MODULE "${CMAKE_CXX_CREATE_SHARED_MODULE}")
 
 if(CMAKE_DISABLE_NINJA_DEPSLOG)
     set(cl_includes_flag "")
@@ -223,6 +231,8 @@ endif()
 
 set(CMAKE_RC_CREATE_SHARED_LIBRARY ${CMAKE_C_CREATE_SHARED_LIBRARY})
 set(CMAKE_ASM_CREATE_SHARED_LIBRARY ${CMAKE_C_CREATE_SHARED_LIBRARY})
+set(CMAKE_RC_CREATE_SHARED_MODULE ${CMAKE_C_CREATE_SHARED_MODULE})
+set(CMAKE_ASM_CREATE_SHARED_MODULE ${CMAKE_C_CREATE_SHARED_MODULE})
 set(CMAKE_ASM_CREATE_STATIC_LIBRARY ${CMAKE_C_CREATE_STATIC_LIBRARY})
 
 if(PCH)
@@ -324,9 +334,9 @@ function(set_module_type_toolchain MODULE TYPE)
         add_target_link_flags(${MODULE} "/DLL")
     elseif(${TYPE} STREQUAL "kernelmodedriver")
         # Disable linker warning 4078 (multiple sections found with different attributes) for INIT section use
-        add_target_link_flags(${MODULE} "/DRIVER /IGNORE:4078")
+        add_target_link_flags(${MODULE} "/DRIVER /IGNORE:4078 /SECTION:INIT,D")
     elseif(${TYPE} STREQUAL "wdmdriver")
-        add_target_link_flags(${MODULE} "/DRIVER:WDM /IGNORE:4078")
+        add_target_link_flags(${MODULE} "/DRIVER:WDM /IGNORE:4078 /SECTION:INIT,D")
     endif()
 
     if(RUNTIME_CHECKS)
@@ -359,6 +369,10 @@ function(add_delay_importlibs _module)
         target_link_libraries(${_module} "lib${_basename}")
     endforeach()
     target_link_libraries(${_module} delayimp)
+endfunction()
+
+function(fixup_load_config _target)
+    # msvc knows how to generate a load_config so no hacks here
 endfunction()
 
 function(generate_import_lib _libname _dllname _spec_file)
@@ -472,6 +486,9 @@ function(CreateBootSectorTarget _target_name _asm_file _binary_file _base_addres
     set(_object_file ${_binary_file}.obj)
     set(_temp_file ${_binary_file}.tmp)
 
+    get_defines(_defines)
+    get_includes(_includes)
+
     if(USE_CLANG_CL)
         set(_no_std_includes_flag "-nostdinc")
     else()
@@ -480,7 +497,7 @@ function(CreateBootSectorTarget _target_name _asm_file _binary_file _base_addres
 
     add_custom_command(
         OUTPUT ${_temp_file}
-        COMMAND ${CMAKE_C_COMPILER} /nologo ${_no_std_includes_flag} /I${REACTOS_SOURCE_DIR}/sdk/include/asm /I${REACTOS_BINARY_DIR}/sdk/include/asm /I${REACTOS_SOURCE_DIR}/boot/freeldr /D__ASM__ /D_USE_ML /EP /c ${_asm_file} > ${_temp_file}
+        COMMAND ${CMAKE_C_COMPILER} /nologo ${_no_std_includes_flag} /I${REACTOS_SOURCE_DIR}/sdk/include/asm /I${REACTOS_BINARY_DIR}/sdk/include/asm ${_includes} ${_defines} /D__ASM__ /D_USE_ML /EP /c ${_asm_file} > ${_temp_file}
         DEPENDS ${_asm_file})
 
     if(ARCH STREQUAL "arm")
@@ -609,9 +626,6 @@ function(add_linker_script _target _linker_script_file)
         # add_custom_target("${_target}_${_file_name}" ALL DEPENDS ${_generated_file})
         # add_dependencies(${_target} "${_target}_${_file_name}")
         add_target_link_flags(${_target} "@${_generated_file}")
-
-        # Unfortunately LINK_DEPENDS is ignored in non-Makefile generators (for now...)
-        # See also http://www.cmake.org/pipermail/cmake/2010-May/037206.html
-        add_target_property(${_target} LINK_DEPENDS ${_generated_file})
+        add_target_property(${_target} LINK_DEPENDS ${_file_full_path})
     endif()
 endfunction()

@@ -16,7 +16,8 @@
  *  with this program; if not, write to the Free Software Foundation, Inc.,
  *  51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
  */
-/* COPYRIGHT:       See COPYING in the top level directory
+/*
+ * COPYRIGHT:       See COPYING in the top level directory
  * PROJECT:         ReactOS text-mode setup
  * FILE:            base/setup/usetup/partlist.h
  * PURPOSE:         Partition list functions
@@ -34,15 +35,25 @@ typedef enum _FORMATMACHINESTATE
     FormatInstallPartition,
     FormatOtherPartition,
     FormatDone,
-    CheckSystemPartition,
-    CheckInstallPartition,
-    CheckOtherPartition,
-    CheckDone
+    // CheckSystemPartition,
+    // CheckInstallPartition,
+    // CheckOtherPartition,
+    // CheckDone
 } FORMATMACHINESTATE, *PFORMATMACHINESTATE;
 
 typedef struct _PARTLIST_UI
 {
     PPARTLIST List;
+
+    /*
+     * Selected partition.
+     *
+     * NOTE that when CurrentPartition != NULL, then CurrentPartition->DiskEntry
+     * must be the same as CurrentDisk. We should however keep the two members
+     * separated as we can have a selected disk without any partition.
+     */
+    PDISKENTRY CurrentDisk;
+    PPARTENTRY CurrentPartition;
 
     // PLIST_ENTRY FirstShown;
     // PLIST_ENTRY LastShown;
@@ -69,6 +80,7 @@ VOID
 InitPartitionListUi(
     IN OUT PPARTLIST_UI ListUi,
     IN PPARTLIST List,
+    IN PPARTENTRY CurrentEntry OPTIONAL,
     IN SHORT Left,
     IN SHORT Top,
     IN SHORT Right,

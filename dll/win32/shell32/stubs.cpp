@@ -39,17 +39,6 @@ SHFindComputer(LPCITEMIDLIST pidl1, LPCITEMIDLIST pidl2)
 /*
  * Unimplemented
  */
-EXTERN_C HRESULT
-WINAPI
-SHLimitInputEdit(HWND hWnd, IShellFolder *psf)
-{
-    FIXME("SHLimitInputEdit() stub\n");
-    return S_FALSE;
-}
-
-/*
- * Unimplemented
- */
 EXTERN_C BOOL
 WINAPI
 SHLimitInputCombo(HWND hWnd, LPVOID lpUnknown)
@@ -1314,17 +1303,6 @@ SHGetProcessDword(DWORD dwUnknown1, DWORD dwUnknown2)
     /* Unimplemented in WinXP SP3 */
     TRACE("SHGetProcessDword() stub\n");
     return 0;
-}
-
-/*
- * Unimplemented
- */
-EXTERN_C BOOL
-WINAPI
-SHTestTokenMembership(HANDLE TokenHandle, ULONG SidToCheck)
-{
-    FIXME("SHTestTokenMembership() stub\n");
-    return FALSE;
 }
 
 /*

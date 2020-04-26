@@ -19,6 +19,7 @@
 #include <winuser.h>
 #include <netevent.h>
 #define NTOS_MODE_USER
+#include <ndk/setypes.h>
 #include <ndk/obfuncs.h>
 #include <ndk/rtlfuncs.h>
 #include <services/services.h>
@@ -100,6 +101,8 @@ extern LIST_ENTRY GroupListHead;
 extern LIST_ENTRY ImageListHead;
 extern BOOL ScmInitialize;
 extern BOOL ScmShutdown;
+extern BOOL ScmLiveSetup;
+extern PSECURITY_DESCRIPTOR pPipeSD;
 
 
 /* FUNCTIONS ***************************************************************/
@@ -161,6 +164,12 @@ ScmDecryptPassword(
 
 DWORD
 ScmCreateLastKnownGoodControlSet(VOID);
+
+DWORD
+ScmAcceptBoot(VOID);
+
+DWORD
+ScmRunLastKnownGood(VOID);
 
 
 /* database.c */
@@ -248,6 +257,7 @@ ScmCreateDefaultServiceSD(
 /* services.c */
 
 VOID PrintString(LPCSTR fmt, ...);
+DWORD SetSecurityServicesEvent(VOID);
 VOID ScmLogEvent(DWORD dwEventId,
                  WORD wType,
                  WORD wStrings,

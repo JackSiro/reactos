@@ -112,7 +112,7 @@ BEGIN
     LTEXT "Conferma nuova Password:", IDC_STATIC, 7, 127, 78, 8
     EDITTEXT IDC_CHANGEPWD_NEWPWD2, 90, 125, 127, 12, ES_AUTOHSCROLL | ES_PASSWORD
     PUSHBUTTON "OK", IDOK, 164, 145, 50, 14, BS_DEFPUSHBUTTON
-    PUSHBUTTON "Cancella", IDCANCEL, 218, 145, 50, 14
+    PUSHBUTTON "Annulla", IDCANCEL, 218, 145, 50, 14
 END
 
 IDD_LOGOFF DIALOGEX 0, 0, 188, 60
@@ -212,6 +212,10 @@ BEGIN
     IDS_PASSWORDMUSTCHANGE "Ti è chiesto di cambiare password al primo login."
     IDS_PASSWORDEXPIRED "La tua password è scaduta e devi cambiarla."
     IDS_ACCOUNTEXPIRED "Your account has expired. Please see your system administrator."
+    IDS_ACCOUNTLOCKED "Unable to log you on beacuse your account has been locked out. Please see your system administrator."
+    IDS_INVALIDLOGONHOURS "Your account has time restrictions that prevent you from logging on at this time. Please try again later."
+    IDS_INVALIDWORKSTATION "Your account is configured to prevent you from using this computer. Please try another computer."
+    IDS_ACCOUNTRESTRICTION "Unable to log you on because of an account restriction."
 END
 
 /* Shutdown Dialog Strings */

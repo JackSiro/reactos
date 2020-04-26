@@ -9,13 +9,15 @@ list(APPEND SOURCE
     classfactory.c
     installer.c
     netcfg_iface.c
+    netcfgbindinginterface_iface.c
+    netcfgbindingpath_iface.c
     inetcfgcomp_iface.c
     tcpipconf_notify.c
     propertypage.c
     precomp.h
     ${CMAKE_CURRENT_BINARY_DIR}/netcfgx_stubs.c)
 
-add_library(netcfgx SHARED
+add_library(netcfgx MODULE
     ${SOURCE}
     netcfgx.rc
     ${CMAKE_CURRENT_BINARY_DIR}/netcfgx.def)

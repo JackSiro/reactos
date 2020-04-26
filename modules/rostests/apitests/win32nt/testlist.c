@@ -19,7 +19,8 @@ extern void func_NtGdiDeleteObjectApp(void);
 extern void func_NtGdiDoPalette(void);
 extern void func_NtGdiEngCreatePalette(void);
 extern void func_NtGdiEnumFontOpen(void);
-//extern void func_NtGdiExtSelectClipRgn(void);
+extern void func_NtGdiExcludeClipRect(void);
+extern void func_NtGdiExtSelectClipRgn(void);
 extern void func_NtGdiExtTextOutW(void);
 //extern void func_NtGdiFlushUserBatch(void);
 extern void func_NtGdiGetBitmapBits(void);
@@ -27,6 +28,8 @@ extern void func_NtGdiGetDIBitsInternal(void);
 extern void func_NtGdiGetFontResourceInfoInternalW(void);
 extern void func_NtGdiGetRandomRgn(void);
 extern void func_NtGdiGetStockObject(void);
+extern void func_NtGdiIntersectClipRect(void);
+extern void func_NtGdiOffsetClipRgn(void);
 extern void func_NtGdiPolyPolyDraw(void);
 extern void func_NtGdiRestoreDC(void);
 extern void func_NtGdiSaveDC(void);
@@ -36,6 +39,7 @@ extern void func_NtGdiSelectFont(void);
 extern void func_NtGdiSelectPen(void);
 extern void func_NtGdiSetBitmapBits(void);
 extern void func_NtGdiSetDIBitsToDeviceInternal(void);
+extern void func_NtGdiTransformPoints(void);
 //extern void func_NtUserCallHwnd(void);
 //extern void func_NtUserCallHwndLock(void);
 //extern void func_NtUserCallHwndOpt(void);
@@ -79,7 +83,8 @@ const struct test winetest_testlist[] =
     { "NtGdiDoPalette", func_NtGdiDoPalette },
     { "NtGdiEngCreatePalette", func_NtGdiEngCreatePalette },
     { "NtGdiEnumFontOpen", func_NtGdiEnumFontOpen },
-    //{ "NtGdiExtSelectClipRgn", func_NtGdiExtSelectClipRgn },
+    { "NtGdiExcludeClipRect", func_NtGdiExcludeClipRect },
+    { "NtGdiExtSelectClipRgn", func_NtGdiExtSelectClipRgn },
     { "NtGdiExtTextOutW", func_NtGdiExtTextOutW },
     //{ "NtGdiFlushUserBatch", func_NtGdiFlushUserBatch },
     { "NtGdiGetBitmapBits", func_NtGdiGetBitmapBits },
@@ -87,6 +92,8 @@ const struct test winetest_testlist[] =
     { "NtGdiGetFontResourceInfoInternalW", func_NtGdiGetFontResourceInfoInternalW },
     { "NtGdiGetRandomRgn", func_NtGdiGetRandomRgn },
     { "NtGdiGetStockObject", func_NtGdiGetStockObject },
+    { "NtGdiIntersectClipRect", func_NtGdiIntersectClipRect },
+    { "NtGdiOffsetClipRgn", func_NtGdiOffsetClipRgn },
     { "NtGdiPolyPolyDraw", func_NtGdiPolyPolyDraw },
     { "NtGdiRestoreDC", func_NtGdiRestoreDC },
     { "NtGdiSaveDC", func_NtGdiSaveDC },
@@ -96,6 +103,7 @@ const struct test winetest_testlist[] =
     { "NtGdiSelectPen", func_NtGdiSelectPen },
     { "NtGdiSetBitmapBits", func_NtGdiSetBitmapBits },
     { "NtGdiSetDIBitsToDeviceInternal", func_NtGdiSetDIBitsToDeviceInternal },
+    { "NtGdiTransformPoints", func_NtGdiTransformPoints },
 
     /* ntuser */
     //{ "NtUserCallHwnd", func_NtUserCallHwnd },

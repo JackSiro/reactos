@@ -186,6 +186,7 @@ BEGIN
     IDS_CAT_SCIENCE "Teadus"
     IDS_CAT_TOOLS "Tööriistad"
     IDS_CAT_VIDEO "Video"
+    IDS_CAT_THEMES "Themes"
 END
 
 STRINGTABLE
@@ -198,7 +199,7 @@ BEGIN
     IDS_APPS_COUNT "Rakenduste arv: %d; Valitud: %d"
     IDS_WELCOME_TITLE "Tere tulemast ReactOS'i Rakenduste Haldurisse!\n\n"
     IDS_WELCOME_TEXT "Vali vasakult teema, siis vali paremalt rakendusi mida soovid installida või desinstallida.\nReactOS'i veebileht: "
-    IDS_WELCOME_URL "http://www.reactos.org"
+    IDS_WELCOME_URL "https://reactos.org/"
     IDS_INSTALLED "Installitud"
     IDS_AVAILABLEFORINST "Installimiseks saadaval"
     IDS_UPDATES "Uuendused"

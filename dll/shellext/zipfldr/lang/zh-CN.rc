@@ -16,7 +16,7 @@ BEGIN
     EDITTEXT        IDC_DIRECTORY,6,24,222,12,ES_AUTOHSCROLL
     PUSHBUTTON      "浏览...",IDC_BROWSE,174,42,54,14
     PUSHBUTTON      "密码",IDC_PASSWORD,174,66,54,14
-    LTEXT           "正在解压...",IDC_STATIC,6,114,42,8
+    LTEXT           "Click 'Next' to extract",IDC_STATUSTEXT,6,114,100,8
     CONTROL         "",IDC_PROGRESS,"msctls_progress32",WS_BORDER,6,126,222,6
 END
 
@@ -37,11 +37,24 @@ CAPTION "确认替换文件"
 FONT 9, "宋体", 400, 0, 0x1
 BEGIN
     DEFPUSHBUTTON   "是(&Y)",IDYES,6,36,62,14
-    PUSHBUTTON      "取消",IDCANCEL,204,36,62,14
     PUSHBUTTON      "全部为是(&T)",IDYESALL,72,36,62,14
     PUSHBUTTON      "否(&N)",IDNO,138,36,62,14
+    PUSHBUTTON      "取消",IDCANCEL,204,36,62,14
     ICON            "",IDC_EXCLAMATION_ICON,6,6,24,22
     LTEXT           "",IDC_MESSAGE,36,6,228,24
+END
+
+IDD_PASSWORD DIALOGEX 0, 0, 243, 62
+STYLE DS_SETFONT | DS_FIXEDSYS | WS_POPUP | WS_CAPTION | WS_SYSMENU
+CAPTION "Password needed"
+FONT 8, "MS Shell Dlg", 400, 0, 0x1
+BEGIN
+    EDITTEXT        IDC_PASSWORD,72,42,108,13,ES_PASSWORD | ES_AUTOHSCROLL
+    DEFPUSHBUTTON   "OK",IDOK,186,6,50,14
+    PUSHBUTTON      "Skip File",IDSKIP,186,24,50,14
+    PUSHBUTTON      "Cancel",IDCANCEL,186,42,50,14
+    LTEXT           "Static",IDC_MESSAGE,24,6,156,30
+    LTEXT           "Password:",IDC_STATIC,24,44,44,8
 END
 
 STRINGTABLE
@@ -55,6 +68,12 @@ BEGIN
     IDS_COL_DATE_MOD "修改日期"
     IDS_YES "是"
     IDS_NO "否"
+    IDS_ERRORTITLE "Compressed (zipped) Folders Error"
+    IDS_CANTSTARTTHREAD "Cannot start thread to compress files."
+    IDS_NOFILES "The specified directory '%s' is empty, so Compressed (zipped) Folders cannot add it to the archive."
+    IDS_CANTCREATEZIP "Failed to create a compressed folder '%s' (Error Code: %d)."
+    IDS_CANTREADFILE "Cannot read file '%s'."
+    IDS_EXTRACTING "正在解压..."
 
     IDS_WIZ_TITLE "解压向导"
     IDS_WIZ_DEST_TITLE "选择一个目标文件夹"
@@ -64,6 +83,8 @@ BEGIN
     IDS_WIZ_BROWSE_TITLE "选择您想要解压指定项目到的地方。"
 
     IDS_OVERWRITEFILE_TEXT "这个文件夹中已经包含一个叫 %1 的文件。\n您想要替换它吗？"
+    IDS_PASSWORD_FILE_TEXT "The file '%1' is password protected. Please enter the password."
+    IDS_PASSWORD_ZIP_TEXT "Please specify the password to use when extracting this zip file."
 
     IDS_MENUITEM "解压全部(&A)..."
     IDS_HELPTEXT "解压文件夹内容"

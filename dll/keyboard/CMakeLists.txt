@@ -86,7 +86,7 @@ list(APPEND _keyboard_layouts
 foreach(_keyboard_layout ${_keyboard_layouts})
     spec2def(${_keyboard_layout}.dll ${_keyboard_layout}/${_keyboard_layout}.spec)
 
-    add_library(${_keyboard_layout} SHARED
+    add_library(${_keyboard_layout} MODULE
         ${_keyboard_layout}/${_keyboard_layout}.c
         ${_keyboard_layout}/${_keyboard_layout}.rc
         ${CMAKE_CURRENT_BINARY_DIR}/${_keyboard_layout}.def)
@@ -107,6 +107,7 @@ foreach(_keyboard_layout ${_keyboard_layouts})
         set_property(TARGET ${_keyboard_layout} PROPERTY C_STANDARD 99)
     endif()
 
+    # dynamic analysis switches
     if (STACK_PROTECTOR)
         target_link_libraries(${_keyboard_layout} gcc_ssp)
     endif()

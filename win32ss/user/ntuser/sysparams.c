@@ -65,7 +65,10 @@ static const WCHAR* VAL_GRID = L"GridGranularity";
 static const WCHAR* VAL_DRAG = L"DragFullWindows";
 static const WCHAR* VAL_DRAGHEIGHT = L"DragHeight";
 static const WCHAR* VAL_DRAGWIDTH = L"DragWidth";
-static const WCHAR* VAL_FNTSMOOTH = L"FontSmoothing";
+static const WCHAR* VAL_FONTSMOOTHING = L"FontSmoothing";
+static const WCHAR* VAL_FONTSMOOTHINGTYPE = L"FontSmoothingType";
+static const WCHAR* VAL_FONTSMOOTHINGCONTRAST = L"FontSmoothingGamma";
+static const WCHAR* VAL_FONTSMOOTHINGORIENTATION = L"FontSmoothingOrientation";
 static const WCHAR* VAL_SCRLLLINES = L"WheelScrollLines";
 static const WCHAR* VAL_CLICKLOCKTIME = L"ClickLockTime";
 static const WCHAR* VAL_PAINTDESKVER = L"PaintDesktopVersion";
@@ -149,8 +152,8 @@ SpiLoadTimeOut(VOID)
     {
         return 0;
     }
-    if (wcslen(szApplicationName) == 0) return 0;
-    return SpiLoadInt(KEY_DESKTOP, VAL_SCRTO, 0);
+    if (szApplicationName[0] == 0) return 0;
+    return SpiLoadInt(KEY_DESKTOP, VAL_SCRTO, 600);
 }
 
 static
@@ -242,6 +245,10 @@ SpiUpdatePerUserSystemParameters(VOID)
     gspv.iMouseHoverWidth = SpiLoadMouse(VAL_HOVERWIDTH, 4);
     gspv.iMouseHoverHeight = SpiLoadMouse(VAL_HOVERHEIGHT, 4);
 
+    /* Load keyboard settings */
+    gspv.dwKbdSpeed = SpiLoadInt(KEY_KBD, VAL_KBDSPD, 31);
+    gspv.iKbdDelay = SpiLoadInt(KEY_KBD, VAL_KBDDELAY, 1);
+
     /* Load NONCLIENTMETRICS */
     gspv.ncm.cbSize = sizeof(NONCLIENTMETRICSW);
     gspv.ncm.iBorderWidth = SpiLoadMetric(VAL_BORDER, 1);
@@ -250,7 +257,7 @@ SpiUpdatePerUserSystemParameters(VOID)
     gspv.ncm.iCaptionWidth = SpiLoadMetric(L"CaptionWidth", 19);
     gspv.ncm.iCaptionHeight = SpiLoadMetric(L"CaptionHeight", 19);
     gspv.ncm.iSmCaptionWidth = SpiLoadMetric(L"SmCaptionWidth", 12);
-    gspv.ncm.iSmCaptionHeight =  SpiLoadMetric(L"SmCaptionHeight", 14);
+    gspv.ncm.iSmCaptionHeight = SpiLoadMetric(L"SmCaptionHeight", 15);
     gspv.ncm.iMenuWidth = SpiLoadMetric(L"MenuWidth", 18);
     gspv.ncm.iMenuHeight = SpiLoadMetric(L"MenuHeight", 18);
 #if (WINVER >= 0x0600)
@@ -273,7 +280,7 @@ SpiUpdatePerUserSystemParameters(VOID)
     gspv.im.cbSize = sizeof(ICONMETRICSW);
     gspv.im.iHorzSpacing = SpiLoadMetric(VAL_ICONSPC, 64);
     gspv.im.iVertSpacing = SpiLoadMetric(VAL_ICONVSPC, 64);
-    gspv.im.iTitleWrap = SpiLoadMetric(VAL_ITWRAP, 0);
+    gspv.im.iTitleWrap = SpiLoadMetric(VAL_ITWRAP, 1);
     SpiLoadFont(&gspv.im.lfFont, L"IconFont", &lf1);
 
     /* Load desktop settings */
@@ -284,6 +291,10 @@ SpiUpdatePerUserSystemParameters(VOID)
     gspv.dwUserPrefMask = SpiLoadUserPrefMask(UPM_DEFAULT);
     gspv.bMouseClickLock = (gspv.dwUserPrefMask & UPM_CLICKLOCK) != 0;
     gspv.bMouseCursorShadow = (gspv.dwUserPrefMask & UPM_CURSORSHADOW) != 0;
+    gspv.bFontSmoothing = SpiLoadInt(KEY_DESKTOP, VAL_FONTSMOOTHING, 0) == 2;
+    gspv.uiFontSmoothingType = SpiLoadDWord(KEY_DESKTOP, VAL_FONTSMOOTHINGTYPE, 1);
+    gspv.uiFontSmoothingContrast = SpiLoadDWord(KEY_DESKTOP, VAL_FONTSMOOTHINGCONTRAST, 1400);
+    gspv.uiFontSmoothingOrientation = SpiLoadDWord(KEY_DESKTOP, VAL_FONTSMOOTHINGORIENTATION, 1);
 #if (_WIN32_WINNT >= 0x0600)
     gspv.uiWheelScrollChars = SpiLoadInt(KEY_DESKTOP, VAL_SCRLLCHARS, 3);
 #endif
@@ -294,8 +305,8 @@ SpiUpdatePerUserSystemParameters(VOID)
     gspv.bBeep = TRUE;
     gspv.uiFocusBorderWidth = 1;
     gspv.uiFocusBorderHeight = 1;
-    gspv.bMenuDropAlign = 1;
-    gspv.dwMenuShowDelay = 100;
+    gspv.bMenuDropAlign = 0;
+    gspv.dwMenuShowDelay = SpiLoadInt(KEY_DESKTOP, L"MenuShowDelay", 400);
     gspv.dwForegroundFlashCount = 3;
 
     gspv.iScrSaverTimeout = SpiLoadTimeOut();
@@ -304,6 +315,8 @@ SpiUpdatePerUserSystemParameters(VOID)
 #if(WINVER >= 0x0600)
     gspv.bScrSaverSecure = FALSE;
 #endif
+
+    gspv.bFastTaskSwitch = TRUE;
 
     gspv.accesstimeout.cbSize = sizeof(ACCESSTIMEOUT);
     gspv.filterkeys.cbSize = sizeof(FILTERKEYS);
@@ -1369,10 +1382,10 @@ SpiGetSet(UINT uiAction, UINT uiParam, PVOID pvParam, FLONG fl)
             return SpiGetInt(pvParam, &gspv.bFontSmoothing, fl);
 
         case SPI_SETFONTSMOOTHING:
-            gspv.bFontSmoothing = uiParam ? TRUE : FALSE;
+            gspv.bFontSmoothing = (uiParam == 2);
             if (fl & SPIF_UPDATEINIFILE)
             {
-                SpiStoreSzInt(KEY_DESKTOP, VAL_FNTSMOOTH, uiParam ? 2 : 0);
+                SpiStoreSz(KEY_DESKTOP, VAL_FONTSMOOTHING, (uiParam == 2) ? L"2" : L"0");
             }
             return (UINT_PTR)KEY_DESKTOP;
 
@@ -1721,13 +1734,13 @@ SpiGetSet(UINT uiAction, UINT uiParam, PVOID pvParam, FLONG fl)
             return SpiGetInt(pvParam, &gspv.uiFontSmoothingType, fl);
 
         case SPI_SETFONTSMOOTHINGTYPE:
-            return SpiSetInt(&gspv.uiFontSmoothingType, uiParam, KEY_MOUSE, L"", fl);
+            return SpiSetDWord(&gspv.uiFontSmoothingType, PtrToUlong(pvParam), KEY_DESKTOP, VAL_FONTSMOOTHINGTYPE, fl);
 
         case SPI_GETFONTSMOOTHINGCONTRAST:
             return SpiGetInt(pvParam, &gspv.uiFontSmoothingContrast, fl);
 
         case SPI_SETFONTSMOOTHINGCONTRAST:
-            return SpiSetInt(&gspv.uiFontSmoothingContrast, uiParam, KEY_MOUSE, L"", fl);
+            return SpiSetDWord(&gspv.uiFontSmoothingContrast, PtrToUlong(pvParam), KEY_DESKTOP, VAL_FONTSMOOTHINGCONTRAST, fl);
 
         case SPI_GETFOCUSBORDERWIDTH:
             return SpiGetInt(pvParam, &gspv.uiFocusBorderWidth, fl);
@@ -1745,7 +1758,7 @@ SpiGetSet(UINT uiAction, UINT uiParam, PVOID pvParam, FLONG fl)
             return SpiGetInt(pvParam, &gspv.uiFontSmoothingOrientation, fl);
 
         case SPI_SETFONTSMOOTHINGORIENTATION:
-            return SpiSetInt(&gspv.uiFontSmoothingOrientation, uiParam, KEY_MOUSE, L"", fl);
+            return SpiSetDWord(&gspv.uiFontSmoothingOrientation, PtrToUlong(pvParam), KEY_DESKTOP, VAL_FONTSMOOTHINGORIENTATION, fl);
 
         /* The following are undocumented, but valid SPI values */
         case 0x1010:
@@ -2100,7 +2113,7 @@ UserSystemParametersInfo(
         InitMetrics();
 
         /* Send notification to toplevel windows, if requested */
-        if (fWinIni & (SPIF_SENDCHANGE | SPIF_SENDWININICHANGE))
+        if (fWinIni & SPIF_SENDCHANGE)
         {
             /* Send WM_SETTINGCHANGE to all toplevel windows */
             co_IntSendMessageTimeout(HWND_BROADCAST,

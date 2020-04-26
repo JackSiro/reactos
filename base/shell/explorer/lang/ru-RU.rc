@@ -49,10 +49,7 @@ BEGIN
             MENUITEM "Пр&интеры и факсы", IDM_PRINTERSANDFAXES, MFT_STRING, MFS_ENABLED
             MENUITEM "Панель &задач и меню ""Пуск""", IDM_TASKBARANDSTARTMENU, MFT_STRING, MFS_ENABLED
         END
-        POPUP "П&оиск", IDM_SEARCH
-        BEGIN
-            MENUITEM "", -1, MFT_SEPARATOR
-        END
+        MENUITEM "П&оиск", IDM_SEARCH, MFT_STRING, MFS_ENABLED
         MENUITEM "Сп&равка и поддержка", IDM_HELPANDSUPPORT, MFT_STRING, MFS_ENABLED
         MENUITEM "&Выполнить...", IDM_RUN, MFT_STRING, MFS_ENABLED
         MENUITEM "", 450, MFT_SEPARATOR, MFS_ENABLED
@@ -91,11 +88,11 @@ CAPTION "Меню ""Пуск"""
 FONT 8, "MS Shell Dlg", 0, 0, 0x1
 BEGIN
     CONTROL "", IDC_TASKBARPROP_STARTMENU_BITMAP, "Static", SS_BITMAP | SS_SUNKEN,7, 7, 183, 108
-    AUTORADIOBUTTON "М&еню ""Пуск""", IDC_TASKBARPROP_STARTMENU, 7, 135, 105, 10, WS_DISABLED
-    LTEXT "Этот стиль меню обеспечивает удобный доступ к папкам, часто используемым программам и поиску.", IDC_STATIC, 20, 145, 150, 24, WS_DISABLED
-    PUSHBUTTON "&Настроить...", IDC_TASKBARPROP_STARTMENUCUST, 192, 132, 53, 14, WS_DISABLED
+    AUTORADIOBUTTON "М&еню ""Пуск""", IDC_TASKBARPROP_STARTMENU, 7, 135, 105, 10
+    LTEXT "Этот стиль меню обеспечивает удобный доступ к папкам, часто используемым программам и поиску.", IDC_TASKBARPROP_STARTMENUMODERNTEXT, 20, 145, 150, 24
+    PUSHBUTTON "&Настроить...", IDC_TASKBARPROP_STARTMENUCUST, 192, 132, 53, 14
     AUTORADIOBUTTON "&Классическое меню ""Пуск""", IDC_TASKBARPROP_STARTMENUCLASSIC, 7, 175, 105, 10
-    LTEXT "Классический стиль отображения меню ""Пуск"".", IDC_STATIC, 20, 185, 150, 24
+    LTEXT "Классический стиль отображения меню ""Пуск"".", IDC_TASKBARPROP_STARTMENUCLASSICTEXT, 20, 185, 150, 24
     PUSHBUTTON "Н&астроить...", IDC_TASKBARPROP_STARTMENUCLASSICCUST, 192, 172, 53, 14
 END
 
@@ -199,5 +196,5 @@ END
 STRINGTABLE
 BEGIN
     IDS_TASKBAR_STARTMENU_PROP_CAPTION "Меню ""Пуск"" и панель задач"
-    IDS_RESTORE_ALL "&Show Open Windows"
+    IDS_RESTORE_ALL "&Показать окна"
 END

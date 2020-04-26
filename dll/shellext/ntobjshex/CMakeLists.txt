@@ -1,6 +1,9 @@
 
 project(SHELL)
 
+add_definitions(
+    -D_ATL_NO_EXCEPTIONS)
+
 set_cpp(WITH_RUNTIME)
 
 if(NOT MSVC)
@@ -24,13 +27,13 @@ list(APPEND SOURCE
     regfolder.cpp
     precomp.h)
 
-add_library(ntobjshex SHARED
+add_library(ntobjshex MODULE
     ${SOURCE}
     ntobjshex.rc
     ${CMAKE_CURRENT_BINARY_DIR}/ntobjshex.def)
 
 set_module_type(ntobjshex win32dll UNICODE)
-target_link_libraries(ntobjshex uuid wine atlnew)
+target_link_libraries(ntobjshex uuid wine)
 
 add_importlibs(ntobjshex
     advapi32

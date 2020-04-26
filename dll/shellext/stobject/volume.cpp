@@ -21,7 +21,6 @@ DWORD  g_muteControlID;
 UINT g_mmDeviceChange;
 
 static BOOL g_IsMute = FALSE;
-static BOOL g_IsRunning = FALSE;
 
 static HRESULT __stdcall Volume_FindMixerControl(CSysTray * pSysTray)
 {
@@ -156,8 +155,6 @@ HRESULT STDMETHODCALLTYPE Volume_Init(_In_ CSysTray * pSysTray)
 
     Volume_IsMute();
 
-    g_IsRunning = TRUE;
-
     HICON icon;
     if (g_IsMute)
         icon = g_hIconMute;
@@ -204,8 +201,6 @@ HRESULT STDMETHODCALLTYPE Volume_Shutdown(_In_ CSysTray * pSysTray)
 {
     TRACE("Volume_Shutdown\n");
 
-    g_IsRunning = FALSE;
-
     return pSysTray->NotifyIcon(NIM_DELETE, ID_ICON_VOLUME, NULL, NULL);
 }
 
@@ -216,7 +211,12 @@ HRESULT Volume_OnDeviceChange(_In_ CSysTray * pSysTray, WPARAM wParam, LPARAM lP
 
 static void _RunVolume(BOOL bTray)
 {
-    ShellExecuteW(NULL, NULL, bTray ? L"sndvol32.exe /t" : L"sndvol32.exe", NULL, NULL, SW_SHOWNORMAL);
+    ShellExecuteW(NULL,
+                  NULL,
+                  L"sndvol32.exe",
+                  bTray ? L"/t" : NULL,
+                  NULL,
+                  SW_SHOWNORMAL);
 }
 
 static void _RunMMCpl()
@@ -234,6 +234,7 @@ static void _ShowContextMenu(CSysTray * pSysTray)
     HMENU hPopup = CreatePopupMenu();
     AppendMenuW(hPopup, MF_STRING, IDS_VOL_OPEN, strOpen);
     AppendMenuW(hPopup, MF_STRING, IDS_VOL_ADJUST, strAdjust);
+    SetMenuDefaultItem(hPopup, IDS_VOL_OPEN, FALSE);
 
     DWORD flags = TPM_RETURNCMD | TPM_NONOTIFY | TPM_RIGHTALIGN | TPM_BOTTOMALIGN;
     POINT pt;
@@ -266,20 +267,26 @@ HRESULT STDMETHODCALLTYPE Volume_Message(_In_ CSysTray * pSysTray, UINT uMsg, WP
     {
         case WM_USER + 220:
             TRACE("Volume_Message: WM_USER+220\n");
-            if (wParam == 4)
+            if (wParam == VOLUME_SERVICE_FLAG)
             {
-                if (lParam == FALSE)
+                if (lParam)
+                {
+                    pSysTray->EnableService(VOLUME_SERVICE_FLAG, TRUE);
                     return Volume_Init(pSysTray);
+                }
                 else
+                {
+                    pSysTray->EnableService(VOLUME_SERVICE_FLAG, FALSE);
                     return Volume_Shutdown(pSysTray);
+                }
             }
             return S_FALSE;
 
         case WM_USER + 221:
             TRACE("Volume_Message: WM_USER+221\n");
-            if (wParam == 4)
+            if (wParam == VOLUME_SERVICE_FLAG)
             {
-                lResult = (LRESULT)g_IsRunning;
+                lResult = (LRESULT)pSysTray->IsServiceEnabled(VOLUME_SERVICE_FLAG);
                 return S_OK;
             }
             return S_FALSE;

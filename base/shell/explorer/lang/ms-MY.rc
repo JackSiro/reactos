@@ -49,10 +49,7 @@ BEGIN
             MENUITEM "&Pencetak and Faks", IDM_PRINTERSANDFAXES, MFT_STRING, MFS_ENABLED
             MENUITEM "Bar &Tugas dan Menu Mula", IDM_TASKBARANDSTARTMENU, MFT_STRING, MFS_ENABLED
         END
-        POPUP "&Cari", IDM_SEARCH
-        BEGIN
-            MENUITEM "", -1, MFT_SEPARATOR
-        END
+        MENUITEM "&Cari", IDM_SEARCH, MFT_STRING, MFS_ENABLED
         MENUITEM "Bantuan dan sokongan(&H)", IDM_HELPANDSUPPORT, MFT_STRING, MFS_ENABLED
         MENUITEM "Jalankan...(&R)", IDM_RUN, MFT_STRING, MFS_ENABLED
         MENUITEM "", 450, MFT_SEPARATOR, MFS_ENABLED
@@ -91,11 +88,11 @@ CAPTION "Menu Mula"
 FONT 8, "MS Shell Dlg", 0, 0, 0x1
 BEGIN
     CONTROL "", IDC_TASKBARPROP_STARTMENU_BITMAP, "Static", SS_BITMAP | SS_SUNKEN,7, 7, 183, 108
-    AUTORADIOBUTTON "Menu Mula(&S)", IDC_TASKBARPROP_STARTMENU, 7, 135, 105, 10, WS_DISABLED
-    LTEXT "Gaya menu ini memberikan anda akses ke folder, programs kegemaran anda, dan cari fail anda.", IDC_STATIC, 20, 145, 150, 24, WS_DISABLED
-    PUSHBUTTON "Suaikan...(&C)", IDC_TASKBARPROP_STARTMENUCUST, 192, 132, 53, 14, WS_DISABLED
+    AUTORADIOBUTTON "Menu Mula(&S)", IDC_TASKBARPROP_STARTMENU, 7, 135, 105, 10
+    LTEXT "Gaya menu ini memberikan anda akses ke folder, programs kegemaran anda, dan cari fail anda.", IDC_TASKBARPROP_STARTMENUMODERNTEXT, 20, 145, 150, 24
+    PUSHBUTTON "Suaikan...(&C)", IDC_TASKBARPROP_STARTMENUCUST, 192, 132, 53, 14
     AUTORADIOBUTTON "Klasik &menu mula", IDC_TASKBARPROP_STARTMENUCLASSIC, 7, 175, 105, 10
-    LTEXT "Gaya menu ini memberikan anda lihat klasik dan berfungsi", IDC_STATIC, 20, 185, 150, 24
+    LTEXT "Gaya menu ini memberikan anda lihat klasik dan berfungsi", IDC_TASKBARPROP_STARTMENUCLASSICTEXT, 20, 185, 150, 24
     PUSHBUTTON "Suaikan...(&C)", IDC_TASKBARPROP_STARTMENUCLASSICCUST, 192, 172, 53, 14    
 END
 

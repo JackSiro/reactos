@@ -1,6 +1,7 @@
 
 add_definitions(
     -D__WINESRC__
+    -D__ROS_LONG64__
     -D_USE_MATH_DEFINES)
 
 include_directories(${REACTOS_SOURCE_DIR}/sdk/include/reactos/wine)
@@ -23,7 +24,7 @@ list(APPEND SOURCE
     stringformat.c
     precomp.h)
 
-add_library(gdiplus SHARED
+add_library(gdiplus MODULE
     ${SOURCE}
     guid.c
     gdiplus.rc

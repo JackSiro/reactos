@@ -143,6 +143,421 @@ CheckForLoadedProfile(HANDLE hToken)
 }
 
 
+static
+HANDLE
+CreateProfileMutex(
+    _In_ PWSTR pszSidString)
+{
+    SECURITY_DESCRIPTOR SecurityDescriptor;
+    SECURITY_ATTRIBUTES SecurityAttributes;
+    PWSTR pszMutexName = NULL;
+    HANDLE hMutex = NULL;
+
+    pszMutexName = HeapAlloc(GetProcessHeap(),
+                             0,
+                             (wcslen(L"Global\\userenv:  User Profile Mutex for ") + wcslen(pszSidString) + 1) * sizeof(WCHAR));
+    if (pszMutexName == NULL)
+    {
+        DPRINT("Failed to allocate the mutex name buffer!\n");
+        SetLastError(ERROR_NOT_ENOUGH_MEMORY);
+        return NULL;
+    }
+
+    /* Build the profile mutex name */
+    wcscpy(pszMutexName, L"Global\\userenv:  User Profile Mutex for ");
+    wcscat(pszMutexName, pszSidString);
+
+    /* Initialize the security descriptor */
+    InitializeSecurityDescriptor(&SecurityDescriptor,
+                                 SECURITY_DESCRIPTOR_REVISION);
+
+    /* Set a NULL-DACL (everyone has access) */
+    SetSecurityDescriptorDacl(&SecurityDescriptor,
+                              TRUE,
+                              NULL,
+                              FALSE);
+
+    /* Initialize the security attributes */
+    SecurityAttributes.nLength = sizeof(SecurityAttributes);
+    SecurityAttributes.lpSecurityDescriptor = &SecurityDescriptor;
+    SecurityAttributes.bInheritHandle = FALSE;
+
+    /* Create the profile mutex */
+    hMutex = CreateMutexW(&SecurityAttributes,
+                          FALSE,
+                          pszMutexName);
+    if (hMutex == NULL)
+    {
+        DPRINT1("Failed to create the profile mutex (Error %lu)\n", GetLastError());
+    }
+
+    HeapFree(GetProcessHeap(), 0, pszMutexName);
+
+    return hMutex;
+}
+
+
+static
+DWORD
+IncrementRefCount(
+    PWSTR pszSidString,
+    PDWORD pdwRefCount)
+{
+    HKEY hProfilesKey = NULL, hProfileKey = NULL;
+    DWORD dwRefCount = 0, dwLength, dwType;
+    DWORD dwError;
+
+    DPRINT1("IncrementRefCount(%S %p)\n",
+            pszSidString, pdwRefCount);
+
+    dwError = RegOpenKeyExW(HKEY_LOCAL_MACHINE,
+                            L"SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\ProfileList",
+                            0,
+                            KEY_QUERY_VALUE,
+                            &hProfilesKey);
+    if (dwError != ERROR_SUCCESS)
+    {
+        DPRINT1("Error: %lu\n", dwError);
+        goto done;
+    }
+
+    dwError = RegOpenKeyExW(hProfilesKey,
+                            pszSidString,
+                            0,
+                            KEY_QUERY_VALUE | KEY_SET_VALUE,
+                            &hProfileKey);
+    if (dwError != ERROR_SUCCESS)
+    {
+        DPRINT1("Error: %lu\n", dwError);
+        goto done;
+    }
+
+    /* Get the reference counter */
+    dwLength = sizeof(dwRefCount);
+    RegQueryValueExW(hProfileKey,
+                     L"RefCount",
+                     NULL,
+                     &dwType,
+                     (PBYTE)&dwRefCount,
+                     &dwLength);
+
+    dwRefCount++;
+
+    dwLength = sizeof(dwRefCount);
+    dwError = RegSetValueExW(hProfileKey,
+                             L"RefCount",
+                             0,
+                             REG_DWORD,
+                             (PBYTE)&dwRefCount,
+                             dwLength);
+    if (dwError != ERROR_SUCCESS)
+    {
+        DPRINT1("Error: %lu\n", dwError);
+        goto done;
+    }
+
+    if (pdwRefCount != NULL)
+        *pdwRefCount = dwRefCount;
+
+done:
+    if (hProfileKey != NULL)
+        RegCloseKey(hProfileKey);
+
+    if (hProfilesKey != NULL)
+        RegCloseKey(hProfilesKey);
+
+    return dwError;
+}
+
+
+static
+DWORD
+DecrementRefCount(
+    PWSTR pszSidString,
+    PDWORD pdwRefCount)
+{
+    HKEY hProfilesKey = NULL, hProfileKey = NULL;
+    DWORD dwRefCount = 0, dwLength, dwType;
+    DWORD dwError;
+
+    DPRINT1("DecrementRefCount(%S %p)\n",
+            pszSidString, pdwRefCount);
+
+    dwError = RegOpenKeyExW(HKEY_LOCAL_MACHINE,
+                            L"SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\ProfileList",
+                            0,
+                            KEY_QUERY_VALUE,
+                            &hProfilesKey);
+    if (dwError != ERROR_SUCCESS)
+    {
+        DPRINT1("Error: %lu\n", dwError);
+        goto done;
+    }
+
+    dwError = RegOpenKeyExW(hProfilesKey,
+                            pszSidString,
+                            0,
+                            KEY_QUERY_VALUE | KEY_SET_VALUE,
+                            &hProfileKey);
+    if (dwError != ERROR_SUCCESS)
+    {
+        DPRINT1("Error: %lu\n", dwError);
+        goto done;
+    }
+
+    /* Get the reference counter */
+    dwLength = sizeof(dwRefCount);
+    dwError = RegQueryValueExW(hProfileKey,
+                               L"RefCount",
+                               NULL,
+                               &dwType,
+                               (PBYTE)&dwRefCount,
+                               &dwLength);
+    if (dwError != ERROR_SUCCESS)
+    {
+        DPRINT1("Error: %lu\n", dwError);
+        goto done;
+    }
+
+    dwRefCount--;
+
+    dwLength = sizeof(dwRefCount);
+    dwError = RegSetValueExW(hProfileKey,
+                             L"RefCount",
+                             0,
+                             REG_DWORD,
+                             (PBYTE)&dwRefCount,
+                             dwLength);
+    if (dwError != ERROR_SUCCESS)
+    {
+        DPRINT1("Error: %lu\n", dwError);
+        goto done;
+    }
+
+    if (pdwRefCount != NULL)
+        *pdwRefCount = dwRefCount;
+
+done:
+    if (hProfileKey != NULL)
+        RegCloseKey(hProfileKey);
+
+    if (hProfilesKey != NULL)
+        RegCloseKey(hProfilesKey);
+
+    return dwError;
+}
+
+
+static
+DWORD
+CheckForGuestsAndAdmins(
+    _In_ HANDLE hToken,
+    _Out_ PDWORD pdwState)
+{
+    PTOKEN_GROUPS pGroupInfo = NULL;
+    PSID pAdministratorsSID = NULL;
+    PSID pGuestsSID = NULL;
+    DWORD i, dwSize = 0;
+    DWORD dwError = ERROR_SUCCESS;
+
+    DPRINT("CheckForGuestsAndAdmins(%p %p)\n", hToken, pdwState);
+
+    /* Get the buffer size */
+    if (!GetTokenInformation(hToken, TokenGroups, NULL, dwSize, &dwSize))
+    {
+        dwError = GetLastError();
+        if (dwError != ERROR_INSUFFICIENT_BUFFER)
+        {
+            DPRINT1("GetTokenInformation() failed (Error %lu)\n", dwError);
+            return dwError;
+        }
+
+        dwError = ERROR_SUCCESS;
+    }
+
+    /* Allocate the buffer */
+    pGroupInfo = (PTOKEN_GROUPS)HeapAlloc(GetProcessHeap(), 0, dwSize);
+    if (pGroupInfo == NULL)
+    {
+        dwError = ERROR_OUTOFMEMORY;
+        DPRINT1("HeapAlloc() failed (Error %lu)\n", dwError);
+        goto done;
+    }
+
+    /* Get the token groups */
+    if (!GetTokenInformation(hToken, TokenGroups, pGroupInfo, dwSize, &dwSize))
+    {
+        dwError = GetLastError();
+        DPRINT1("GetTokenInformation() failed (Error %lu)\n", dwError);
+        goto done;
+    }
+
+    /* Build the Administrators Group SID */
+    if(!AllocateAndInitializeSid(&LocalSystemAuthority,
+                                 2,
+                                 SECURITY_BUILTIN_DOMAIN_RID,
+                                 DOMAIN_ALIAS_RID_ADMINS,
+                                 0, 0, 0, 0, 0, 0,
+                                 &pAdministratorsSID))
+    {
+        dwError = GetLastError();
+        DPRINT1("AllocateAndInitializeSid() failed (Error %lu)\n", dwError);
+        goto done;
+    }
+
+    /* Build the Guests Group SID */
+    if(!AllocateAndInitializeSid(&LocalSystemAuthority,
+                                 2,
+                                 SECURITY_BUILTIN_DOMAIN_RID,
+                                 DOMAIN_ALIAS_RID_GUESTS,
+                                 0, 0, 0, 0, 0, 0,
+                                 &pGuestsSID))
+    {
+        dwError = GetLastError();
+        DPRINT1("AllocateAndInitializeSid() failed (Error %lu)\n", dwError);
+        goto done;
+    }
+
+    /* Check for Administratos or Guests group memberships */
+    for (i = 0; i < pGroupInfo->GroupCount; i++)
+    {
+        if (EqualSid(pAdministratorsSID, pGroupInfo->Groups[i].Sid))
+        {
+            *pdwState |= 0x0100; // PROFILE_ADMIN_USER
+        }
+
+        if (EqualSid(pGuestsSID, pGroupInfo->Groups[i].Sid))
+        {
+            *pdwState |= 0x0080; // PROFILE_GUESTS_USER
+        }
+    }
+
+    dwError = ERROR_SUCCESS;
+
+done:
+    if (pGuestsSID != NULL)
+        FreeSid(pGuestsSID);
+
+    if (pAdministratorsSID != NULL)
+        FreeSid(pAdministratorsSID);
+
+    if (pGroupInfo != NULL)
+        HeapFree(GetProcessHeap(), 0, pGroupInfo);
+
+    return dwError;
+}
+
+
+static
+DWORD
+SetProfileData(
+    _In_ PWSTR pszSidString,
+    _In_ DWORD dwFlags,
+    _In_ HANDLE hToken)
+{
+    HKEY hProfilesKey = NULL, hProfileKey = NULL;
+    FILETIME LoadTime;
+    DWORD dwLength, dwState = 0;
+    DWORD dwError;
+
+    DPRINT("SetProfileData(%S %p)\n", pszSidString, hToken);
+
+    dwError = RegOpenKeyExW(HKEY_LOCAL_MACHINE,
+                            L"SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\ProfileList",
+                            0,
+                            KEY_QUERY_VALUE,
+                            &hProfilesKey);
+    if (dwError != ERROR_SUCCESS)
+    {
+        DPRINT1("Error: %lu\n", dwError);
+        goto done;
+    }
+
+    dwError = RegOpenKeyExW(hProfilesKey,
+                            pszSidString,
+                            0,
+                            KEY_QUERY_VALUE | KEY_SET_VALUE,
+                            &hProfileKey);
+    if (dwError != ERROR_SUCCESS)
+    {
+        DPRINT1("Error: %lu\n", dwError);
+        goto done;
+    }
+
+    /* Set the profile load time */
+    GetSystemTimeAsFileTime(&LoadTime);
+
+    dwLength = sizeof(LoadTime.dwLowDateTime);
+    dwError = RegSetValueExW(hProfileKey,
+                             L"ProfileLoadTimeLow",
+                             0,
+                             REG_DWORD,
+                             (PBYTE)&LoadTime.dwLowDateTime,
+                             dwLength);
+    if (dwError != ERROR_SUCCESS)
+    {
+        DPRINT1("Error: %lu\n", dwError);
+        goto done;
+    }
+
+    dwLength = sizeof(LoadTime.dwHighDateTime);
+    dwError = RegSetValueExW(hProfileKey,
+                             L"ProfileLoadTimeHigh",
+                             0,
+                             REG_DWORD,
+                             (PBYTE)&LoadTime.dwHighDateTime,
+                             dwLength);
+    if (dwError != ERROR_SUCCESS)
+    {
+        DPRINT1("Error: %lu\n", dwError);
+        goto done;
+    }
+
+    dwLength = sizeof(dwFlags);
+    dwError = RegSetValueExW(hProfileKey,
+                             L"Flags",
+                             0,
+                             REG_DWORD,
+                             (PBYTE)&dwFlags,
+                             dwLength);
+    if (dwError != ERROR_SUCCESS)
+    {
+        DPRINT1("Error: %lu\n", dwError);
+        goto done;
+    }
+
+    dwError = CheckForGuestsAndAdmins(hToken,
+                                      &dwState);
+    if (dwError != ERROR_SUCCESS)
+    {
+        DPRINT1("Error: %lu\n", dwError);
+        goto done;
+    }
+
+    dwLength = sizeof(dwState);
+    dwError = RegSetValueExW(hProfileKey,
+                             L"State",
+                             0,
+                             REG_DWORD,
+                             (PBYTE)&dwState,
+                             dwLength);
+    if (dwError != ERROR_SUCCESS)
+    {
+        DPRINT1("Error: %lu\n", dwError);
+        goto done;
+    }
+
+done:
+    if (hProfileKey != NULL)
+        RegCloseKey(hProfileKey);
+
+    if (hProfilesKey != NULL)
+        RegCloseKey(hProfilesKey);
+
+    return dwError;
+}
+
+
 /* PUBLIC FUNCTIONS ********************************************************/
 
 BOOL
@@ -719,7 +1134,7 @@ DeleteProfileA(
     _In_opt_ LPCSTR lpComputerName)
 {
     BOOL bResult;
-    UNICODE_STRING SidString, ProfilePath, ComputerName;
+    UNICODE_STRING SidString = {0, 0, NULL}, ProfilePath = {0, 0, NULL}, ComputerName = {0, 0, NULL};
 
     DPRINT("DeleteProfileA() called\n");
 
@@ -762,8 +1177,8 @@ DeleteProfileW(
     _In_opt_ LPCWSTR lpProfilePath,
     _In_opt_ LPCWSTR lpComputerName)
 {
-    DPRINT1("DeleteProfileW() not implemented!\n");
-    return FALSE;
+    DPRINT1("DeleteProfileW(%S %S %S) not implemented!\n", lpSidString, lpProfilePath, lpComputerName);
+    return TRUE; //FALSE;
 }
 
 
@@ -1042,7 +1457,7 @@ GetProfilesDirectoryA(
     LPWSTR lpBuffer;
     BOOL bResult;
 
-    if (!lpcchSize)
+    if (!lpcchSize || !lpProfileDir)
     {
         SetLastError(ERROR_INVALID_PARAMETER);
         return FALSE;
@@ -1151,8 +1566,99 @@ WINAPI
 GetProfileType(
     _Out_ PDWORD pdwFlags)
 {
-    DPRINT1("GetProfileType() not implemented!\n");
-    return FALSE;
+    UNICODE_STRING SidString = {0, 0, NULL};
+    HANDLE hToken;
+    HKEY hProfilesKey = NULL, hProfileKey = NULL;
+    DWORD dwType, dwLength, dwState = 0;
+    DWORD dwError;
+    BOOL bResult = FALSE;
+
+    DPRINT("GetProfileType(%p)\n", pdwFlags);
+
+    if (pdwFlags == NULL)
+    {
+        SetLastError(ERROR_INVALID_PARAMETER);
+        return FALSE;
+    }
+
+    if (!OpenThreadToken(GetCurrentThread(), TOKEN_QUERY, TRUE, &hToken))
+    {
+        if (!OpenProcessToken(GetCurrentProcess(), TOKEN_QUERY, &hToken))
+        {
+            DPRINT1("Failed to open a token (Error %lu)\n", GetLastError());
+            return FALSE;
+        }
+    }
+
+    /* Get the user SID string */
+    if (!GetUserSidStringFromToken(hToken, &SidString))
+    {
+        DPRINT1("GetUserSidStringFromToken() failed\n");
+        goto done;
+    }
+
+    DPRINT("SID: %wZ\n", &SidString);
+
+    dwError = RegOpenKeyExW(HKEY_LOCAL_MACHINE,
+                            L"SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\ProfileList",
+                            0,
+                            KEY_QUERY_VALUE,
+                            &hProfilesKey);
+    if (dwError != ERROR_SUCCESS)
+    {
+        DPRINT1("Error: %lu\n", dwError);
+        SetLastError(dwError);
+        goto done;
+    }
+
+    dwError = RegOpenKeyExW(hProfilesKey,
+                            SidString.Buffer,
+                            0,
+                            KEY_QUERY_VALUE | KEY_SET_VALUE,
+                            &hProfileKey);
+    if (dwError != ERROR_SUCCESS)
+    {
+        DPRINT1("Error: %lu\n", dwError);
+        SetLastError(dwError);
+        goto done;
+    }
+
+    /* Get the State value */
+    dwLength = sizeof(dwState);
+    dwError = RegQueryValueExW(hProfileKey,
+                               L"State",
+                               NULL,
+                               &dwType,
+                               (PBYTE)&dwState,
+                               &dwLength);
+    if (dwError != ERROR_SUCCESS)
+    {
+        DPRINT1("Error: %lu\n", dwError);
+        SetLastError(dwError);
+        goto done;
+    }
+
+    *pdwFlags = 0;
+
+    if (dwState & 0x80) /* PROFILE_GUEST_USER */
+        *pdwFlags |= PT_TEMPORARY;
+
+    /* FIXME: Add checks for PT_MANDATORY and PT_ROAMING */
+
+    bResult = TRUE;
+
+done:
+    if (hProfileKey != NULL)
+        RegCloseKey(hProfileKey);
+
+    if (hProfilesKey != NULL)
+        RegCloseKey(hProfilesKey);
+
+    RtlFreeUnicodeString(&SidString);
+
+    CloseHandle(hToken);
+
+    return bResult;
 }
 
 
@@ -1166,7 +1672,7 @@ GetUserProfileDirectoryA(
     LPWSTR lpBuffer;
     BOOL bResult;
 
-    if (!lpcchSize)
+    if (!lpcchSize || !lpProfileDir)
     {
         SetLastError(ERROR_INVALID_PARAMETER);
         return FALSE;
@@ -1420,6 +1926,7 @@ LoadUserProfileW(
     WCHAR szUserHivePath[MAX_PATH];
     PTOKEN_USER UserSid = NULL;
     UNICODE_STRING SidString = { 0, 0, NULL };
+    HANDLE hProfileMutex = NULL;
     LONG Error;
     BOOL ret = FALSE;
     DWORD dwLength = sizeof(szUserHivePath) / sizeof(szUserHivePath[0]);
@@ -1436,69 +1943,6 @@ LoadUserProfileW(
 
     DPRINT("UserName: %S\n", lpProfileInfo->lpUserName);
 
-    /* Don't load a profile twice */
-    if (CheckForLoadedProfile(hToken))
-    {
-        DPRINT ("Profile already loaded\n");
-        lpProfileInfo->hProfile = NULL;
-        return TRUE;
-    }
-
-    if (lpProfileInfo->lpProfilePath)
-    {
-        /* Use the caller's specified roaming user profile path */
-        StringCbCopyW(szUserHivePath, sizeof(szUserHivePath), lpProfileInfo->lpProfilePath);
-    }
-    else
-    {
-        /* FIXME: check if MS Windows allows lpProfileInfo->lpProfilePath to be NULL */
-        if (!GetProfilesDirectoryW(szUserHivePath, &dwLength))
-        {
-            DPRINT1("GetProfilesDirectoryW() failed (error %ld)\n", GetLastError());
-            return FALSE;
-        }
-    }
-
-    /* Create user hive name */
-    StringCbCatW(szUserHivePath, sizeof(szUserHivePath), L"\\");
-    StringCbCatW(szUserHivePath, sizeof(szUserHivePath), lpProfileInfo->lpUserName);
-    StringCbCatW(szUserHivePath, sizeof(szUserHivePath), L"\\ntuser.dat");
-    DPRINT("szUserHivePath: %S\n", szUserHivePath);
-
-    /* Create user profile directory if needed */
-    if (GetFileAttributesW(szUserHivePath) == INVALID_FILE_ATTRIBUTES)
-    {
-        /* Get user sid */
-        if (GetTokenInformation(hToken, TokenUser, NULL, 0, &dwLength) ||
-            GetLastError() != ERROR_INSUFFICIENT_BUFFER)
-        {
-            DPRINT1 ("GetTokenInformation() failed\n");
-            return FALSE;
-        }
-
-        UserSid = (PTOKEN_USER)HeapAlloc(GetProcessHeap(), 0, dwLength);
-        if (!UserSid)
-        {
-            DPRINT1("HeapAlloc() failed\n");
-            SetLastError(ERROR_NOT_ENOUGH_MEMORY);
-            goto cleanup;
-        }
-
-        if (!GetTokenInformation(hToken, TokenUser, UserSid, dwLength, &dwLength))
-        {
-            DPRINT1("GetTokenInformation() failed\n");
-            goto cleanup;
-        }
-
-        /* Create profile */
-        ret = CreateUserProfileW(UserSid->User.Sid, lpProfileInfo->lpUserName);
-        if (!ret)
-        {
-            DPRINT1("CreateUserProfileW() failed\n");
-            goto cleanup;
-        }
-    }
-
     /* Get the user SID string */
     ret = GetUserSidStringFromToken(hToken, &SidString);
     if (!ret)
@@ -1508,28 +1952,108 @@ LoadUserProfileW(
     }
     ret = FALSE;
 
-    /* Acquire restore privilege */
-    if (!AcquireRemoveRestorePrivilege(TRUE))
+    /* Create the profile mutex */
+    hProfileMutex = CreateProfileMutex(SidString.Buffer);
+    if (hProfileMutex == NULL)
     {
-        DPRINT1("AcquireRemoveRestorePrivilege() failed (Error %ld)\n", GetLastError());
+        DPRINT1("Failed to create the profile mutex\n");
         goto cleanup;
     }
 
-    /* Load user registry hive */
-    Error = RegLoadKeyW(HKEY_USERS,
-                        SidString.Buffer,
-                        szUserHivePath);
-    AcquireRemoveRestorePrivilege(FALSE);
+    /* Wait for the profile mutex */
+    WaitForSingleObject(hProfileMutex, INFINITE);
 
-    /* HACK: Do not fail if the profile has already been loaded! */
-    if (Error == ERROR_SHARING_VIOLATION)
-        Error = ERROR_SUCCESS;
-
-    if (Error != ERROR_SUCCESS)
+    /* Don't load a profile twice */
+    if (CheckForLoadedProfile(hToken))
     {
-        DPRINT1("RegLoadKeyW() failed (Error %ld)\n", Error);
-        SetLastError((DWORD)Error);
-        goto cleanup;
+        DPRINT1("Profile %S already loaded\n", SidString.Buffer);
+    }
+    else
+    {
+        DPRINT1("Loading profile %S\n", SidString.Buffer);
+
+        if (lpProfileInfo->lpProfilePath)
+        {
+            /* Use the caller's specified roaming user profile path */
+            StringCbCopyW(szUserHivePath, sizeof(szUserHivePath), lpProfileInfo->lpProfilePath);
+        }
+        else
+        {
+            /* FIXME: check if MS Windows allows lpProfileInfo->lpProfilePath to be NULL */
+            if (!GetProfilesDirectoryW(szUserHivePath, &dwLength))
+            {
+                DPRINT1("GetProfilesDirectoryW() failed (error %ld)\n", GetLastError());
+                goto cleanup;
+            }
+        }
+
+        /* Create user hive name */
+        StringCbCatW(szUserHivePath, sizeof(szUserHivePath), L"\\");
+        StringCbCatW(szUserHivePath, sizeof(szUserHivePath), lpProfileInfo->lpUserName);
+        StringCbCatW(szUserHivePath, sizeof(szUserHivePath), L"\\ntuser.dat");
+        DPRINT("szUserHivePath: %S\n", szUserHivePath);
+
+        /* Create user profile directory if needed */
+        if (GetFileAttributesW(szUserHivePath) == INVALID_FILE_ATTRIBUTES)
+        {
+            /* Get user sid */
+            if (GetTokenInformation(hToken, TokenUser, NULL, 0, &dwLength) ||
+                GetLastError() != ERROR_INSUFFICIENT_BUFFER)
+            {
+                DPRINT1 ("GetTokenInformation() failed\n");
+                goto cleanup;
+            }
+
+            UserSid = (PTOKEN_USER)HeapAlloc(GetProcessHeap(), 0, dwLength);
+            if (!UserSid)
+            {
+                DPRINT1("HeapAlloc() failed\n");
+                SetLastError(ERROR_NOT_ENOUGH_MEMORY);
+                goto cleanup;
+            }
+
+            if (!GetTokenInformation(hToken, TokenUser, UserSid, dwLength, &dwLength))
+            {
+                DPRINT1("GetTokenInformation() failed\n");
+                goto cleanup;
+            }
+
+            /* Create profile */
+            ret = CreateUserProfileW(UserSid->User.Sid, lpProfileInfo->lpUserName);
+            if (!ret)
+            {
+                DPRINT1("CreateUserProfileW() failed\n");
+                goto cleanup;
+            }
+        }
+
+        /* Acquire restore privilege */
+        if (!AcquireRemoveRestorePrivilege(TRUE))
+        {
+            DPRINT1("AcquireRemoveRestorePrivilege() failed (Error %ld)\n", GetLastError());
+            goto cleanup;
+        }
+
+        /* Load user registry hive */
+        Error = RegLoadKeyW(HKEY_USERS,
+                            SidString.Buffer,
+                            szUserHivePath);
+        AcquireRemoveRestorePrivilege(FALSE);
+
+        /* HACK: Do not fail if the profile has already been loaded! */
+        if (Error == ERROR_SHARING_VIOLATION)
+            Error = ERROR_SUCCESS;
+
+        if (Error != ERROR_SUCCESS)
+        {
+            DPRINT1("RegLoadKeyW() failed (Error %ld)\n", Error);
+            SetLastError((DWORD)Error);
+            goto cleanup;
+        }
+
+        SetProfileData(SidString.Buffer,
+                       lpProfileInfo->dwFlags,
+                       hToken);
     }
 
     /* Open future HKEY_CURRENT_USER */
@@ -1545,10 +2069,26 @@ LoadUserProfileW(
         goto cleanup;
     }
 
+    Error = IncrementRefCount(SidString.Buffer, NULL);
+    if (Error != ERROR_SUCCESS)
+    {
+        DPRINT1("IncrementRefCount() failed (Error %ld)\n", Error);
+        SetLastError((DWORD)Error);
+        goto cleanup;
+    }
+
     ret = TRUE;
 
 cleanup:
-    HeapFree(GetProcessHeap(), 0, UserSid);
+    if (UserSid != NULL)
+        HeapFree(GetProcessHeap(), 0, UserSid);
+
+    if (hProfileMutex != NULL)
+    {
+        ReleaseMutex(hProfileMutex);
+        CloseHandle(hProfileMutex);
+    }
+
     RtlFreeUnicodeString(&SidString);
 
     DPRINT("LoadUserProfileW() done\n");
@@ -1562,8 +2102,12 @@ UnloadUserProfile(
     _In_ HANDLE hToken,
     _In_ HANDLE hProfile)
 {
-    UNICODE_STRING SidString;
-    LONG Error;
+    UNICODE_STRING SidString = {0, 0, NULL};
+    HANDLE hProfileMutex = NULL;
+    HKEY hProfilesKey = NULL, hProfileKey = NULL;
+    DWORD dwRefCount = 0, dwLength, dwType, dwState = 0;
+    DWORD dwError;
+    BOOL bRet = FALSE;
 
     DPRINT("UnloadUserProfile() called\n");
 
@@ -1574,8 +2118,6 @@ UnloadUserProfile(
         return FALSE;
     }
 
-    RegCloseKey(hProfile);
-
     /* Get the user SID string */
     if (!GetUserSidStringFromToken(hToken, &SidString))
     {
@@ -1585,53 +2127,144 @@ UnloadUserProfile(
 
     DPRINT("SidString: '%wZ'\n", &SidString);
 
-    /* Acquire restore privilege */
-    if (!AcquireRemoveRestorePrivilege(TRUE))
+    /* Create the profile mutex */
+    hProfileMutex = CreateProfileMutex(SidString.Buffer);
+    if (hProfileMutex == NULL)
     {
-        DPRINT1("AcquireRemoveRestorePrivilege() failed (Error %ld)\n", GetLastError());
-        RtlFreeUnicodeString(&SidString);
-        return FALSE;
+        DPRINT1("Failed to create the profile mutex\n");
+        goto cleanup;
     }
 
-    /* HACK */
+    /* Wait for the profile mutex */
+    WaitForSingleObject(hProfileMutex, INFINITE);
+
+    /* Close the profile handle */
+    RegFlushKey(hProfile);
+    RegCloseKey(hProfile);
+
+    dwError = DecrementRefCount(SidString.Buffer, &dwRefCount);
+    if (dwError != ERROR_SUCCESS)
     {
-        HKEY hUserKey;
+        DPRINT1("DecrementRefCount() failed (Error %lu)\n", dwError);
+        SetLastError(dwError);
+        goto cleanup;
+    }
 
-        Error = RegOpenKeyExW(HKEY_USERS,
-                              SidString.Buffer,
-                              0,
-                              KEY_WRITE,
-                              &hUserKey);
-        if (Error == ERROR_SUCCESS)
+    if (dwRefCount == 0)
+    {
+        DPRINT("RefCount is 0: Unload the Hive!\n");
+
+        /* Acquire restore privilege */
+        if (!AcquireRemoveRestorePrivilege(TRUE))
         {
-            RegDeleteKeyW(hUserKey,
-                          L"Volatile Environment");
+            DPRINT1("AcquireRemoveRestorePrivilege() failed (Error %lu)\n", GetLastError());
+            goto cleanup;
+        }
 
-            RegCloseKey(hUserKey);
+        /* HACK */
+        {
+            HKEY hUserKey;
+
+            dwError = RegOpenKeyExW(HKEY_USERS,
+                                    SidString.Buffer,
+                                    0,
+                                    KEY_WRITE,
+                                    &hUserKey);
+            if (dwError == ERROR_SUCCESS)
+            {
+                RegDeleteKeyW(hUserKey,
+                              L"Volatile Environment");
+
+                RegCloseKey(hUserKey);
+            }
+        }
+        /* End of HACK */
+
+        /* Unload the hive */
+        dwError = RegUnLoadKeyW(HKEY_USERS,
+                                SidString.Buffer);
+
+        /* Remove restore privilege */
+        AcquireRemoveRestorePrivilege(FALSE);
+
+        if (dwError != ERROR_SUCCESS)
+        {
+            DPRINT1("RegUnLoadKeyW() failed (Error %lu)\n", dwError);
+            SetLastError(dwError);
+            goto cleanup;
+        }
+
+        dwError = RegOpenKeyExW(HKEY_LOCAL_MACHINE,
+                                L"SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\ProfileList",
+                                0,
+                                KEY_QUERY_VALUE,
+                                &hProfilesKey);
+        if (dwError != ERROR_SUCCESS)
+        {
+            DPRINT1("RegOpenKeyExW() failed (Error %lu)\n", dwError);
+            SetLastError(dwError);
+            goto cleanup;
+        }
+
+        dwError = RegOpenKeyExW(hProfilesKey,
+                                SidString.Buffer,
+                                0,
+                                KEY_QUERY_VALUE,
+                                &hProfileKey);
+        if (dwError != ERROR_SUCCESS)
+        {
+            DPRINT1("RegOpenKeyExW() failed (Error %lu)\n", dwError);
+            SetLastError(dwError);
+            goto cleanup;
+        }
+
+        /* Get the State value */
+        dwLength = sizeof(dwState);
+        dwError = RegQueryValueExW(hProfileKey,
+                                   L"State",
+                                   NULL,
+                                   &dwType,
+                                   (PBYTE)&dwState,
+                                   &dwLength);
+        if (dwError != ERROR_SUCCESS)
+        {
+            DPRINT1("RegQueryValueExW() failed (Error %lu)\n", dwError);
+            SetLastError(dwError);
+            goto cleanup;
+        }
+
+        /* Delete a guest profile */
+        if (dwState & 0x80) // PROFILE_GUEST_USER
+        {
+            if (!DeleteProfileW(SidString.Buffer, NULL, NULL))
+            {
+                DPRINT1("DeleteProfile(%S, NULL, NULL) failed (Error %lu)\n",
+                        SidString.Buffer, GetLastError());
+                goto cleanup;
+            }
         }
     }
-    /* End of HACK */
 
-    /* Unload the hive */
-    Error = RegUnLoadKeyW(HKEY_USERS,
-                          SidString.Buffer);
+    bRet = TRUE;
 
-    /* Remove restore privilege */
-    AcquireRemoveRestorePrivilege(FALSE);
+cleanup:
+    if (hProfileKey != NULL)
+        RegCloseKey(hProfileKey);
 
-    if (Error != ERROR_SUCCESS)
+    if (hProfilesKey != NULL)
+        RegCloseKey(hProfilesKey);
+
+    if (hProfileMutex != NULL)
     {
-        DPRINT1("RegUnLoadKeyW() failed (Error %ld)\n", Error);
-        RtlFreeUnicodeString(&SidString);
-        SetLastError((DWORD)Error);
-        return FALSE;
+        ReleaseMutex(hProfileMutex);
+        CloseHandle(hProfileMutex);
     }
 
     RtlFreeUnicodeString(&SidString);
 
     DPRINT("UnloadUserProfile() done\n");
 
-    return TRUE;
+    return bRet;
 }
 
 /* EOF */

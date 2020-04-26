@@ -85,7 +85,7 @@ BEGIN
     IDS_DEV_TRANSLATION_FAILED "See seade ei reageeri draiverile."
     IDS_DEV_NO_SOFTCONFIG "ReactOS ei saanud määrata seadistada seda seadet. Uuri dokumentatsiooni, mis kaasnes seadmega ja kasuta ressursi vahekaarti selle seadistamiseks."
     IDS_DEV_BIOS_TABLE "Teie arvuti süsteemi püsivara ei sisalda piisavalt informatsiooni selle seadme kasutuseks ja seadistuseks.\nSelle seadme kasutamiseks pöörudega arvuti tootja poole, et saada püsivara või BIOS uuenduse."
-    IDS_DEV_IRQ_TRANSLATION_FAILED "See seade taotleb PCI katkestust, aga on seadistatud ISA katkestuseks (või vastupidi). \nPalun kasutage arvuti süsteemipaigaldus programmi, et taasseadistada katkestus selle seadme jaoks."
+    IDS_DEV_IRQ_TRANSLATION_FAILED "See seade taotleb PCI katkestust, aga on seadistatud ISA katkestuseks (või vastupidi).\nPalun kasutage arvuti süsteemipaigaldus programmi, et taasseadistada katkestus selle seadme jaoks."
     IDS_DEV_FAILED_DRIVER_ENTRY "ReactOS ei saa käivitada draiverit selle seadme jaoks."
     IDS_DEV_DRIVER_FAILED_PRIOR_UNLOAD "ReactOS ei saa selle riistvara seadmedraiverit laadida, sest eelmine juhtum selle seadme draiverist on veel mälus."
     IDS_DEV_DRIVER_FAILED_LOAD "ReactOS ei saa selle riistvara seadmedraiverit laadida. Draiver võib olla rikutud või puududa."
@@ -247,31 +247,47 @@ BEGIN
     LTEXT "", IDC_DEVNAME, 37, 9, 174, 16, SS_NOPREFIX
 END
 
+IDD_UNINSTALLDRIVER DIALOGEX 0, 0, 224, 121
+STYLE DS_SHELLFONT | DS_MODALFRAME | DS_CONTEXTHELP | WS_POPUPWINDOW | WS_VISIBLE | WS_DLGFRAME
+CAPTION "Confirm Device Removal"
+FONT 8, "MS Shell Dlg"
+BEGIN
+    ICON "", IDC_DEVICON, 7, 7, 20, 20
+    LTEXT "", IDC_DEVNAME, 40, 9, 174, 16, SS_NOPREFIX
+    LTEXT "Warning: You are about to uninstall this device from your system.", -1, 7, 37, 204, 50
+    DEFPUSHBUTTON "OK", IDOK, 110, 100, 50, 14
+    PUSHBUTTON "Cancel", IDCANCEL, 166, 100, 50, 14
+END
+
 
 /*
  This code relates to the device manager GUI
  */
 
-IDR_MAINMENU MENU
+IDM_MAINMENU MENU
 BEGIN
-  POPUP "&Fail"
-  BEGIN
-    MENUITEM "&Välju",                       IDC_EXIT
-  END
-  MENUITEM "&Toiming",                       IDC_ACTIONMENU
-  POPUP "&Vaade"
-  BEGIN
-    MENUITEM "Seadmed &tüübi järgi",         IDC_DEVBYTYPE
-    MENUITEM "Seadmed &ühenduse järgi",      IDC_DEVBYCONN
-    MENUITEM "R&essursid tüübi järgi",       IDC_RESBYTYPE, GRAYED
-    MENUITEM "&Ressursid ühenduse järgi",    IDC_RESBYCONN, GRAYED
-    MENUITEM SEPARATOR
-    MENUITEM "&Näita peidetud seadmeid",     IDC_SHOWHIDDEN
-  END
-  POPUP "&Spikker"
-  BEGIN
-    MENUITEM "&Teave",                       IDC_ABOUT
-  END
+    POPUP "&Fail"
+    BEGIN
+        MENUITEM "&Välju",                       IDM_EXIT
+    END
+    POPUP "&Toiming"
+    BEGIN
+        MENUITEM "Otsi riistvaramuudatusi",      IDM_SCAN_HARDWARE
+        MENUITEM "Lisa riistvara",               IDM_ADD_HARDWARE
+    END
+    POPUP "&Vaade"
+    BEGIN
+        MENUITEM "Seadmed &tüübi järgi",         IDM_DEVBYTYPE
+        MENUITEM "Seadmed &ühenduse järgi",      IDM_DEVBYCONN
+        MENUITEM "R&essursid tüübi järgi",       IDM_RESBYTYPE, GRAYED
+        MENUITEM "&Ressursid ühenduse järgi",    IDM_RESBYCONN, GRAYED
+        MENUITEM SEPARATOR
+        MENUITEM "&Näita peidetud seadmeid",     IDM_SHOWHIDDEN
+    END
+    POPUP "&Spikker"
+    BEGIN
+        MENUITEM "&Teave",                       IDM_ABOUT
+    END
 END
 
 

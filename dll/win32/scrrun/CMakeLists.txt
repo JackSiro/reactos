@@ -1,6 +1,6 @@
 
 include_directories(${REACTOS_SOURCE_DIR}/sdk/include/reactos/wine)
-add_definitions(-D__WINESRC__)
+add_definitions(-D__WINESRC__ -D__ROS_LONG64__)
 spec2def(scrrun.dll scrrun.spec)
 add_idl_headers(scrrun_idlheader scrrun.idl)
 add_typelib(scrrun.idl)
@@ -19,7 +19,7 @@ list(APPEND scrrun_rc_deps
 
 set_source_files_properties(scrrun.rc PROPERTIES OBJECT_DEPENDS "${scrrun_rc_deps}")
 
-add_library(scrrun SHARED
+add_library(scrrun MODULE
     ${SOURCE}
     guid.c
     scrrun.rc

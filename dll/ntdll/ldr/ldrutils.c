@@ -67,7 +67,7 @@ LdrpAllocateUnicodeString(IN OUT PUNICODE_STRING StringOut,
     if (Length != UNICODE_STRING_MAX_BYTES)
     {
         /* It's not, so set the maximum length to be one char more */
-        StringOut->MaximumLength = Length + sizeof(UNICODE_NULL);
+        StringOut->MaximumLength = (USHORT)Length + sizeof(UNICODE_NULL);
     }
     else
     {
@@ -1332,7 +1332,7 @@ SkipCheck:
         ImageBase = (ULONG_PTR)NtHeaders->OptionalHeader.ImageBase;
         ImageEnd = ImageBase + ViewSize;
 
-        DPRINT1("LDR: LdrpMapDll Relocating Image Name %ws (%p-%p -> %p)\n", DllName, (PVOID)ImageBase, (PVOID)ImageEnd, ViewBase);
+        DPRINT("LDR: LdrpMapDll Relocating Image Name %ws (%p-%p -> %p)\n", DllName, (PVOID)ImageBase, (PVOID)ImageEnd, ViewBase);
 
         /* Scan all the modules */
         ListHead = &Peb->Ldr->InLoadOrderModuleList;
@@ -1371,7 +1371,7 @@ SkipCheck:
             RtlInitUnicodeString(&OverlapDll, L"Dynamically Allocated Memory");
         }
 
-        DPRINT1("Overlapping DLL: %wZ\n", &OverlapDll);
+        DPRINT("Overlapping DLL: %wZ\n", &OverlapDll);
 
         /* Are we dealing with a DLL? */
         if (LdrEntry->Flags & LDRP_IMAGE_DLL)
@@ -1416,6 +1416,8 @@ SkipCheck:
                 /* Setup for hard error */
                 HardErrorParameters[0] = (ULONG_PTR)&IllegalDll;
                 HardErrorParameters[1] = (ULONG_PTR)&OverlapDll;
+
+                DPRINT1("Illegal DLL relocation! %wZ overlaps %wZ\n", &OverlapDll, &IllegalDll);
 
                 /* Raise the error */
                 ZwRaiseHardError(STATUS_ILLEGAL_DLL_RELOCATION,
@@ -2696,7 +2698,8 @@ PVOID LdrpGetShimEngineFunction(PCSZ FunctionName)
     NTSTATUS Status;
     PVOID Address;
     RtlInitAnsiString(&Function, FunctionName);
-    Status = LdrGetProcedureAddress(g_pShimEngineModule, &Function, 0, &Address);
+    /* Skip Dll init */
+    Status = LdrpGetProcedureAddress(g_pShimEngineModule, &Function, 0, &Address, FALSE);
     return NT_SUCCESS(Status) ? Address : NULL;
 }
 
@@ -2725,6 +2728,40 @@ LdrpGetShimEngineInterface()
     }
 }
 
+VOID
+NTAPI
+LdrpRunShimEngineInitRoutine(IN ULONG Reason)
+{
+    PLIST_ENTRY ListHead, Next;
+    PLDR_DATA_TABLE_ENTRY LdrEntry;
+
+    ListHead = &NtCurrentPeb()->Ldr->InLoadOrderModuleList;
+    Next = ListHead->Flink;
+    while (Next != ListHead)
+    {
+        LdrEntry = CONTAINING_RECORD(Next, LDR_DATA_TABLE_ENTRY, InLoadOrderLinks);
+
+        if (g_pShimEngineModule == LdrEntry->DllBase)
+        {
+            if (LdrEntry->EntryPoint)
+            {
+                _SEH2_TRY
+                {
+                    LdrpCallInitRoutine(LdrEntry->EntryPoint, LdrEntry->DllBase, Reason, NULL);
+                }
+                _SEH2_EXCEPT(EXCEPTION_EXECUTE_HANDLER)
+                {
+                    DPRINT1("WARNING: Exception 0x%x during LdrpRunShimEngineInitRoutine(%u)\n",
+                            _SEH2_GetExceptionCode(), Reason);
+                }
+                _SEH2_END;
+            }
+            return;
+        }
+
+        Next = Next->Flink;
+    }
+}
 
 VOID
 NTAPI
@@ -2734,10 +2771,13 @@ LdrpLoadShimEngine(IN PWSTR ImageName, IN PUNICODE_STRING ProcessImage, IN PVOID
     PVOID ShimLibrary;
     NTSTATUS Status;
     RtlInitUnicodeString(&ShimLibraryName, ImageName);
-    Status = LdrpLoadDll(FALSE, NULL, NULL, &ShimLibraryName, &ShimLibrary, TRUE);
+    /* We should NOT pass CallInit = TRUE!
+       If we do this, other init routines will be called before we get a chance to shim stuff.. */
+    Status = LdrpLoadDll(FALSE, NULL, NULL, &ShimLibraryName, &ShimLibrary, FALSE);
     if (NT_SUCCESS(Status))
     {
         g_pShimEngineModule = ShimLibrary;
+        LdrpRunShimEngineInitRoutine(DLL_PROCESS_ATTACH);
         LdrpGetShimEngineInterface();
         if (g_ShimsEnabled)
         {
@@ -2754,6 +2794,7 @@ LdrpUnloadShimEngine()
 {
     /* Make sure we do not call into the shim engine anymore */
     g_ShimsEnabled = FALSE;
+    LdrpRunShimEngineInitRoutine(DLL_PROCESS_DETACH);
     LdrUnloadDll(g_pShimEngineModule);
     g_pShimEngineModule = NULL;
 }

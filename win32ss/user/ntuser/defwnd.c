@@ -420,7 +420,7 @@ UserPaintCaption(PWND pWnd, INT Flags)
       else
       {
          HDC hDC = UserGetDCEx(pWnd, NULL, DCX_WINDOW|DCX_USESTYLE);
-         UserDrawCaptionBar(pWnd, hDC, Flags);
+         UserDrawCaptionBar(pWnd, hDC, Flags | DC_FRAME); // DCFRAME added as fix for CORE-10855.
          UserReleaseDC(pWnd, hDC, FALSE);
       }
       Ret = TRUE;
@@ -539,11 +539,17 @@ IntDefWindowProc(
    PTHREADINFO pti = PsGetCurrentThreadWin32Thread();
    LRESULT lResult = 0;
    USER_REFERENCE_ENTRY Ref;
+   BOOL IsTaskBar;
+   DWORD Style;
+   DWORD ExStyle;
 
    if (Msg > WM_USER) return 0;
 
    switch (Msg)
    {
+      case WM_DEVICECHANGE:
+            return TRUE;
+
       case WM_GETTEXTLENGTH:
       {
             PWSTR buf;
@@ -785,7 +791,22 @@ IntDefWindowProc(
          {
             HWND hwndTop = UserGetForegroundWindow();
             PWND topWnd = UserGetWindowObject(hwndTop);
-            if (topWnd)
+
+            /* Test for typical TaskBar ExStyle Values */
+            ExStyle = (topWnd->ExStyle & WS_EX_TOOLWINDOW);
+            TRACE("ExStyle is '%x'.\n", ExStyle);
+
+            /* Test for typical TaskBar Style Values */
+            Style = (topWnd->style & (WS_POPUP | WS_VISIBLE |
+                        WS_CLIPSIBLINGS | WS_CLIPCHILDREN));
+            TRACE("Style is '%x'.\n", Style);
+
+            /* Test for masked typical TaskBar Style and ExStyles to detect TaskBar */
+            IsTaskBar = (Style == (WS_POPUP | WS_VISIBLE | WS_CLIPSIBLINGS | WS_CLIPCHILDREN))
+                        && (ExStyle == WS_EX_TOOLWINDOW);
+            TRACE("This %s the TaskBar.\n", IsTaskBar ? "is" : "is not");
+
+            if (topWnd && !IsTaskBar)  /* Second test is so we are not touching the Taskbar */
             {
                if ((topWnd->style & WS_THICKFRAME) == 0)
                {
@@ -1214,7 +1235,7 @@ IntDefWindowProc(
       {
           HDC hDC = UserGetDCEx(Wnd, NULL, DCX_WINDOW|DCX_USESTYLE);
           TRACE("WM_NCUAHDRAWCAPTION: wParam DC_ flags %08x\n",wParam);
-          UserDrawCaptionBar(Wnd, hDC, wParam|DC_FRAME); // Include DC_FRAME to comp for drawing glich.
+          UserDrawCaptionBar(Wnd, hDC, wParam | DC_FRAME); // Include DC_FRAME to comp for drawing glitch.
           UserReleaseDC(Wnd, hDC, FALSE);
           return 0;
       }

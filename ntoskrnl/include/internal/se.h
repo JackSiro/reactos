@@ -251,11 +251,6 @@ SeInitSystem(VOID);
 INIT_FUNCTION
 VOID
 NTAPI
-ExpInitLuid(VOID);
-
-INIT_FUNCTION
-VOID
-NTAPI
 SepInitPrivileges(VOID);
 
 INIT_FUNCTION
@@ -608,6 +603,12 @@ SepRmReferenceLogonSession(
 NTSTATUS
 SepRmDereferenceLogonSession(
     PLUID LogonLuid);
+
+NTSTATUS
+NTAPI
+SeGetLogonIdDeviceMap(
+    IN PLUID LogonId,
+    OUT PDEVICE_MAP * DeviceMap);
 
 #endif
 

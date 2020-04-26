@@ -18,6 +18,7 @@ list(APPEND SOURCE
     factory.cpp
     iconoverlay.cpp
     main.cpp
+    mountmgr_local.cpp
     propsheet.cpp
     reactos.cpp
     recv.cpp
@@ -26,7 +27,7 @@ list(APPEND SOURCE
     volpropsheet.cpp
     precomp.h)
 
-add_library(shellbtrfs SHARED
+add_library(shellbtrfs MODULE
     ${SOURCE}
     guid.c
     shellbtrfs.rc

@@ -34,6 +34,7 @@
 #include "winuser.h"
 #include "winnls.h"
 #include "commctrl.h"
+#include "windowsx.h"
 
 extern HMODULE COMCTL32_hModule DECLSPEC_HIDDEN;
 extern HBRUSH  COMCTL32_hPattern55AABrush DECLSPEC_HIDDEN;
@@ -147,6 +148,7 @@ typedef struct
    INT            fixedOwnerDrawHeight;
    INT            droppedWidth;   /* last two are not used unless set */
    INT            editHeight;     /* explicitly */
+   INT            visibleItems;
 } HEADCOMBO, *LPHEADCOMBO;
 
 extern BOOL COMBO_FlipListbox(HEADCOMBO *lphc, BOOL ok, BOOL bRedrawButton) DECLSPEC_HIDDEN;

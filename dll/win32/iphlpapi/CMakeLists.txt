@@ -6,7 +6,10 @@ include_directories(
 
 spec2def(iphlpapi.dll iphlpapi.spec ADD_IMPORTLIB)
 
-add_definitions(-DGetAdaptersAddressesV2)
+add_definitions(
+    -DGetAdaptersAddressesV2
+    -D_CRT_NO_POSIX_ERROR_CODES)
+
 list(APPEND SOURCE
     address.c
     dhcp_reactos.c
@@ -22,7 +25,7 @@ list(APPEND SOURCE
     iphlpapi_private.h
     ${CMAKE_CURRENT_BINARY_DIR}/iphlpapi_stubs.c)
 
-add_library(iphlpapi SHARED
+add_library(iphlpapi MODULE
     ${SOURCE}
     iphlpapi.rc
     iphlpapi_fakestubs.c

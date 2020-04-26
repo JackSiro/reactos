@@ -1,5 +1,5 @@
 
-add_definitions(-D__WINESRC__)
+add_definitions(-D__WINESRC__ -D__ROS_LONG64__)
 include_directories(${REACTOS_SOURCE_DIR}/sdk/include/reactos/wine)
 spec2def(riched20.dll riched20.spec ADD_IMPORTLIB)
 
@@ -25,16 +25,12 @@ list(APPEND SOURCE
     writer.c
     precomp.h)
 
-if(MSVC AND (ARCH STREQUAL "i386"))
-    list(APPEND SOURCE msvc-thiscall.c)
-endif()
-
 list(APPEND riched20_rc_deps
     ${CMAKE_CURRENT_SOURCE_DIR}/riched_tom.rgs
     ${CMAKE_CURRENT_BINARY_DIR}/riched_tom.tlb)
 set_source_files_properties(version.rc PROPERTIES OBJECT_DEPENDS "${riched20_rc_deps}")
 
-add_library(riched20 SHARED
+add_library(riched20 MODULE
     ${SOURCE}
     version.rc
     ${CMAKE_CURRENT_BINARY_DIR}/riched20.def)

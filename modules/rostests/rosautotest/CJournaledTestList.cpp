@@ -70,7 +70,7 @@ CJournaledTestList::OpenJournal(DWORD DesiredAccess, bool CreateNew)
         0,
         NULL,
         (CreateNew ? CREATE_ALWAYS : OPEN_EXISTING),
-        FILE_ATTRIBUTE_NORMAL | FILE_FLAG_NO_BUFFERING | FILE_FLAG_WRITE_THROUGH,
+        FILE_ATTRIBUTE_NORMAL | FILE_FLAG_WRITE_THROUGH,
         NULL
     );
 
@@ -90,7 +90,7 @@ void
 CJournaledTestList::SerializeIntoJournal(const string& String)
 {
     DWORD BytesWritten;
-    WriteFile(m_hJournal, String.c_str(), String.size() + 1, &BytesWritten, NULL);
+    WriteFile(m_hJournal, String.c_str(), (ULONG)String.size() + 1, &BytesWritten, NULL);
     FlushFileBuffers(m_hJournal);
 }
 
@@ -106,7 +106,7 @@ void
 CJournaledTestList::SerializeIntoJournal(const wstring& String)
 {
     DWORD BytesWritten;
-    WriteFile(m_hJournal, String.c_str(), (String.size() + 1) * sizeof(WCHAR), &BytesWritten, NULL);
+    WriteFile(m_hJournal, String.c_str(), ((ULONG)String.size() + 1) * sizeof(WCHAR), &BytesWritten, NULL);
     FlushFileBuffers(m_hJournal);
 }
 

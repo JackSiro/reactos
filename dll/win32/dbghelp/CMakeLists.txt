@@ -1,10 +1,11 @@
 
+if(MSVC)
+    # Disable warning C4477 (printf format warnings)
+    add_compile_flags("/wd4477")
+endif()
+
 if(NOT CMAKE_CROSSCOMPILING)
     add_definitions(-DDBGHELP_STATIC_LIB)
-
-    if(ARCH STREQUAL "i386")
-        add_definitions(-D_X86_)
-    endif()
 
     include_directories(
         ${REACTOS_SOURCE_DIR}/tools
@@ -27,6 +28,7 @@ if(NOT CMAKE_CROSSCOMPILING)
     endif()
 
     add_library(dbghelphost ${SOURCE})
+    target_link_libraries(dbghelphost PRIVATE host_includes)
 else()
     add_definitions(
         -D__WINESRC__
@@ -72,7 +74,7 @@ else()
         type.c
         precomp.h)
 
-    add_library(dbghelp SHARED
+    add_library(dbghelp MODULE
         ${SOURCE}
         version.rc
         ${CMAKE_CURRENT_BINARY_DIR}/dbghelp_stubs.c

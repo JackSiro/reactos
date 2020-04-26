@@ -9,25 +9,29 @@ static MUI_ENTRY jaJPSetupInitPageEntries[] =
         4,
         3,
         " ReactOS " KERNEL_VERSION_STR " \276\257\304\261\257\314\337 ",
-        TEXT_STYLE_UNDERLINE
+        TEXT_STYLE_UNDERLINE,
+        TEXT_ID_STATIC
     },
     {
         0,
         20,
-        "Please wait while the ReactOS Setup initializes itself",
-        TEXT_STYLE_NORMAL | TEXT_ALIGN_CENTER
+        "ReactOS \276\257\304\261\257\314\337 \311 \274\256\267\266 \304 \303\336\312\336\262\275 \311 \271\335\274\255\302",
+        TEXT_STYLE_NORMAL | TEXT_ALIGN_CENTER,
+        TEXT_ID_STATIC
     },
     {
         0,
         21,
-        "and discovers your devices...",
-        TEXT_STYLE_NORMAL | TEXT_ALIGN_CENTER
+        "\246 \265\317\301 \270\300\336\273\262...",
+        TEXT_STYLE_NORMAL | TEXT_ALIGN_CENTER,
+        TEXT_ID_STATIC
     },
     {
         0,
         0,
-        "Please wait...",
+        "\265\317\301 \270\300\336\273\262...",
         TEXT_TYPE_STATUS | TEXT_PADDING_BIG,
+        TEXT_ID_STATIC
     },
     {
         0,
@@ -43,37 +47,43 @@ static MUI_ENTRY jaJPLanguagePageEntries[] =
         4,
         3,
         " ReactOS " KERNEL_VERSION_STR " \276\257\304\261\257\314\337 ",
-        TEXT_STYLE_UNDERLINE
+        TEXT_STYLE_UNDERLINE,
+        TEXT_ID_STATIC
     },
     {
         6,
         8,
         "\271\336\335\272\336\311 \276\335\300\270",
-        TEXT_STYLE_NORMAL
+        TEXT_STYLE_NORMAL,
+        TEXT_ID_STATIC
     },
     {
         8,
         10,
         "\x07  \262\335\275\304\260\331\274\336\306 \274\326\263\275\331 \271\336\335\272\336\246 \276\335\300\270 \274\303 \270\300\336\273\262\241",
-        TEXT_STYLE_NORMAL
+        TEXT_STYLE_NORMAL,
+        TEXT_ID_STATIC
     },
     {
         8,
         11,
         "   \302\267\336\306\244 ENTER \267\260\246 \265\274\303 \270\300\336\273\262\241",
-        TEXT_STYLE_NORMAL
+        TEXT_STYLE_NORMAL,
+        TEXT_ID_STATIC
     },
     {
         8,
         13,
         "\x07  \272\272\303\336 \276\335\300\270 \274\300 \271\336\335\272\336\312 \273\262\274\255\263\303\267\306 \274\275\303\321\311 \267\303\262\311 \271\336\335\272\336\306 \276\257\303\262\273\332\317\275\241",
-        TEXT_STYLE_NORMAL
+        TEXT_STYLE_NORMAL,
+        TEXT_ID_STATIC
     },
     {
         0,
         0,
         "ENTER = \277\336\257\272\263  F3 = \301\255\263\274",
-        TEXT_TYPE_STATUS | TEXT_PADDING_BIG
+        TEXT_TYPE_STATUS | TEXT_PADDING_BIG,
+        TEXT_ID_STATIC
     },
     {
         0,
@@ -89,67 +99,78 @@ static MUI_ENTRY jaJPWelcomePageEntries[] =
         4,
         3,
         " ReactOS " KERNEL_VERSION_STR " \276\257\304\261\257\314\337 ",
-        TEXT_STYLE_UNDERLINE
+        TEXT_STYLE_UNDERLINE,
+        TEXT_ID_STATIC
     },
     {
         6,
         8,
         "ReactOS \276\257\304\261\257\314\337\315 \326\263\272\277",
-        TEXT_STYLE_HIGHLIGHT
+        TEXT_STYLE_HIGHLIGHT,
+        TEXT_ID_STATIC
     },
     {
         6,
         11,
         "\272\311 \276\257\304\261\257\314\337\311 \300\336\335\266\262\303\336\312 ReactOS \265\315\337\332\260\303\250\335\270\336\274\275\303\321\246",
-        TEXT_STYLE_NORMAL
+        TEXT_STYLE_NORMAL,
+        TEXT_ID_STATIC
     },
     {
         6,
         12,
         "\272\335\313\337\255\260\300\306 \272\313\337\260\274\244 \276\257\304\261\257\314\337\311 \302\267\336\311 \300\336\335\266\262\315\311 \274\336\255\335\313\336\246 \274\317\275\241",
-        TEXT_STYLE_NORMAL
+        TEXT_STYLE_NORMAL,
+        TEXT_ID_STATIC
     },
     {
         8,
         15,
-        "\x07  Press ENTER to install or upgrade ReactOS.",
-        TEXT_STYLE_NORMAL
+        "\x07  ReactOS \246 \262\335\275\304\260\331 / \261\257\314\337\270\336\332\260\304\336 \275\331 \306\312 ENTER \246 \265\274\303 \270\300\336\273\262\241",
+        TEXT_STYLE_NORMAL,
+        TEXT_ID_STATIC
     },
     {
         8,
         17,
         "\x07  ReactOS \246 \274\255\263\314\270 \323\274\270\312 \272\263\274\335 \275\331\306\312 R \267\260\246 \265\274\303 \270\300\336\273\262\241",
-        TEXT_STYLE_NORMAL
+        TEXT_STYLE_NORMAL,
+        TEXT_ID_STATIC
     },
     {
         8,
         19,
         "\x07  ReactOS \311 \327\262\276\335\275\274\336\256\263\271\335\246 \313\256\263\274\336 \275\331\306\312 L \267\260\246 \265\274\303 \270\300\336\273\262\241",
-        TEXT_STYLE_NORMAL
+        TEXT_STYLE_NORMAL,
+        TEXT_ID_STATIC
     },
     {
         8,
         21,
         "\x07  ReactOS \246 \262\335\275\304\260\331 \276\275\336\306 \301\255\263\274\275\331 \312\336\261\262\312 F3 \267\260\246 \265\274\303 \270\300\336\273\262\241",
-        TEXT_STYLE_NORMAL
+        TEXT_STYLE_NORMAL,
+        TEXT_ID_STATIC
     },
     {
         6,
         23,
         "ReactOS \311 \274\256\263\273\262\305 \274\336\256\263\316\263\306 \266\335\274\303\312 \262\266\246 \272\336\327\335 \270\300\336\273\262:",
-        TEXT_STYLE_NORMAL
+        TEXT_STYLE_NORMAL,
+        TEXT_ID_STATIC
     },
     {
         6,
         24,
-        "http://www.reactos.org",
-        TEXT_STYLE_HIGHLIGHT
+        "https://reactos.org/",
+        TEXT_STYLE_HIGHLIGHT,
+        TEXT_ID_STATIC
     },
     {
         0,
         0,
         "ENTER = \277\336\257\272\263  R = \274\255\263\314\270  L = \327\262\276\335\275  F3 = \301\255\263\274",
-        TEXT_TYPE_STATUS | TEXT_PADDING_BIG
+        TEXT_TYPE_STATUS | TEXT_PADDING_BIG,
+        TEXT_ID_STATIC
     },
     {
         0,
@@ -165,61 +186,71 @@ static MUI_ENTRY jaJPIntroPageEntries[] =
         4,
         3,
         " ReactOS " KERNEL_VERSION_STR " \276\257\304\261\257\314\337 ",
-        TEXT_STYLE_UNDERLINE
+        TEXT_STYLE_UNDERLINE,
+        TEXT_ID_STATIC
     },
     {
         6,
         8,
-        "ReactOS Version Status",
-        TEXT_STYLE_HIGHLIGHT
+        "ReactOS \311 \312\336\260\274\336\256\335 \274\336\256\263\300\262",
+        TEXT_STYLE_HIGHLIGHT,
+        TEXT_ID_STATIC
     },
     {
         6,
         11,
-        "ReactOS is in Alpha stage, meaning it is not feature-complete",
-        TEXT_STYLE_NORMAL
+        "ReactOS \312 \261\331\314\247 \300\336\335\266\262 \306 \261\330\244 \267\311\263 \266\336 \320\266\335\276\262 \303\336",
+        TEXT_STYLE_NORMAL,
+        TEXT_ID_STATIC
     },
     {
         6,
         12,
-        "and is under heavy development. It is recommended to use it only for",
-        TEXT_STYLE_NORMAL
+        "\266\262\312\302 \301\255\263 \303\336\275\241 \274\300\266\336\257\303 \313\256\263\266 \317\300\312 \303\275\304 \323\270\303\267 \303\336 \311\320 \274\326\263",
+        TEXT_STYLE_NORMAL,
+        TEXT_ID_STATIC
     },
     {
         6,
         13,
-        "evaluation and testing purposes and not as your daily-usage OS.",
-        TEXT_STYLE_NORMAL
+        "\275\331 \272\304 \246 \265\275\275\322 \274\317\275\241 \306\301\274\336\256\263 \303\267 \305 \274\326\263 \306\312 \265\275\275\322 \303\336\267\317\276\335\241",
+        TEXT_STYLE_NORMAL,
+        TEXT_ID_STATIC
     },
     {
         6,
         15,
-        "Backup your data or test on a secondary computer if you attempt",
-        TEXT_STYLE_NORMAL
+        "\274\336\257\273\262 \311 \312\260\304\336\263\252\261 \303\336 \300\322\275 \312\336\261\262 \312 \303\336\260\300 \246 \312\336\257\270\261\257\314\337 \275\331 \266",
+        TEXT_STYLE_NORMAL,
+        TEXT_ID_STATIC
     },
     {
         6,
         16,
-        "to run ReactOS on real hardware.",
-        TEXT_STYLE_NORMAL
+        "\326\313\336 \311 \312\337\277\272\335 \303\336 \274\326\263 \274\303 \270\300\336\273\262\241",
+        TEXT_STYLE_NORMAL,
+        TEXT_ID_STATIC
     },
     {
         8,
         19,
-        "\x07  Press ENTER to continue ReactOS Setup.",
-        TEXT_STYLE_NORMAL
+        "\x07  ENTER \246 \265\275\304 \277\336\257\272\263 \274\317\275\241",
+        TEXT_STYLE_NORMAL,
+        TEXT_ID_STATIC
     },
     {
         8,
         21,
-        "\x07  Press F3 to quit without installing ReactOS.",
-        TEXT_STYLE_NORMAL
+        "\x07  F3 \246 \265\275 \304 ReactOS \246 \262\335\275\304\260\331 \276\275\336\306 \274\255\263\330\256\263 \274\317\275\241",
+        TEXT_STYLE_NORMAL,
+        TEXT_ID_STATIC
     },
     {
         0,
         0,
-        "ENTER = Continue   F3 = Quit",
-        TEXT_TYPE_STATUS | TEXT_PADDING_BIG
+        "ENTER = \277\336\257\272\263   F3 = \274\255\263\330\256\263",
+        TEXT_TYPE_STATUS | TEXT_PADDING_BIG,
+        TEXT_ID_STATIC
     },
     {
         0,
@@ -235,115 +266,134 @@ static MUI_ENTRY jaJPLicensePageEntries[] =
         4,
         3,
         " ReactOS " KERNEL_VERSION_STR " \276\257\304\261\257\314\337 ",
-        TEXT_STYLE_UNDERLINE
+        TEXT_STYLE_UNDERLINE,
+        TEXT_ID_STATIC
     },
     {
         6,
         6,
         "\274\326\263 \267\256\300\336\270:",
-        TEXT_STYLE_HIGHLIGHT
+        TEXT_STYLE_HIGHLIGHT,
+        TEXT_ID_STATIC
     },
     {
         8,
         8,
         "\272\311 ReactOS \274\275\303\321\312 \270\320\261\334\276 \266\311\263\305 \327\262\276\335\275(X11 \324\244BSD \265\326\313\336",
-        TEXT_STYLE_NORMAL
+        TEXT_STYLE_NORMAL,
+        TEXT_ID_STATIC
     },
     {
         8,
         9,
         "GNU LGPL \327\262\276\335\275 \305\304\336)\311 \272\260\304\336\246 \314\270\321 \312\337\260\302\304 \304\323\306 GNU GPL \311",
-        TEXT_STYLE_NORMAL
+        TEXT_STYLE_NORMAL,
+        TEXT_ID_STATIC
     },
     {
         8,
         10,
         "\274\336\256\263\271\335\311 \323\304\306 \327\262\276\335\275 \273\332\303\262\317\275\241",
-        TEXT_STYLE_NORMAL
+        TEXT_STYLE_NORMAL,
+        TEXT_ID_STATIC
     },
     {
         8,
         11,
         "ReactOS \274\275\303\321\311 \262\301\314\336\311 \277\314\304\263\252\261\311 \275\315\336\303\312 ReactOS \274\275\303\321\311 \262\301\314\336\303\336",
-        TEXT_STYLE_NORMAL
+        TEXT_STYLE_NORMAL,
+        TEXT_ID_STATIC
     },
     {
         8,
         12,
         "\261\331\325\264\306 GNU GPL \300\336\271\303\336\305\270\244 \277\311 \277\314\304\263\252\261\311 \265\330\274\336\305\331 \327\262\276\335\275\311 \323\304\306\323",
-        TEXT_STYLE_NORMAL
+        TEXT_STYLE_NORMAL,
+        TEXT_ID_STATIC
     },
     {
         8,
         13,
         "\330\330\260\275 \273\332\303 \262\317\275\241",
-        TEXT_STYLE_NORMAL
+        TEXT_STYLE_NORMAL,
+        TEXT_ID_STATIC
     },
     {
         8,
         15,
         "\272\311 \277\314\304\263\252\261\312 '\321\316\274\256\263'\303\336 \303\263\267\256\263 \273\332\244 \301\262\267\316\263\324 \272\270\273\262\316\263\266\336 \303\267\265\263\273\332\331",
-        TEXT_STYLE_NORMAL
+        TEXT_STYLE_NORMAL,
+        TEXT_ID_STATIC
     },
     {
         8,
         16,
         "\312\336\261\262\246 \311\277\336\262\303\244 \330\326\263 \276\262\271\336\335\246 \263\271\317\275\241 ReactOS \311 \327\262\276\335\275 \267\256\263\326\312",
-        TEXT_STYLE_NORMAL
+        TEXT_STYLE_NORMAL,
+        TEXT_ID_STATIC
     },
     {
         8,
         17,
         "\300\336\262\273\335\274\254\315\311 \312\335\312\336\262\246 \314\276\270\336 \300\336\271\303\336\275\241",
-        TEXT_STYLE_NORMAL
+        TEXT_STYLE_NORMAL,
+        TEXT_ID_STATIC
     },
     {
         8,
         18,
         "GNU General Public License \246 ReactOS \304 \304\323\306 \263\271\304\327\305\266\257\300",
-        TEXT_STYLE_NORMAL
+        TEXT_STYLE_NORMAL,
+        TEXT_ID_STATIC
     },
     {
         8,
         19,
         "\312\336\261\262\312\244 \302\267\336\246 \272\336\273\335\274\256\263 \270\300\336\273\262",
-        TEXT_STYLE_NORMAL
+        TEXT_STYLE_NORMAL,
+        TEXT_ID_STATIC
     },
     {
         8,
         20,
         "http://www.gnu.org/licenses/licenses.html",
-        TEXT_STYLE_HIGHLIGHT
+        TEXT_STYLE_HIGHLIGHT,
+        TEXT_ID_STATIC
     },
     {
         8,
         22,
         "\313\335\274\302 \316\274\256\263:",
-        TEXT_STYLE_HIGHLIGHT
+        TEXT_STYLE_HIGHLIGHT,
+        TEXT_ID_STATIC
     },
     {
         8,
         24,
         "\272\332\312 \314\330\260 \277\314\304\263\252\261\303\336\275\241 \274\256\263\273\262\312 \277\260\275\311 \272\313\337\260\274\336\256\263\271\335\246 \272\336\327\335 \270\300\336\273\262\241",
-        TEXT_STYLE_NORMAL
+        TEXT_STYLE_NORMAL,
+        TEXT_ID_STATIC
     },
     {
         8,
         25,
         "\316\274\256\263\312 \317\257\300\270 '\261\330\317\276\335'\241 '\274\274\336\256\263\276\262' \324 '\303\267\272\336\263\276\262'",
-        TEXT_STYLE_NORMAL
+        TEXT_STYLE_NORMAL,
+        TEXT_ID_STATIC
     },
     {
         8,
         26,
         "\306\265\262\303\323 \304\336\263\326\263\303\336\275\241",
-        TEXT_STYLE_NORMAL
+        TEXT_STYLE_NORMAL,
+        TEXT_ID_STATIC
     },
     {
         0,
         0,
         "ENTER = \323\304\336\331",
-        TEXT_TYPE_STATUS | TEXT_PADDING_BIG
+        TEXT_TYPE_STATUS | TEXT_PADDING_BIG,
+        TEXT_ID_STATIC
     },
     {
         0,
@@ -359,84 +409,98 @@ static MUI_ENTRY jaJPDevicePageEntries[] =
         4,
         3,
         " ReactOS " KERNEL_VERSION_STR " \276\257\304\261\257\314\337 ",
-        TEXT_STYLE_UNDERLINE
+        TEXT_STYLE_UNDERLINE,
+        TEXT_ID_STATIC
     },
     {
         6,
         8,
         "\262\266\311 \330\275\304\312 \271\336\335\273\336\262\311 \303\336\312\336\262\275 \276\257\303\262\303\336\275\241",
-        TEXT_STYLE_NORMAL
+        TEXT_STYLE_NORMAL,
+        TEXT_ID_STATIC
     },
     {
         24,
         11,
         "\272\335\313\337\255\260\300:",
-        TEXT_STYLE_NORMAL | TEXT_ALIGN_RIGHT
+        TEXT_STYLE_NORMAL | TEXT_ALIGN_RIGHT,
+        TEXT_ID_STATIC
     },
     {
         24,
         12,
         "\303\336\250\275\314\337\332\262:",
-        TEXT_STYLE_NORMAL | TEXT_ALIGN_RIGHT
+        TEXT_STYLE_NORMAL | TEXT_ALIGN_RIGHT,
+        TEXT_ID_STATIC
     },
     {
         24,
         13,
         "\267\260\316\336\260\304\336:",
-        TEXT_STYLE_NORMAL | TEXT_ALIGN_RIGHT
+        TEXT_STYLE_NORMAL | TEXT_ALIGN_RIGHT,
+        TEXT_ID_STATIC
     },
     {
         24,
         14,
         "\267\260\316\336\260\304\336 \332\262\261\263\304:",
-        TEXT_STYLE_NORMAL | TEXT_ALIGN_RIGHT
+        TEXT_STYLE_NORMAL | TEXT_ALIGN_RIGHT,
+        TEXT_ID_STATIC
     },
     {
         24,
         16,
         "\274\336\255\300\336\270:",
-        TEXT_STYLE_NORMAL | TEXT_ALIGN_RIGHT
+        TEXT_STYLE_NORMAL | TEXT_ALIGN_RIGHT,
+        TEXT_ID_STATIC
     },
     {
         25,
         16, "\272\332\327\311 \303\336\312\336\262\275\311 \276\257\303\262\246 \274\336\255\300\336\270 \275\331",
-        TEXT_STYLE_NORMAL
+        TEXT_STYLE_NORMAL,
+        TEXT_ID_STATIC
     },
     {
         6,
         19,
         "UP \323\274\270\312 DOWN \267\260\246 \265\274\303 \264\335\304\330\260\246 \276\335\300\270 \275\331 \272\304\306\326\330",
-        TEXT_STYLE_NORMAL
+        TEXT_STYLE_NORMAL,
+        TEXT_ID_STATIC
     },
     {
         6,
         20,
         "\312\260\304\336\263\252\261\311 \276\257\303\262\246 \315\335\272\263 \303\336\267\317\275\241 \276\335\300\270 \274\300\327\244 ENTER \267\260\246 \265\274\303 \303\267\276\302\305 \276\257\303\262\246",
-        TEXT_STYLE_NORMAL
+        TEXT_STYLE_NORMAL,
+        TEXT_ID_STATIC
     },
     {
         6,
         21,
         "\276\335\300\270 \274\317\275\241",
-        TEXT_STYLE_NORMAL
+        TEXT_STYLE_NORMAL,
+        TEXT_ID_STATIC
     },
     {
         6,
         23,
         "\272\332\327\311 \276\257\303\262\266\336 \275\315\336\303 \300\300\336\274\262 \312\336\261\262\312\244 \"\272\332\327\311 \303\336\312\336\262\275\311 \276\257\303\262\246 \274\336\255\300\336\270 \275\331\" \246 \276\335\300\270 \274\303\244",
-        TEXT_STYLE_NORMAL
+        TEXT_STYLE_NORMAL,
+        TEXT_ID_STATIC
     },
     {
         6,
         24,
         "ENTER \267\260\246 \265\274\303 \270\300\336\273\262\241",
-        TEXT_STYLE_NORMAL
+        TEXT_STYLE_NORMAL,
+        TEXT_ID_STATIC
     },
     {
         0,
         0,
         "ENTER = \277\336\257\272\263   F3 = \301\255\263\274",
-        TEXT_TYPE_STATUS | TEXT_PADDING_BIG
+        TEXT_TYPE_STATUS | TEXT_PADDING_BIG,
+        TEXT_ID_STATIC
     },
     {
         0,
@@ -452,55 +516,64 @@ static MUI_ENTRY jaJPRepairPageEntries[] =
         4,
         3,
         " ReactOS " KERNEL_VERSION_STR " \276\257\304\261\257\314\337 ",
-        TEXT_STYLE_UNDERLINE
+        TEXT_STYLE_UNDERLINE,
+        TEXT_ID_STATIC
     },
     {
         6,
         8,
         "ReactOS \276\257\304\261\257\314\337\312 \274\256\267\266\262\312\302 \300\336\335\266\262\306 \261\330\317\275\241 \277\311\300\322\244 \317\300\336",
-        TEXT_STYLE_NORMAL
+        TEXT_STYLE_NORMAL,
+        TEXT_ID_STATIC
     },
     {
         6,
         9,
         "\274\336\255\263\314\336\335\306 \330\326\263 \303\336\267\331 \276\257\304\261\257\314\337 \261\314\337\330\271\260\274\256\335\311 \275\315\336\303\311 \267\311\263\312 \273\316\337\260\304 \273\332\317\276\335\241",
-        TEXT_STYLE_NORMAL
+        TEXT_STYLE_NORMAL,
+        TEXT_ID_STATIC
     },
     {
         6,
         12,
         "\274\255\263\314\270\267\311\263\312 \317\300\336 \274\336\257\277\263 \273\332\303 \262\317\276\335\241",
-        TEXT_STYLE_NORMAL
+        TEXT_STYLE_NORMAL,
+        TEXT_ID_STATIC
     },
     {
         8,
         15,
         "\x07  OS \246 \272\263\274\335 \275\331\306\312 U \267\260\246 \265\274\303 \270\300\336\273\262\241",
-        TEXT_STYLE_NORMAL
+        TEXT_STYLE_NORMAL,
+        TEXT_ID_STATIC
     },
     {
         8,
         17,
         "\x07  \266\262\314\270 \272\335\277\260\331\246 \313\327\270\306\312 R \267\260\246 \265\274\303 \270\300\336\273\262\241",
-        TEXT_STYLE_NORMAL
+        TEXT_STYLE_NORMAL,
+        TEXT_ID_STATIC
     },
     {
         8,
         19,
         "\x07  \322\262\335\315\337\260\274\336\306 \323\304\336\331\306\312 ESC \267\260\246 \265\274\303 \270\300\336\273\262\241",
-        TEXT_STYLE_NORMAL
+        TEXT_STYLE_NORMAL,
+        TEXT_ID_STATIC
     },
     {
         8,
         21,
         "\x07  \272\335\313\337\255\260\300\246 \273\262\267\304\336\263 \275\331\306\312 ENTER \267\260\246 \265\274\303 \270\300\336\273\262\241",
-        TEXT_STYLE_NORMAL
+        TEXT_STYLE_NORMAL,
+        TEXT_ID_STATIC
     },
     {
         0,
         0,
         "ESC = \322\262\335\315\337\260\274\336  U = \272\263\274\335  R = \266\262\314\270  ENTER = \273\262\267\304\336\263",
-        TEXT_TYPE_STATUS | TEXT_PADDING_BIG
+        TEXT_TYPE_STATUS | TEXT_PADDING_BIG,
+        TEXT_ID_STATIC
     },
     {
         0,
@@ -516,61 +589,71 @@ static MUI_ENTRY jaJPUpgradePageEntries[] =
         4,
         3,
         " ReactOS " KERNEL_VERSION_STR " \276\257\304\261\257\314\337 ",
-        TEXT_STYLE_UNDERLINE
+        TEXT_STYLE_UNDERLINE,
+        TEXT_ID_STATIC
     },
     {
         6,
         8,
-        "The ReactOS Setup can upgrade one of the available ReactOS installations",
-        TEXT_STYLE_NORMAL
+        "ReactOS \276\257\304\261\257\314\337 \312 \274\300 \306 \332\257\267\256 \273\332\300 \262\335\275\304\260\331 \311 \262\275\336\332\266 \266\336 \266\311\263 \303\336\275\241",
+        TEXT_STYLE_NORMAL,
+        TEXT_ID_STATIC
     },
     {
         6,
         9,
-        "listed below, or, if a ReactOS installation is damaged, the Setup program",
-        TEXT_STYLE_NORMAL
+        "\323\274\270\312\244 \323\274 ReactOS \311 \262\335\275\304\260\331 \266\336 \277\335\274\256\263 \274\303 \262\332\312\336 \276\257\304\261\257\314\337 \314\337\333\270\336\327\321 \312",
+        TEXT_STYLE_NORMAL,
+        TEXT_ID_STATIC
     },
     {
         6,
         10,
-        "can attempt to repair it.",
-        TEXT_STYLE_NORMAL
+        "\274\255\263\314\270 \246 \272\272\333\320\331 \272\304 \266\336 \303\336\267\317\275\241",
+        TEXT_STYLE_NORMAL,
+        TEXT_ID_STATIC
     },
     {
         6,
         12,
-        "The repair functions are not all implemented yet.",
-        TEXT_STYLE_HIGHLIGHT
+        "\274\255\263\314\270 \267\311\263 \312 \317\300\336 \266\335\276\336\335 \306\312 \274\336\257\277\263 \273\332\303 \262\317\276\335\241",
+        TEXT_STYLE_HIGHLIGHT,
+        TEXT_ID_STATIC
     },
     {
         8,
         15,
-        "\x07  Press UP or DOWN to select an OS installation.",
-        TEXT_STYLE_NORMAL
+        "\x07  UP \317\300\312 DOWN \246 \265\276\312\336 OS \311 \262\335\275\304\260\331 \246 \276\335\300\270 \303\336\267\317\275\241",
+        TEXT_STYLE_NORMAL,
+        TEXT_ID_STATIC
     },
     {
         8,
         17,
-        "\x07  Press U for upgrading the selected OS installation.",
-        TEXT_STYLE_NORMAL
+        "\x07  U \246 \265\276\312\336 \276\335\300\270 \274\300 \262\335\275\304\260\331 \246 \261\257\314\337\270\336\332\260\304\336 \303\336\267\317\275\241",
+        TEXT_STYLE_NORMAL,
+        TEXT_ID_STATIC
     },
     {
         8,
         19,
-        "\x07  Press ESC to continue with a new installation.",
-        TEXT_STYLE_NORMAL
+        "\x07  ESC \246 \265\276\312\336 \261\300\327\274\262 \262\335\275\304\260\331 \303\336 \277\336\257\272\263 \274\317\275\241",
+        TEXT_STYLE_NORMAL,
+        TEXT_ID_STATIC
     },
     {
         8,
         21,
-        "\x07  Press F3 to quit without installing ReactOS.",
-        TEXT_STYLE_NORMAL
+        "\x07  F3 \246 \265\276\312\336 ReactOS \246 \262\335\275\304\260\331 \276\275\336\306 \274\255\263\330\256\263 \274\317\275\241",
+        TEXT_STYLE_NORMAL,
+        TEXT_ID_STATIC
     },
     {
         0,
         0,
-        "U = Upgrade   ESC = Do not upgrade   F3 = Quit",
-        TEXT_TYPE_STATUS | TEXT_PADDING_BIG
+        "U = \261\257\314\337\270\336\332\260\304\336  ESC = \261\257\314\337\270\336\332\260\304\336 \274\305\262  F3 = \274\255\263\330\256\263",
+        TEXT_TYPE_STATUS | TEXT_PADDING_BIG,
+        TEXT_ID_STATIC
     },
     {
         0,
@@ -586,43 +669,50 @@ static MUI_ENTRY jaJPComputerPageEntries[] =
         4,
         3,
         " ReactOS " KERNEL_VERSION_STR " \276\257\304\261\257\314\337 ",
-        TEXT_STYLE_UNDERLINE
+        TEXT_STYLE_UNDERLINE,
+        TEXT_ID_STATIC
     },
     {
         6,
         8,
         "\262\335\275\304\260\331 \273\332\331 \272\335\313\337\255\260\300\311 \274\255\331\262\246 \315\335\272\263 \275\331 \272\304\266\336 \276\335\300\270 \273\332\317\274\300\241",
-        TEXT_STYLE_NORMAL
+        TEXT_STYLE_NORMAL,
+        TEXT_ID_STATIC
     },
     {
         8,
         10,
         "\x07  UP \323\274\270\312 DOWN \267\260\246 \265\274\303 \303\267\275\331 \272\335\313\337\255\260\300\311 \274\255\331\262\246 \276\335\300\270 \274\303 \270\300\336\273\262\241",
-        TEXT_STYLE_NORMAL
+        TEXT_STYLE_NORMAL,
+        TEXT_ID_STATIC
     },
     {
         8,
         11,
         "   \302\267\336\306 ENTER \267\260\246 \265\274\303 \270\300\336\273\262\241",
-        TEXT_STYLE_NORMAL
+        TEXT_STYLE_NORMAL,
+        TEXT_ID_STATIC
     },
     {
         8,
         13,
         "\x07  \272\335\313\337\255\260\300\311 \274\255\331\262\246 \315\335\272\263\276\275\336\306 \317\264\311 \315\337\260\274\336\306 \323\304\336\331 \312\336\261\262\312 ESC \267\260\246",
-        TEXT_STYLE_NORMAL
+        TEXT_STYLE_NORMAL,
+        TEXT_ID_STATIC
     },
     {
         8,
         14,
         "   \265\274\303 \270\300\336\273\262\241",
-        TEXT_STYLE_NORMAL
+        TEXT_STYLE_NORMAL,
+        TEXT_ID_STATIC
     },
     {
         0,
         0,
         "ENTER = \277\336\257\272\263   ESC = \267\254\335\276\331   F3 = \301\255\263\274",
-        TEXT_TYPE_STATUS | TEXT_PADDING_BIG
+        TEXT_TYPE_STATUS | TEXT_PADDING_BIG,
+        TEXT_ID_STATIC
     },
     {
         0,
@@ -638,31 +728,36 @@ static MUI_ENTRY jaJPFlushPageEntries[] =
         4,
         3,
         " ReactOS " KERNEL_VERSION_STR " \276\257\304\261\257\314\337 ",
-        TEXT_STYLE_UNDERLINE
+        TEXT_STYLE_UNDERLINE,
+        TEXT_ID_STATIC
     },
     {
         10,
         6,
         "\274\275\303\321\312 \266\270\274\336\302\306 \275\315\336\303\311 \303\336\260\300\266\336 \303\336\250\275\270\274\336\256\263\306 \316\277\336\335 \273\332\331 \326\263\306 \274\303\262\317\275",
-        TEXT_STYLE_NORMAL
+        TEXT_STYLE_NORMAL,
+        TEXT_ID_STATIC
     },
     {
         10,
         8,
         "\272\332\306\312 \274\256\263\274\256\263 \274\336\266\335\266\336 \266\266\331 \312\336\261\262\266\336 \261\330\317\275",
-        TEXT_STYLE_NORMAL
+        TEXT_STYLE_NORMAL,
+        TEXT_ID_STATIC
     },
     {
         10,
         9,
         "\266\335\330\256\263\272\336\244 \272\335\313\337\255\260\300\312 \274\336\304\336\263\303\306 \273\262\267\304\336\263 \273\332\317\275",
-        TEXT_STYLE_NORMAL
+        TEXT_STYLE_NORMAL,
+        TEXT_ID_STATIC
     },
     {
         0,
         0,
         "\267\254\257\274\255\246 \274\256\263\267\256 \274\303 \262\317\275",
-        TEXT_TYPE_STATUS | TEXT_PADDING_BIG
+        TEXT_TYPE_STATUS | TEXT_PADDING_BIG,
+        TEXT_ID_STATIC
     },
     {
         0,
@@ -678,37 +773,43 @@ static MUI_ENTRY jaJPQuitPageEntries[] =
         4,
         3,
         " ReactOS " KERNEL_VERSION_STR " \276\257\304\261\257\314\337 ",
-        TEXT_STYLE_UNDERLINE
+        TEXT_STYLE_UNDERLINE,
+        TEXT_ID_STATIC
     },
     {
         10,
         6,
         "ReactOS \312 \266\335\276\336\335\306 \262\335\275\304\260\331 \273\332\317\276\335\303\336\274\300",
-        TEXT_STYLE_NORMAL
+        TEXT_STYLE_NORMAL,
+        TEXT_ID_STATIC
     },
     {
         10,
         8,
         "\304\336\327\262\314\336 A: \266\327 \314\333\257\313\337\260 \303\336\250\275\270\244 CD \304\336\327\262\314\336\266\327",
-        TEXT_STYLE_NORMAL
+        TEXT_STYLE_NORMAL,
+        TEXT_ID_STATIC
     },
     {
         10,
         9,
         "\275\315\336\303\311 CD-ROM \246 \304\330\300\336\274\303 \270\300\336\273\262\241",
-        TEXT_STYLE_NORMAL
+        TEXT_STYLE_NORMAL,
+        TEXT_ID_STATIC
     },
     {
         10,
         11,
         "\272\335\313\337\255\260\300\246 \273\262\267\304\336\263 \275\331\306\312 ENTER \267\260\246 \265\274\303 \270\300\336\273\262\241",
-        TEXT_STYLE_NORMAL
+        TEXT_STYLE_NORMAL,
+        TEXT_ID_STATIC
     },
     {
         0,
         0,
         "\265\317\301 \270\300\336\273\262...",
         TEXT_TYPE_STATUS | TEXT_PADDING_BIG,
+        TEXT_ID_STATIC
     },
     {
         0,
@@ -724,42 +825,50 @@ static MUI_ENTRY jaJPDisplayPageEntries[] =
         4,
         3,
         " ReactOS " KERNEL_VERSION_STR " \276\257\304\261\257\314\337 ",
-        TEXT_STYLE_UNDERLINE
+        TEXT_STYLE_UNDERLINE,
+        TEXT_ID_STATIC
     },
     {
         6,
         8,
         "\262\335\275\304\260\331 \273\332\331 \303\336\250\275\314\337\332\262\311 \274\255\331\262\246 \315\335\272\263 \275\331 \272\304\266\336 \276\335\300\270 \273\332\317\274\300\241",
-        TEXT_STYLE_NORMAL
+        TEXT_STYLE_NORMAL,
+        TEXT_ID_STATIC
     },
-    {   8,
+    {
+        8,
         10,
          "\x07  UP \323\274\270\312 DOWN \267\260\246 \265\274\303 \303\267\275\331 \303\336\250\275\314\337\332\262\311 \274\255\331\262\246 \276\335\300\270 \274\303 \270\300\336\273\262\241",
-         TEXT_STYLE_NORMAL
+         TEXT_STYLE_NORMAL,
+         TEXT_ID_STATIC
     },
     {
         8,
         11,
         "   \302\267\336\306 ENTER \267\260\246 \265\274\303 \270\300\336\273\262\241",
-        TEXT_STYLE_NORMAL
+        TEXT_STYLE_NORMAL,
+        TEXT_ID_STATIC
     },
     {
         8,
         13,
         "\x07  \303\336\250\275\314\337\332\262\311 \274\255\331\262\246 \315\335\272\263\276\275\336\306 \317\264\311 \315\337\260\274\336\306 \323\304\336\331\306\312 ESC \267\260\246",
-        TEXT_STYLE_NORMAL
+        TEXT_STYLE_NORMAL,
+        TEXT_ID_STATIC
     },
     {
         8,
         14,
         "   \265\274\303 \270\300\336\273\262\241",
-        TEXT_STYLE_NORMAL
+        TEXT_STYLE_NORMAL,
+        TEXT_ID_STATIC
     },
     {
         0,
         0,
         "ENTER = \277\336\257\272\263   ESC = \267\254\335\276\331   F3 = \301\255\263\274",
-        TEXT_TYPE_STATUS | TEXT_PADDING_BIG
+        TEXT_TYPE_STATUS | TEXT_PADDING_BIG,
+        TEXT_ID_STATIC
     },
     {
         0,
@@ -775,37 +884,43 @@ static MUI_ENTRY jaJPSuccessPageEntries[] =
         4,
         3,
         " ReactOS " KERNEL_VERSION_STR " \276\257\304\261\257\314\337 ",
-        TEXT_STYLE_UNDERLINE
+        TEXT_STYLE_UNDERLINE,
+        TEXT_ID_STATIC
     },
     {
         10,
         6,
         "ReactOS \311 \267\316\335\314\336\314\336\335\311 \262\335\275\304\260\331\312 \276\262\272\263 \274\317\274\300\241",
-        TEXT_STYLE_NORMAL
+        TEXT_STYLE_NORMAL,
+        TEXT_ID_STATIC
     },
     {
         10,
         8,
         "\304\336\327\262\314\336 A: \266\327 \314\333\257\313\337\260 \303\336\250\275\270\244 CD \304\336\327\262\314\336\266\327",
-        TEXT_STYLE_NORMAL
+        TEXT_STYLE_NORMAL,
+        TEXT_ID_STATIC
     },
     {
         10,
         9,
         "\275\315\336\303\311 CD-ROM \246 \304\330\300\336\274\303 \270\300\336\273\262\241",
-        TEXT_STYLE_NORMAL
+        TEXT_STYLE_NORMAL,
+        TEXT_ID_STATIC
     },
     {
         10,
         11,
         "\272\335\313\337\255\260\300\246 \273\262\267\304\336\263 \275\331\306\312 ENTER \267\260\246 \265\274\303 \270\300\336\273\262\241",
-        TEXT_STYLE_NORMAL
+        TEXT_STYLE_NORMAL,
+        TEXT_ID_STATIC
     },
     {
         0,
         0,
         "ENTER = \272\335\313\337\255\260\300\311 \273\262\267\304\336\263",
-        TEXT_TYPE_STATUS | TEXT_PADDING_BIG
+        TEXT_TYPE_STATUS | TEXT_PADDING_BIG,
+        TEXT_ID_STATIC
     },
     {
         0,
@@ -821,37 +936,43 @@ static MUI_ENTRY jaJPBootPageEntries[] =
         4,
         3,
         " ReactOS " KERNEL_VERSION_STR " \276\257\304\261\257\314\337 ",
-        TEXT_STYLE_UNDERLINE
+        TEXT_STYLE_UNDERLINE,
+        TEXT_ID_STATIC
     },
     {
         6,
         8,
         "\276\257\304\261\257\314\337\312 \314\336\260\304\333\260\300\336\246 \272\335\313\337\255\260\300\311 \312\260\304\336\303\336\250\275\270\274\336\256\263\306 \262\335\275\304\260\331",
-        TEXT_STYLE_NORMAL
+        TEXT_STYLE_NORMAL,
+        TEXT_ID_STATIC
     },
     {
         6,
         9,
         "\303\336\267\317\276\335\303\336\274\300",
-        TEXT_STYLE_NORMAL
+        TEXT_STYLE_NORMAL,
+        TEXT_ID_STATIC
     },
     {
         6,
         13,
         "\304\336\327\262\314\336 A: \306 \314\253\260\317\257\304 \273\332\300 \314\333\257\313\337\260 \303\336\250\275\270\246 \262\332\303\244",
-        TEXT_STYLE_NORMAL
+        TEXT_STYLE_NORMAL,
+        TEXT_ID_STATIC
     },
     {
         6,
         14,
         "ENTER \267\260\246 \265\274\303 \270\300\336\273\262\241",
         TEXT_STYLE_NORMAL,
+        TEXT_ID_STATIC
     },
     {
         0,
         0,
         "ENTER = \277\336\257\272\263   F3 = \301\255\263\274",
-        TEXT_TYPE_STATUS | TEXT_PADDING_BIG
+        TEXT_TYPE_STATUS | TEXT_PADDING_BIG,
+        TEXT_ID_STATIC
     },
     {
         0,
@@ -868,62 +989,194 @@ static MUI_ENTRY jaJPSelectPartitionEntries[] =
         4,
         3,
         " ReactOS " KERNEL_VERSION_STR " \276\257\304\261\257\314\337 ",
-        TEXT_STYLE_UNDERLINE
+        TEXT_STYLE_UNDERLINE,
+        TEXT_ID_STATIC
     },
     {
         6,
         8,
         "\262\266\311 \330\275\304\312 \277\335\273\336\262\275\331 \312\337\260\303\250\274\256\335\304 \274\335\267 \312\337\260\303\250\274\256\335\306 \303\267\274\300 \320\274\326\263\311",
-        TEXT_STYLE_NORMAL
+        TEXT_STYLE_NORMAL,
+        TEXT_ID_STATIC
     },
     {
         6,
         9,
         "\303\336\250\275\270 \275\315\337\260\275\311 \262\301\327\335\303\336\275\241",
-        TEXT_STYLE_NORMAL
+        TEXT_STYLE_NORMAL,
+        TEXT_ID_STATIC
     },
     {
         8,
         11,
         "\x07  UP \323\274\270\312 DOWN \267\260\246 \265\274\303 \330\275\304 \264\335\304\330\260\246 \276\335\300\270 \274\303 \270\300\336\273\262\241",
-        TEXT_STYLE_NORMAL
+        TEXT_STYLE_NORMAL,
+        TEXT_ID_STATIC
     },
     {
         8,
         13,
         "\x07  \276\335\300\270\273\332\300 \312\337\260\303\250\274\256\335\306 ReactOS \246 \262\335\275\304\260\331 \275\331\306\312 ENTER \267\260\246 \265\274\303 \270\300\336\273\262\241",
-        TEXT_STYLE_NORMAL
+        TEXT_STYLE_NORMAL,
+        TEXT_ID_STATIC
     },
     {
         8,
         15,
-        "\x07  Press P to create a primary partition.",
+        "\x07  P \246 \265\276\312\336 \314\337\327\262\317\330\260 \312\337\260\303\250\274\256\335 \246 \273\270\276\262 \274\317\275\241",
 //        "\x07  ±À×¼² Êß°Ã¨¼®Ý ¦ »¸¾² ½ÙÆÊ C ·°¦ µ¼Ã ¸ÀÞ»²¡",
-        TEXT_STYLE_NORMAL
+        TEXT_STYLE_NORMAL,
+        TEXT_ID_STATIC
     },
     {
         8,
         17,
-        "\x07  Press E to create an extended partition.",
-        TEXT_STYLE_NORMAL
+        "\x07  E \246 \265\276\312\336 \266\270\301\256\263 \312\337\260\303\250\274\256\335 \246 \273\270\276\262 \274\317\275\241",
+        TEXT_STYLE_NORMAL,
+        TEXT_ID_STATIC
     },
     {
         8,
         19,
-        "\x07  Press L to create a logical partition.",
-        TEXT_STYLE_NORMAL
+        "\x07  L \246 \265\276\312\336 \333\335\330 \312\337\260\303\250\274\256\335 \246 \273\270\276\262 \274\317\275\241",
+        TEXT_STYLE_NORMAL,
+        TEXT_ID_STATIC
     },
     {
         8,
         21,
         "\x07  \267\277\335\311 \312\337\260\303\250\274\256\335\246 \273\270\274\336\256 \275\331\306\312 D \267\260\246 \265\274\303 \270\300\336\273\262\241",
-        TEXT_STYLE_NORMAL
+        TEXT_STYLE_NORMAL,
+        TEXT_ID_STATIC
     },
     {
         0,
         0,
         "\265\317\301 \270\300\336\273\262...",
-        TEXT_TYPE_STATUS | TEXT_PADDING_BIG
+        TEXT_TYPE_STATUS | TEXT_PADDING_BIG,
+        TEXT_ID_STATIC
+    },
+    {
+        0,
+        0,
+        NULL,
+        0
+    }
+};
+
+static MUI_ENTRY jaJPChangeSystemPartition[] =
+{
+    {
+        4,
+        3,
+        " ReactOS " KERNEL_VERSION_STR " \276\257\304\261\257\314\337 ",
+        TEXT_STYLE_UNDERLINE,
+        TEXT_ID_STATIC
+    },
+    {
+        6,
+        8,
+        "\274\275\303\321 \303\336\250\275\270 \306 \261\331 \261\305\300 \311 \312\337\277\272\335 \311 \271\336\335\273\336\262 \311 \274\275\303\321",
+        TEXT_STYLE_NORMAL,
+        TEXT_ID_STATIC
+    },
+    {
+        6,
+        12,
+        "\312\337\260\303\250\274\256\335 \312 ReactOS \303\336 \273\316\337\260\304 \273\332\303 \262\305\262 \271\262\274\267 \246",
+        TEXT_STYLE_NORMAL,
+        TEXT_ID_STATIC
+    },
+    {
+        6,
+        16,
+        "\302\266\257\303 \262\317\275\241",
+        TEXT_STYLE_NORMAL,
+        TEXT_ID_STATIC
+    },
+    {
+        6,
+        18,
+        "ReactOS \246 \314\336\274\336\306 \276\262\272\263 \273\276\331 \300\322 \306\312\244 \276\257\304\261\257\314\337 \314\337\333\270\336\327\321 \312",
+        TEXT_STYLE_NORMAL,
+        TEXT_ID_STATIC
+    },
+    {
+        6,
+        19,
+        "\271\336\335\273\336\262 \311 \274\275\303\321 \312\337\260\303\250\274\256\335 \246 \261\300\327\274\262 \323\311 \306 \266\264\305\262\304 \262\271\317\276\335\241",
+        TEXT_STYLE_NORMAL,
+        TEXT_ID_STATIC
+    },
+    {
+        6,
+        21,
+        "\261\300\327\274\262 \274\275\303\321 \312\337\260\303\250\274\256\335 \311 \272\263\316 \312:",
+        TEXT_STYLE_NORMAL,
+        TEXT_ID_STATIC
+    },
+    {
+        8,
+        25,
+        "\x07  \272\311 \276\335\300\270 \246 \263\271\262\332\331 \305\327 ENTER \246 \265\274\303 \270\300\336\273\262\241",
+        TEXT_STYLE_NORMAL,
+        TEXT_ID_STATIC
+    },
+    {
+        8,
+        27,
+        "\x07  \274\275\303\321 \312\337\260\303\250\274\256\335 \246 \274\255\304\336\263 \303\336 \315\335\272\263 \275\331 \305\327\244 ESC \246 \265\274\303",
+        TEXT_STYLE_NORMAL,
+        TEXT_ID_STATIC
+    },
+    {
+        8,
+        28,
+        "   \312\337\260\303\250\274\256\335 \276\335\300\270 \330\275\304 \306 \323\304\336\330\244 \261\300\327\274\262 \274\275\303\321 \312\337\260\303\250\274\256\335 \246",
+        TEXT_STYLE_NORMAL,
+        TEXT_ID_STATIC
+    },
+    {
+        8,
+        29,
+        "   \276\335\300\270 \275\331\266 \273\270\276\262 \274\303 \270\300\336\273\262\241",
+        TEXT_STYLE_NORMAL,
+        TEXT_ID_STATIC
+    },
+    {
+        6,
+        32,
+        "\323\274 \323\304\311 \274\275\303\321 \312\337\260\303\250\274\256\335 \306 \262\277\336\335\275\331 \316\266\311 OS \266\336 \261\332\312\336\244",
+        TEXT_STYLE_NORMAL,
+        TEXT_ID_STATIC
+    },
+    {
+        6,
+        33,
+        "ReactOS \262\335\275\304\260\331 \311 \261\304 \306 \261\300\327\274\262 \274\275\303\321 \312\337\260\303\250\274\256\335 \306",
+        TEXT_STYLE_NORMAL,
+        TEXT_ID_STATIC
+    },
+    {
+        6,
+        34,
+        "\273\262\276\257\303\262 \275\331\266\244 \274\275\303\321 \312\337\260\303\250\274\256\335 \246 \323\304 \306 \323\304\336\275 \313\302\326\263 \266\336 ",
+        TEXT_STYLE_NORMAL,
+        TEXT_ID_STATIC
+    },
+    {
+        6,
+        35,
+        "\261\331 \266\323 \274\332\317\276\335\241",
+        TEXT_STYLE_NORMAL,
+        TEXT_ID_STATIC
+    },
+    {
+        0,
+        0,
+        "ENTER = \277\336\257\272\263   ESC = \267\254\335\276\331",
+        TEXT_TYPE_STATUS | TEXT_PADDING_BIG,
+        TEXT_ID_STATIC
     },
     {
         0,
@@ -939,85 +1192,99 @@ static MUI_ENTRY jaJPConfirmDeleteSystemPartitionEntries[] =
         4,
         3,
         " ReactOS " KERNEL_VERSION_STR " \276\257\304\261\257\314\337 ",
-        TEXT_STYLE_UNDERLINE
+        TEXT_STYLE_UNDERLINE,
+        TEXT_ID_STATIC
     },
     {
         6,
         8,
-        "You have chosen to delete the system partition.",
-        TEXT_STYLE_NORMAL
+        "\274\275\303\321 \312\337\260\303\250\274\256\335 \311 \273\270\274\336\256 \202\252 \264\327\312\336\332 \317\274\300\241",
+        TEXT_STYLE_NORMAL,
+        TEXT_ID_STATIC
     },
     {
         6,
         10,
-        "System partitions can contain diagnostic programs, hardware configuration",
-        TEXT_STYLE_NORMAL
+        "\274\275\303\321 \312\337\260\303\250\274\256\335 \202\315 \274\335\300\336\335 \314\337\333\270\336\327\321\244 \312\260\304\336\263\252\261 \276\257\303\262 \314\337\333\270\336\327\321\244 ReactOS",
+        TEXT_STYLE_NORMAL,
+        TEXT_ID_STATIC
     },
     {
         6,
         11,
-        "programs, programs to start an operating system (like ReactOS) or other",
-        TEXT_STYLE_NORMAL
+        "\305\304\336 \311 OS  \324\244\312\260\304\336\263\252\261 \266\262\312\302\323\304 \266\336 \303\262\267\256\263 \275\331 \316\266\311 \314\337\333\270\336\327\321 \246 \266\262\274 \275\331",
+        TEXT_STYLE_NORMAL,
+        TEXT_ID_STATIC
     },
     {
         6,
         12,
-        "programs provided by the hardware manufacturer.",
-        TEXT_STYLE_NORMAL
+        "\314\337\333\270\336\327\321 \246 \314\270\321 \272\304 \266\336 \261\330\317\275\241",
+        TEXT_STYLE_NORMAL,
+        TEXT_ID_STATIC
     },
     {
         6,
         14,
-        "Delete a system partition only when you are sure that there are no such",
-        TEXT_STYLE_NORMAL
+        "\277\311\326\263\305 \314\337\333\270\336\327\321 \266\336 \305\262 \266 \266\270\306\335 \274\300 \266\244 \273\270\274\336\256 \274\303 \323 \262\262\304\267 \311\320",
+        TEXT_STYLE_NORMAL,
+        TEXT_ID_STATIC
     },
     {
         6,
         15,
-        "programs on the partition, or when you are sure you want to delete them.",
-        TEXT_STYLE_NORMAL
+        "\273\270\274\336\256 \274\303 \270\300\336\273\262\241",
+        TEXT_STYLE_NORMAL,
+        TEXT_ID_STATIC
     },
     {
         6,
         16,
-        "When you delete the partition, you might not be able to boot the",
-        TEXT_STYLE_NORMAL
+        "\312\337\260\303\250\274\256\335 \246 \273\270\274\336\256 \274\300 \304\267\244 ReactOS \276\257\304\261\257\314\337 \266\336 \274\255\263\330\256\263 \275\331\317\303\336\244",
+        TEXT_STYLE_NORMAL,
+        TEXT_ID_STATIC
     },
     {
         6,
         17,
-        "computer from the harddisk until you finished the ReactOS Setup.",
-        TEXT_STYLE_NORMAL
+        "\312\260\304\336\303\336\250\275\270 \266\327 \277\311 \272\335\313\337\255\260\300 \246 \267\304\336\263 \303\336\267\305\262 \266\323 \274\332\317\276\335\241",
+        TEXT_STYLE_NORMAL,
+        TEXT_ID_STATIC
     },
     {
         8,
         20,
-        "\x07  Press ENTER to delete the system partition. You will be asked",
-        TEXT_STYLE_NORMAL
+        "\x07  ENTER \246 \265\276\312\336 \274\275\303\321 \312\337\260\303\250\274\256\335 \246 \273\270\274\336\256 \274\317\275\241 \266\270\306\335 \311 \300\322\244",
+        TEXT_STYLE_NORMAL,
+        TEXT_ID_STATIC
     },
     {
         8,
         21,
-        "   to confirm the deletion of the partition again later.",
-        TEXT_STYLE_NORMAL
+        "   \261\304\303\336 \323\263\262\301\304\336 \300\275\336\310\317\275\241",
+        TEXT_STYLE_NORMAL,
+        TEXT_ID_STATIC
     },
     {
         8,
         24,
-        "\x07  Press ESC to return to the previous page. The partition will",
-        TEXT_STYLE_NORMAL
+        "\x07  ESC \246 \265\276\312\336 \317\264 \311 \315\337\260\274\336 \315 \323\304\336\330\317\275\241 \312\337\260\303\250\274\256\335 \312",
+        TEXT_STYLE_NORMAL,
+        TEXT_ID_STATIC
     },
     {
         8,
         25,
-        "   not be deleted.",
-        TEXT_STYLE_NORMAL
+        "   \273\270\274\336\256 \273\332\317\276\335\241",
+        TEXT_STYLE_NORMAL,
+        TEXT_ID_STATIC
     },
     {
         0,
         0,
-        "ENTER=Continue  ESC=Cancel",
-        TEXT_TYPE_STATUS | TEXT_PADDING_BIG
+        "ENTER=\277\336\257\272\263  ESC=\267\254\335\276\331",
+        TEXT_TYPE_STATUS | TEXT_PADDING_BIG,
+        TEXT_ID_STATIC
     },
     {
         0,
@@ -1033,31 +1300,35 @@ static MUI_ENTRY jaJPFormatPartitionEntries[] =
         4,
         3,
         " ReactOS " KERNEL_VERSION_STR " \276\257\304\261\257\314\337 ",
-        TEXT_STYLE_UNDERLINE
+        TEXT_STYLE_UNDERLINE,
+        TEXT_ID_STATIC
     },
     {
         6,
         8,
         "\312\337\260\303\250\274\256\335\311 \314\253\260\317\257\304",
-        TEXT_STYLE_NORMAL
+        TEXT_STYLE_NORMAL,
+        TEXT_ID_STATIC
     },
     {
         6,
         10,
         "\276\257\304\261\257\314\337\312 \312\337\260\303\250\274\256\335\246 \314\253\260\317\257\304 \274\317\275\241 \277\336\257\272\263 \275\331\306\312 ENTER \267\260\246 \265\274\303 \270\300\336\273\262\241",
-        TEXT_STYLE_NORMAL
+        TEXT_STYLE_NORMAL,
+        TEXT_ID_FORMAT_PROMPT
     },
     {
         0,
         0,
         "ENTER = \277\336\257\272\263   F3 = \301\255\263\274",
-        TEXT_TYPE_STATUS | TEXT_PADDING_BIG
+        TEXT_TYPE_STATUS | TEXT_PADDING_BIG,
+        TEXT_ID_STATIC
     },
     {
         0,
         0,
         NULL,
-        TEXT_STYLE_NORMAL
+        0
     }
 };
 
@@ -1067,43 +1338,50 @@ static MUI_ENTRY jaJPInstallDirectoryEntries[] =
         4,
         3,
         " ReactOS " KERNEL_VERSION_STR " \276\257\304\261\257\314\337 ",
-        TEXT_STYLE_UNDERLINE
+        TEXT_STYLE_UNDERLINE,
+        TEXT_ID_STATIC
     },
     {
         6,
         8,
         "\276\257\304\261\257\314\337\312 ReactOS \311 \314\247\262\331\246 \276\335\300\270 \273\332\300 \312\337\260\303\250\274\256\335\274\336\256\263\306 \262\335\275\304\260\331 \274\317\275\241 ReactOS \246",
-        TEXT_STYLE_NORMAL
+        TEXT_STYLE_NORMAL,
+        TEXT_ID_STATIC
     },
     {
         6,
         9,
         "\262\335\275\304\260\331\275\331 \303\336\250\332\270\304\330\246 \276\257\303\262 \274\303 \270\300\336\273\262:",
-        TEXT_STYLE_NORMAL
+        TEXT_STYLE_NORMAL,
+        TEXT_ID_STATIC
     },
     {
         6,
         14,
         "\275\262\274\256\263 \303\336\250\332\270\304\330\246 \315\335\272\263\275\331\306\312\244 BACKSPACE \267\260\303\336 \323\274\336\246 \273\270\274\336\256 \274\300 \261\304\306\244",
-        TEXT_STYLE_NORMAL
+        TEXT_STYLE_NORMAL,
+        TEXT_ID_STATIC
     },
     {
         6,
         15,
         "ReactOS \246 \262\335\275\304\260\331 \275\331 \303\336\250\332\270\304\330\246 \306\255\263\330\256\270",
-        TEXT_STYLE_NORMAL
+        TEXT_STYLE_NORMAL,
+        TEXT_ID_STATIC
     },
     {
         6,
         16,
         "\274\303 \270\300\336\273\262\241",
-        TEXT_STYLE_NORMAL
+        TEXT_STYLE_NORMAL,
+        TEXT_ID_STATIC
     },
     {
         0,
         0,
         "ENTER = \277\336\257\272\263   F3 = \301\255\263\274",
-        TEXT_TYPE_STATUS | TEXT_PADDING_BIG
+        TEXT_TYPE_STATUS | TEXT_PADDING_BIG,
+        TEXT_ID_STATIC
     },
     {
         0,
@@ -1119,31 +1397,36 @@ static MUI_ENTRY jaJPFileCopyEntries[] =
         4,
         3,
         " ReactOS " KERNEL_VERSION_STR " \276\257\304\261\257\314\337 ",
-        TEXT_STYLE_UNDERLINE
+        TEXT_STYLE_UNDERLINE,
+        TEXT_ID_STATIC
     },
     {
         0,
         12,
         "ReactOS \276\257\304\261\257\314\337\266\336 ReactOS \262\335\275\304\260\331 \314\253\331\300\336\306 \314\247\262\331\246",
-        TEXT_STYLE_NORMAL | TEXT_ALIGN_CENTER
+        TEXT_STYLE_NORMAL | TEXT_ALIGN_CENTER,
+        TEXT_ID_STATIC
     },
     {
         0,
         13,
         "\272\313\337\260 \275\331 \261\262\300\336 \274\312\336\327\270 \265\317\301 \270\300\336\273\262\241",
-        TEXT_STYLE_NORMAL | TEXT_ALIGN_CENTER
+        TEXT_STYLE_NORMAL | TEXT_ALIGN_CENTER,
+        TEXT_ID_STATIC
     },
     {
         0,
         14,
         "\266\335\330\256\263\317\303\336\306 \275\263\314\335 \266\266\331 \312\336\261\262\266\336 \261\330\317\275\241",
-        TEXT_STYLE_NORMAL | TEXT_ALIGN_CENTER
+        TEXT_STYLE_NORMAL | TEXT_ALIGN_CENTER,
+        TEXT_ID_STATIC
     },
     {
         50,
         0,
         "\xB3 \265\317\301 \270\300\336\273\262...    ",
-        TEXT_TYPE_STATUS
+        TEXT_TYPE_STATUS,
+        TEXT_ID_STATIC
     },
     {
         0,
@@ -1159,43 +1442,50 @@ static MUI_ENTRY jaJPBootLoaderEntries[] =
         4,
         3,
         " ReactOS " KERNEL_VERSION_STR " \276\257\304\261\257\314\337 ",
-        TEXT_STYLE_UNDERLINE
+        TEXT_STYLE_UNDERLINE,
+        TEXT_ID_STATIC
     },
     {
         6,
         8,
         "\276\257\304\261\257\314\337\312 \314\336\260\304 \333\260\300\336\246 \262\335\275\304\260\331 \274\317\275",
-        TEXT_STYLE_NORMAL
+        TEXT_STYLE_NORMAL,
+        TEXT_ID_STATIC
     },
     {
         8,
         12,
         "\312\260\304\336\303\336\250\275\270\306 \314\336\260\304\333\260\300\336\260\246 \262\335\275\304\260\331 \274\317\275 (MBR \304 VBR).",
-        TEXT_STYLE_NORMAL
+        TEXT_STYLE_NORMAL,
+        TEXT_ID_STATIC
     },
     {
         8,
         13,
         "\312\260\304\336\303\336\250\275\270\306 \314\336\260\304\333\260\300\336\260\246 \262\335\275\304\260\331 \274\317\275 (VBR \311\320).",
-        TEXT_STYLE_NORMAL
+        TEXT_STYLE_NORMAL,
+        TEXT_ID_STATIC
     },
     {
         8,
         14,
         "\314\336\260\304\333\260\300\336\246 \314\333\257\313\337\260 \303\336\250\275\270\306 \262\335\275\304\260\331 \275\331\241",
-        TEXT_STYLE_NORMAL
+        TEXT_STYLE_NORMAL,
+        TEXT_ID_STATIC
     },
     {
         8,
         15,
         "\314\336\260\304\333\260\300\336\311 \262\335\275\304\260\331\246 \275\267\257\314\337 \275\331\241",
-        TEXT_STYLE_NORMAL
+        TEXT_STYLE_NORMAL,
+        TEXT_ID_STATIC
     },
     {
         0,
         0,
         "ENTER = \277\336\257\272\263   F3 = \301\255\263\274",
-        TEXT_TYPE_STATUS | TEXT_PADDING_BIG
+        TEXT_TYPE_STATUS | TEXT_PADDING_BIG,
+        TEXT_ID_STATIC
     },
     {
         0,
@@ -1211,43 +1501,50 @@ static MUI_ENTRY jaJPKeyboardSettingsEntries[] =
         4,
         3,
         " ReactOS " KERNEL_VERSION_STR " \276\257\304\261\257\314\337 ",
-        TEXT_STYLE_UNDERLINE
+        TEXT_STYLE_UNDERLINE,
+        TEXT_ID_STATIC
     },
     {
         6,
         8,
         "\262\335\275\304\260\331 \273\332\331 \267\260\316\336\260\304\336\311 \274\255\331\262\246 \315\335\272\263 \275\331 \272\304\266\336 \276\335\300\270 \273\332\317\274\300\241",
-        TEXT_STYLE_NORMAL
+        TEXT_STYLE_NORMAL,
+        TEXT_ID_STATIC
     },
     {
         8,
         10,
         "\x07  UP \323\274\270\312 DOWN \267\260\246 \265\274\303 \303\267\275\331 \267\260\316\336\260\304\336\311 \274\255\331\262\246 \276\335\300\270 \274\303 \270\300\336\273\262\241",
-        TEXT_STYLE_NORMAL
+        TEXT_STYLE_NORMAL,
+        TEXT_ID_STATIC
     },
     {
         8,
         11,
         "   \302\267\336\306 ENTER \267\260\246 \265\274\303 \270\300\336\273\262\241",
-        TEXT_STYLE_NORMAL
+        TEXT_STYLE_NORMAL,
+        TEXT_ID_STATIC
     },
     {
         8,
         13,
         "\x07  \267\260\316\336\260\304\336\311 \274\255\331\262\246 \315\335\272\263 \276\275\336\306 \317\264\311 \315\337\260\274\336\306 \323\304\336\331\306\312 ESC\267\260\246",
-        TEXT_STYLE_NORMAL
+        TEXT_STYLE_NORMAL,
+        TEXT_ID_STATIC
     },
     {
         8,
         14,
         "   \265\274\303 \270\300\336\273\262\241",
-        TEXT_STYLE_NORMAL
+        TEXT_STYLE_NORMAL,
+        TEXT_ID_STATIC
     },
     {
         0,
         0,
         "ENTER = \277\336\257\272\263   ESC = \267\254\335\276\331   F3 = \301\255\263\274",
-        TEXT_TYPE_STATUS | TEXT_PADDING_BIG
+        TEXT_TYPE_STATUS | TEXT_PADDING_BIG,
+        TEXT_ID_STATIC
     },
     {
         0,
@@ -1263,43 +1560,50 @@ static MUI_ENTRY jaJPLayoutSettingsEntries[] =
         4,
         3,
         " ReactOS " KERNEL_VERSION_STR " \276\257\304\261\257\314\337 ",
-        TEXT_STYLE_UNDERLINE
+        TEXT_STYLE_UNDERLINE,
+        TEXT_ID_STATIC
     },
     {
         6,
         8,
         "\267\303\262\311 \332\262\261\263\304\304\274\303 \262\335\275\304\260\331 \273\332\331 \332\262\261\263\304\246 \276\335\300\270 \274\303 \270\300\336\273\262\241",
-        TEXT_STYLE_NORMAL
+        TEXT_STYLE_NORMAL,
+        TEXT_ID_STATIC
     },
     {
         8,
         10,
         "\x07  UP \323\274\270\312 DOWN \267\260\246 \265\274\303 \303\267\275\331 \267\260\316\336\260\304\336 \332\262\261\263\304\246 \276\335\300\270 \274\303\244",
-        TEXT_STYLE_NORMAL
+        TEXT_STYLE_NORMAL,
+        TEXT_ID_STATIC
     },
     {
         8,
         11,
         "    \302\267\336\306 ENTER \267\260\246 \265\274\303 \270\300\336\273\262\241",
-        TEXT_STYLE_NORMAL
+        TEXT_STYLE_NORMAL,
+        TEXT_ID_STATIC
     },
     {
         8,
         13,
         "\x07  \267\260\316\336\260\304\336 \332\262\261\263\304\246 \315\335\272\263 \276\275\336\306 \317\264\311 \315\337\260\274\336\306 \323\304\336\331\306\312 ESC \267\260\246",
-        TEXT_STYLE_NORMAL
+        TEXT_STYLE_NORMAL,
+        TEXT_ID_STATIC
     },
     {
         8,
         14,
         "   \265\274\303 \270\300\336\273\262\241",
-        TEXT_STYLE_NORMAL
+        TEXT_STYLE_NORMAL,
+        TEXT_ID_STATIC
     },
     {
         0,
         0,
         "ENTER = \277\336\257\272\263   ESC = \267\254\335\276\331   F3 = \301\255\263\274",
-        TEXT_TYPE_STATUS | TEXT_PADDING_BIG
+        TEXT_TYPE_STATUS | TEXT_PADDING_BIG,
+        TEXT_ID_STATIC
     },
     {
         0,
@@ -1316,19 +1620,22 @@ static MUI_ENTRY jaJPPrepareCopyEntries[] =
         4,
         3,
         " ReactOS " KERNEL_VERSION_STR " \276\257\304\261\257\314\337 ",
-        TEXT_STYLE_UNDERLINE
+        TEXT_STYLE_UNDERLINE,
+        TEXT_ID_STATIC
     },
     {
         6,
         8,
         "\276\257\304\261\257\314\337\312 ReactOS \311\314\247\262\331\246 \272\335\313\337\255\260\300\306 \272\313\337\260 \275\331 \274\336\255\335\313\336\246 \274\303 \262\317\275\241 ",
-        TEXT_STYLE_NORMAL
+        TEXT_STYLE_NORMAL,
+        TEXT_ID_STATIC
     },
     {
         0,
         0,
         "\272\313\337\260 \275\331 \314\247\262\331\311\330\275\304\246 \273\270\276\262 \301\255\263...",
-        TEXT_TYPE_STATUS | TEXT_PADDING_BIG
+        TEXT_TYPE_STATUS | TEXT_PADDING_BIG,
+        TEXT_ID_STATIC
     },
     {
         0,
@@ -1345,7 +1652,8 @@ static MUI_ENTRY jaJPSelectFSEntries[] =
         4,
         3,
         " ReactOS " KERNEL_VERSION_STR " \276\257\304\261\257\314\337 ",
-        TEXT_STYLE_UNDERLINE
+        TEXT_STYLE_UNDERLINE,
+        TEXT_ID_STATIC
     },
     {
         6,
@@ -1375,9 +1683,9 @@ static MUI_ENTRY jaJPSelectFSEntries[] =
         0,
         0,
         "ENTER = \277\336\257\272\263   ESC = \267\254\335\276\331   F3 = \301\255\263\274",
-        TEXT_TYPE_STATUS | TEXT_PADDING_BIG
+        TEXT_TYPE_STATUS | TEXT_PADDING_BIG,
+        TEXT_ID_STATIC
     },
-
     {
         0,
         0,
@@ -1392,37 +1700,43 @@ static MUI_ENTRY jaJPDeletePartitionEntries[] =
         4,
         3,
         " ReactOS " KERNEL_VERSION_STR " \276\257\304\261\257\314\337 ",
-        TEXT_STYLE_UNDERLINE
+        TEXT_STYLE_UNDERLINE,
+        TEXT_ID_STATIC
     },
     {
         6,
         8,
         "\272\311 \312\337\260\303\250\274\256\335\246 \273\270\274\336\256 \275\331 \272\304\266\336 \276\335\300\270 \273\332\317\274\300",
-        TEXT_STYLE_NORMAL
+        TEXT_STYLE_NORMAL,
+        TEXT_ID_STATIC
     },
     {
         8,
         18,
-        "\x07  \272\311 \312\337\260\303\250\274\256\335\246 \273\270\274\336\256 \275\331\306\312 D \267\260\246 \265\274\303 \270\300\336\273\262\241",
-        TEXT_STYLE_NORMAL
+        "\x07  \272\311 \312\337\260\303\250\274\256\335\246 \273\270\274\336\256 \275\331\306\312 L \267\260\246 \265\274\303 \270\300\336\273\262\241",
+        TEXT_STYLE_NORMAL,
+        TEXT_ID_STATIC
     },
     {
         11,
         19,
         "\271\262\272\270(WARNING): \272\311 \312\337\260\303\250\274\256\335\274\336\256\263\311 \275\315\336\303\311 \303\336\260\300\312 \263\274\305\334\332\317\275!",
-        TEXT_STYLE_NORMAL
+        TEXT_STYLE_NORMAL,
+        TEXT_ID_STATIC
     },
     {
         8,
         21,
         "\x07  \267\254\335\276\331 \275\331\306\312 ESC \267\260\246 \265\274\303 \270\300\336\273\262\241",
-        TEXT_STYLE_NORMAL
+        TEXT_STYLE_NORMAL,
+        TEXT_ID_STATIC
     },
     {
         0,
         0,
-        "D = \312\337\260\303\274\256\335 \273\270\274\336\256   ESC = \267\254\335\276\331   F3 = \301\255\263\274",
-        TEXT_TYPE_STATUS | TEXT_PADDING_BIG
+        "L = \312\337\260\303\274\256\335 \273\270\274\336\256   ESC = \267\254\335\276\331   F3 = \301\255\263\274",
+        TEXT_TYPE_STATUS | TEXT_PADDING_BIG,
+        TEXT_ID_STATIC
     },
     {
         0,
@@ -1438,19 +1752,22 @@ static MUI_ENTRY jaJPRegistryEntries[] =
         4,
         3,
         " ReactOS " KERNEL_VERSION_STR " \276\257\304\261\257\314\337 ",
-        TEXT_STYLE_UNDERLINE
+        TEXT_STYLE_UNDERLINE,
+        TEXT_ID_STATIC
     },
     {
         6,
         8,
         "\276\257\304\261\257\314\337\312 \274\275\303\321\311 \272\263\276\262\246 \272\263\274\335 \274\303\262\317\275\241 ",
-        TEXT_STYLE_NORMAL
+        TEXT_STYLE_NORMAL,
+        TEXT_ID_STATIC
     },
     {
         0,
         0,
         "\332\274\336\275\304\330 \312\262\314\336\246 \273\270\276\262 \301\255\263...",
-        TEXT_TYPE_STATUS | TEXT_PADDING_BIG
+        TEXT_TYPE_STATUS | TEXT_PADDING_BIG,
+        TEXT_ID_STATIC
     },
     {
         0,
@@ -1465,7 +1782,7 @@ MUI_ERROR jaJPErrorEntries[] =
 {
     {
         // NOT_AN_ERROR
-        "Success\n"
+        "\276\262\272\263\n"
     },
     {
         // ERROR_NOT_INSTALLED
@@ -1476,6 +1793,21 @@ MUI_ERROR jaJPErrorEntries[] =
         "  \x07  \276\257\304\261\257\314\337\246 \277\336\257\272\263 \275\331\306\312 ENTER \267\260\246 \265\274\303 \270\300\336\273\262\241\n"
         "  \x07  \276\257\304\261\257\314\337\246 \301\255\263\274 \275\331\306\312 F3 \267\260\246 \265\274\303 \270\300\336\273\262\241",
         "F3 = \301\255\263\274  ENTER = \277\336\257\272\263"
+    },
+    {
+        // ERROR_NO_BUILD_PATH
+        "ReactOS \262\335\275\304\260\331 \303\336\250\332\270\304\330 \311 \262\335\275\304\260\331 \273\267 \311 \312\337\275 \246 \272\263\301\270 \275\331 \311\306 \274\257\312\337\262 \274\317\274\300!\n"
+        "ENTER = \273\262\267\304\336\263"
+    },
+    {
+        // ERROR_SOURCE_PATH
+        "\262\335\275\304\260\331 \323\304 \246 \314\270\321 \312\337\260\303\250\274\256\335 \246 \273\270\274\336\256 \303\336\267\317\276\335!\n"
+        "ENTER = \273\262\267\304\336\263"
+    },
+    {
+        // ERROR_SOURCE_DIR
+        "\262\335\275\304\260\331 \323\304 \305\262\314\336 \306 ReactOS \246 \262\335\275\304\260\331 \303\336\267\317\276\335!\n"
+        "ENTER = \273\262\267\304\336\263"
     },
     {
         // ERROR_NO_HDD
@@ -1667,37 +1999,37 @@ MUI_ERROR jaJPErrorEntries[] =
     },
     {
         // ERROR_DIRECTORY_NAME,
-        "Invalid directory name.\n"
+        "\314\276\262 \305 \303\336\250\332\270\304\330 \322\262 \303\336\275\241\n"
         "\n"
-        "  * Press any key to continue."
+        "  * \277\336\257\272\263 \275\331 \306\312 \305\306\266 \267\260 \246 \265\274\303 \270\300\336\273\262\241"
     },
     {
         // ERROR_INSUFFICIENT_PARTITION_SIZE,
-        "The selected partition is not large enough to install ReactOS.\n"
-        "The install partition must have a size of at least %lu MB.\n"
+        "\276\335\300\270 \274\300 \312\337\260\303\250\274\256\335 \312\244 ReactOS \311 \262\335\275\304\260\331 \306\312\244 \301\262\273 \275\267\336 \317\275\241\n"
+        "\262\335\275\304\260\331 \273\267 \311 \312\337\260\303\250\274\256\335 \312 \275\270\305\270\304\323 %lu MB \313\302\326\263 \303\336\275\241\n"
         "\n"
-        "  * Press any key to continue.",
+        "  * \277\336\257\272\263 \275\331 \306\312 \305\306\266 \267\260 \246 \265\274\303 \270\300\336\273\262\241",
         NULL
     },
     {
         // ERROR_PARTITION_TABLE_FULL,
-        "You can not create a new primary or extended partition in the\n"
-        "partition table of this disk because the partition table is full.\n"
+        "\312\337\260\303\250\274\256\335 \303\260\314\336\331 \266\336 \262\257\312\337\262 \305\311\303\336\244 \272\311 \303\336\250\275\270 \306\n"
+        "\261\300\327\274\262 \314\337\327\262\317\330\260 \317\300\312 \266\270\301\256\263 \312\337\260\303\250\274\256\335 \246 \273\270\276\262 \303\336\267\317\276\335\241\n"
         "\n"
-        "  * Press any key to continue."
+        "  * \277\336\257\272\263 \275\331 \306\312 \305\306\266 \267\260 \246 \265\274\303 \270\300\336\273\262\241"
     },
     {
         // ERROR_ONLY_ONE_EXTENDED,
-        "You can not create more than one extended partition per disk.\n"
+        "\313\304\302 \311 \303\336\250\275\270 \306 \262\257\272\262\274\336\256\263 \311 \266\270\301\256\263 \312\337\260\303\250\274\256\335 \246 \273\270\276\262 \303\336\267\317\276\335\241\n"
         "\n"
-        "  * Press any key to continue."
+        "  * \277\336\257\272\263 \275\331 \306\312 \305\306\266 \267\260 \246 \265\274\303 \270\300\336\273\262\241"
     },
     {
         // ERROR_FORMATTING_PARTITION,
-        "Setup is unable to format the partition:\n"
+        "\276\257\304\261\257\314\337 \312 \272\311 \312\337\260\303\250\274\256\335 \246 \314\253\260\317\257\304 \303\336\267\317\276\335:\n"
         " %S\n"
         "\n"
-        "ENTER = Reboot computer"
+        "ENTER = \272\335\313\337\255\260\300 \311 \273\262\267\304\336\263"
     },
     {
         NULL,
@@ -1754,6 +2086,10 @@ MUI_PAGE jaJPPages[] =
     {
         SELECT_PARTITION_PAGE,
         jaJPSelectPartitionEntries
+    },
+    {
+        CHANGE_SYSTEM_PARTITION,
+        jaJPChangeSystemPartition
     },
     {
         CONFIRM_DELETE_SYSTEM_PARTITION_PAGE,
@@ -1833,12 +2169,12 @@ MUI_STRING jaJPStrings[] =
     {STRING_PARTITIONSIZE,
      "\261\300\327\274\262 \312\337\260\303\250\274\256\335\311 \273\262\275\336:"},
     {STRING_CHOOSENEWPARTITION,
-     "You have chosen to create a primary partition on"},
+     "\314\337\327\262\317\330\260 \312\337\260\303\250\274\256\335 \311 \273\270\276\262 \246 \264\327\313\336 \317\274\300"},
 //     "±À×¼² Êß°Ã¨¼®Ý¦ Â·ÞÆ »¸¾²½Ù ºÄ¶Þ ¾ÝÀ¸ »ÚÏ¼À:"},
     {STRING_CHOOSE_NEW_EXTENDED_PARTITION,
-     "You have chosen to create an extended partition on"},
+     "\266\270\301\256\263 \312\337\260\303\250\274\256\335 \311 \273\270\276\262 \246 \264\327\313\336 \317\274\300"},
     {STRING_CHOOSE_NEW_LOGICAL_PARTITION,
-     "You have chosen to create a logical partition on"},
+     "\333\335\330 \312\337\260\303\250\274\256\335 \311 \273\270\276\262 \246 \264\327\313\336 \317\274\300"},
     {STRING_HDDSIZE,
     "\261\300\327\274\262 \312\337\260\303\250\274\256\335\311 \273\262\275\336\246 \322\266\336\312\336\262\304 \300\335\262\303\336 \306\255\263\330\256\270 \274\303\270\300\336\273\262\241"},
     {STRING_CREATEPARTITION,
@@ -1848,9 +2184,9 @@ MUI_STRING jaJPStrings[] =
     {STRING_NONFORMATTEDPART,
     "ReactOS\246 \274\335\267 \317\300\312 \320\314\253\260\317\257\304\311 \312\337\260\303\250\274\256\335\306 \262\335\275\304\260\331\275\331 \272\304\266\336 \276\335\300\270 \273\332\317\274\300\241"},
     {STRING_NONFORMATTEDSYSTEMPART,
-    "The system partition is not formatted yet."},
+    "\274\275\303\321 \312\337\260\303\250\274\256\335 \312 \317\300\336 \314\253\260\317\257\304 \273\332\303 \262\317\276\335\241"},
     {STRING_NONFORMATTEDOTHERPART,
-    "The new partition is not formatted yet."},
+    "\261\300\327\274\262 \312\337\260\303\250\274\256\335 \312 \317\300\336 \314\253\260\317\257\304 \273\332\303 \262\317\276\335\241"},
     {STRING_INSTALLONPART,
     "\276\257\304\261\257\314\337\312 ReactOS\246 \312\337\260\303\250\274\256\335 \274\336\256\263\306 \262\335\275\304\260\331\274\317\275\241"},
     {STRING_CHECKINGPART,
@@ -1862,11 +2198,11 @@ MUI_STRING jaJPStrings[] =
     {STRING_REBOOTCOMPUTER,
     "ENTER = \272\335\313\337\255\260\300\311 \273\262\267\304\336\263"},
     {STRING_DELETING,
-     "   Deleting file: %S"},
+     "   \314\247\262\331 \311 \273\270\274\336\256: %S"},
     {STRING_MOVING,
-     "   Moving file: %S to: %S"},
+     "   \314\247\262\331 \311 \262\304\336\263: %S \266\327: %S"},
     {STRING_RENAMING,
-     "   Renaming file: %S to: %S"},
+     "   \305\317\264 \311 \315\335\272\263: %S to: %S"},
     {STRING_COPYING,
      "   \272\313\337\260 \301\255\263\311 \314\247\262\331: %S"},
     {STRING_SETUPCOPYINGFILES,
@@ -1888,7 +2224,7 @@ MUI_STRING jaJPStrings[] =
     {STRING_REBOOTCOMPUTER2,
     "   ENTER = \272\335\313\337\255\260\300\311 \273\262\267\304\336\263"},
     {STRING_REBOOTPROGRESSBAR,
-    " Your computer will reboot in %li second(s)... "},
+    " %li \313\336\256\263\272\336 \306 \273\262\267\304\336\263 \273\332\317\275... "},
     {STRING_CONSOLEFAIL1,
     "\272\335\277\260\331\246 \265\260\314\337\335 \303\336\267\317\276\335\r\n\r\n"},
     {STRING_CONSOLEFAIL2,
@@ -1934,7 +2270,7 @@ MUI_STRING jaJPStrings[] =
     {STRING_MAXSIZE,
     "MB (\273\262\300\336\262. %lu MB)"},
     {STRING_EXTENDED_PARTITION,
-    "Extended Partition"},
+    "\266\270\301\256\263 \312\337\260\303\250\274\256\335"},
     {STRING_UNFORMATTED,
     "\274\335\267 (\320\314\253\260\317\257\304)"},
     {STRING_FORMATUNUSED,

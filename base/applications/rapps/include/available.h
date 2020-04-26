@@ -37,6 +37,7 @@ struct CAvailableApplicationInfo
     ATL::CStringW m_szUrlDownload;
     ATL::CStringW m_szCDPath;
     ATL::CSimpleArray<LCID> m_LanguageLCIDs;
+    ULONG m_SizeBytes;
 
     // Caching mechanism related entries
     ATL::CStringW m_sFileName;
@@ -79,7 +80,7 @@ private:
     inline BOOL FindInLanguages(LCID what) const;
 };
 
-typedef BOOL(CALLBACK *AVAILENUMPROC)(CAvailableApplicationInfo *Info, LPCWSTR szFolderPath);
+typedef BOOL(CALLBACK *AVAILENUMPROC)(CAvailableApplicationInfo *Info, LPCWSTR szFolderPath, PVOID param);
 
 struct AvailableStrings
 {
@@ -106,7 +107,7 @@ public:
     static VOID DeleteCurrentAppsDB();
 
     VOID FreeCachedEntries();
-    BOOL Enum(INT EnumType, AVAILENUMPROC lpEnumProc);
+    BOOL Enum(INT EnumType, AVAILENUMPROC lpEnumProc, PVOID param);
 
     CAvailableApplicationInfo* FindInfo(const ATL::CStringW& szAppName) const;
     ATL::CSimpleArray<CAvailableApplicationInfo> FindInfoList(const ATL::CSimpleArray<ATL::CStringW> &arrAppsNames) const;

@@ -1,6 +1,13 @@
 
 remove_definitions(-DWINVER=0x502 -D_WIN32_WINNT=0x502)
-add_definitions(-DWINVER=0x600 -D_WIN32_WINNT=0x600)
+add_definitions(-DWINVER=0x602 -D_WIN32_WINNT=0x602)
+
+if(MSVC)
+    # Disable warning C4477 (printf format warnings)
+    add_compile_flags("/wd4477")
+elseif(GCC AND GCC_VERSION VERSION_GREATER 7)
+    add_compile_flags("-Wno-format-overflow")
+endif()
 
 list(APPEND SOURCE
     broadcast.c
@@ -11,13 +18,14 @@ list(APPEND SOURCE
     dce.c
     dde.c
     dialog.c
-    edit.c    
+    edit.c
     generated.c
     input.c
     listbox.c
     menu.c
     monitor.c
     msg.c
+    rawinput.c
     resource.c
     scroll.c
     static.c

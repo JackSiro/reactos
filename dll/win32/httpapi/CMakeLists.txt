@@ -8,8 +8,8 @@ list(APPEND SOURCE
     ${CMAKE_CURRENT_BINARY_DIR}/httpapi_stubs.c
     ${CMAKE_CURRENT_BINARY_DIR}/httpapi.def)
 
-add_library(httpapi SHARED ${SOURCE})
+add_library(httpapi MODULE ${SOURCE})
 set_module_type(httpapi win32dll)
 target_link_libraries(httpapi wine)
-add_importlibs(httpapi msvcrt kernel32 ntdll)
+add_importlibs(httpapi advapi32 msvcrt kernel32 ntdll)
 add_cd_file(TARGET httpapi DESTINATION reactos/system32 FOR all)

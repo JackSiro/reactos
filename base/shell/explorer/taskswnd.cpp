@@ -285,7 +285,9 @@ public:
             TBSTYLE_TOOLTIPS | TBSTYLE_WRAPABLE | TBSTYLE_LIST | TBSTYLE_TRANSPARENT |
             CCS_TOP | CCS_NORESIZE | CCS_NODIVIDER;
 
-        return SubclassWindow(CToolbar::Create(hWndParent, styles));
+        HWND toolbar = CToolbar::Create(hWndParent, styles);
+        SetDrawTextFlags(DT_NOPREFIX, DT_NOPREFIX);
+        return SubclassWindow(toolbar);
     }
 };
 
@@ -1632,6 +1634,13 @@ public:
         SetForegroundWindow(TaskItem->hWnd);
 
         ActivateTask(TaskItem->hWnd);
+
+       /* Wait up to 2 seconds for the window to process the foreground notification. */
+        DWORD_PTR resultDummy;
+        if (!SendMessageTimeout(TaskItem->hWnd, WM_NULL, 0, 0, 0, 2000, &resultDummy))
+            ERR("HandleTaskItemRightClick detected the window was unresponsive for 2 seconds, or was destroyed\n");
+        if (GetForegroundWindow() != TaskItem->hWnd)
+            ERR("HandleTaskItemRightClick detected the window did not become foreground\n");
 
         ::SendMessageW(TaskItem->hWnd, WM_POPUPSYSTEMMENU, 0, MAKELPARAM(pt.x, pt.y));
     }

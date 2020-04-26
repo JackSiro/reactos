@@ -223,8 +223,8 @@
 @ stub SetupAddSectionToDiskSpaceListW
 @ stdcall SetupAddToDiskSpaceListA(long str int64 long ptr long)
 @ stdcall SetupAddToDiskSpaceListW(long wstr int64 long ptr long)
-@ stub SetupAddToSourceListA
-@ stub SetupAddToSourceListW
+@ stdcall SetupAddToSourceListA(long str)
+@ stdcall SetupAddToSourceListW(long wstr)
 @ stub SetupAdjustDiskSpaceListA
 @ stub SetupAdjustDiskSpaceListW
 @ stub SetupBackupErrorA
@@ -369,7 +369,7 @@
 @ stdcall SetupDiRegisterDeviceInfo(ptr ptr long ptr ptr ptr)
 @ stdcall SetupDiRemoveDevice(ptr ptr)
 @ stdcall SetupDiRemoveDeviceInterface(ptr ptr)
-@ stub SetupDiRestartDevices
+@ stdcall SetupDiRestartDevices(ptr ptr)
 @ stdcall SetupDiSelectBestCompatDrv(ptr ptr)
 @ stdcall SetupDiSelectDevice(ptr ptr)
 @ stub SetupDiSelectOEMDrv

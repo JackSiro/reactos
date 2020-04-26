@@ -27,15 +27,36 @@ typedef struct expect_shim_data
 {
     const WCHAR* ShimName;
     DWORD MinVersion;
-    expect_shim_hook hooks[4];
+    expect_shim_hook hooks[6];
 } expect_shim_data;
 
 
 static expect_shim_data data[] =
 {
     {
-        L"VerifyVersionInfoLite",
+        L"ForceDXSetupSuccess",
         0,
+        {
+            { "KERNEL32.DLL", "LoadLibraryA" },
+            { "KERNEL32.DLL", "LoadLibraryW" },
+            { "KERNEL32.DLL", "LoadLibraryExA" },
+            { "KERNEL32.DLL", "LoadLibraryExW" },
+            { "KERNEL32.DLL", "GetProcAddress" },
+            { "KERNEL32.DLL", "FreeLibrary" },
+        }
+    },
+    {
+        L"VerifyVersionInfoLite",
+        _WIN32_WINNT_VISTA,
+        {
+            { "KERNEL32.DLL", "VerifyVersionInfoA" },
+            { "KERNEL32.DLL", "VerifyVersionInfoW" },
+        }
+    },
+    /* Show that it is not case sensitive */
+    {
+        L"VeRiFyVeRsIoNInFoLiTe",
+        _WIN32_WINNT_VISTA,
         {
             { "KERNEL32.DLL", "VerifyVersionInfoA" },
             { "KERNEL32.DLL", "VerifyVersionInfoW" },
@@ -88,7 +109,10 @@ START_TEST(layer_hooks)
         PHOOKAPI hook = pGetHookAPIs("", current->ShimName, &num_shims);
 
         if (current->MinVersion > g_WinVersion && !hook)
+        {
+            skip("Shim %s not present\n", wine_dbgstr_w(current->ShimName));
             continue;
+        }
 
         ok(!!hook, "Expected a valid pointer, got nothing for %s\n", wine_dbgstr_w(current->ShimName));
         ok(num_shims == expected_shims, "Expected %u shims, got %u for %s\n",

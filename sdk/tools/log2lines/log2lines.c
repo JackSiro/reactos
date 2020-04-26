@@ -34,7 +34,6 @@ LINEINFO lastLine;
 FILE *logFile        = NULL;
 LIST cache;
 SUMM summ;
-REVINFO revinfo;
 
 
 static void
@@ -99,7 +98,6 @@ reportSource(FILE *outFile)
 static void
 report(FILE *outFile)
 {
-    reportRevision(outFile);
     reportSource(outFile);
     clearLastLine();
 }
@@ -439,7 +437,7 @@ translate_files(FILE *inFile, FILE *outFile)
                     }
                     else
                     {
-                        Line[1] = handle_escape_cmd(outFile, Line, path, LineOut);
+                        Line[1] = handle_escape_cmd(outFile, Line);
                         if (Line[1] != KDBG_ESC_CHAR)
                         {
                             if (p == p_eos)
@@ -535,17 +533,6 @@ translate_files(FILE *inFile, FILE *outFile)
         }
     }
 
-    if (opt_Revision && (strstr(opt_Revision, "regscan") == opt_Revision))
-    {
-        char *s = strchr(opt_Revision, ',');
-        if (s)
-        {
-            *s++ = '\0';
-            revinfo.range = atoi(s);
-        }
-        regscan(outFile);
-    }
-
     if (opt_stats)
     {
         stat_print(outFile, &summ);
@@ -571,7 +558,6 @@ main(int argc, const char **argv)
     memset(&cache, 0, sizeof(LIST));
     memset(&sources, 0, sizeof(LIST));
     stat_clear(&summ);
-    memset(&revinfo, 0, sizeof(REVINFO));
     clearLastLine();
 
     optInit = optionInit(argc, argv);
@@ -584,12 +570,6 @@ main(int argc, const char **argv)
     }
 
     argc -= optCount;
-
-    if (opt_Revision && (strcmp(opt_Revision, "update") == 0))
-    {
-        res = updateSvnlog();
-        goto cleanup;
-    }
 
     if (check_directory(opt_force))
     {
@@ -637,6 +617,7 @@ main(int argc, const char **argv)
         char PathBuffer[LINESIZE + 1];
         char LineOutBuffer[LINESIZE + 1];
 
+        // TODO: Re-use one translate_files(), instead of repeated translate_line().
         while (i < argc)
         {
             offset = argv[optCount + i++];
@@ -646,7 +627,7 @@ main(int argc, const char **argv)
                 {
                     l2l_dbg(2, "translating %s %s\n", exefile, offset);
 
-                    sprintf(Line, "<%s:%s>\n", exefile, offset);
+                    snprintf(Line, LINESIZE, "<%s:%s>\n", exefile, offset);
                     translate_line(conOut, Line, PathBuffer, LineOutBuffer);
                     report(conOut);
                 }
@@ -676,13 +657,6 @@ main(int argc, const char **argv)
         PCLOSE(dbgIn);
 
 cleanup:
-    // See optionParse().
-    if (opt_Revision)
-    {
-        free(opt_Revision);
-        opt_Revision = NULL;
-    }
-
     // See optionInit().
     if (opt_Pipe)
     {

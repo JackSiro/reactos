@@ -320,30 +320,30 @@ HRESULT WINAPI CRecycleBinItemContextMenu::QueryContextMenu(HMENU hMenu, UINT in
 
     TRACE("(%p)->(hmenu=%p indexmenu=%x cmdfirst=%x cmdlast=%x flags=%x )\n", this, hMenu, indexMenu, idCmdFirst, idCmdLast, uFlags);
 
-    if (LoadStringW(shell32_hInstance, IDS_RESTORE, szBuffer, sizeof(szBuffer) / sizeof(WCHAR)))
+    if (LoadStringW(shell32_hInstance, IDS_RESTORE, szBuffer, _countof(szBuffer)))
     {
-        szBuffer[(sizeof(szBuffer)/sizeof(WCHAR))-1] = L'\0';
+        szBuffer[_countof(szBuffer)-1] = L'\0';
         _InsertMenuItemW(hMenu, indexMenu++, TRUE, idCmdFirst + Count, MFT_STRING, szBuffer, MFS_ENABLED);
         Count++;
     }
 
-    if (LoadStringW(shell32_hInstance, IDS_CUT, szBuffer, sizeof(szBuffer) / sizeof(WCHAR)))
+    if (LoadStringW(shell32_hInstance, IDS_CUT, szBuffer, _countof(szBuffer)))
     {
         _InsertMenuItemW(hMenu, indexMenu++, TRUE, idCmdFirst + Count++, MFT_SEPARATOR, NULL, MFS_ENABLED);
-        szBuffer[(sizeof(szBuffer)/sizeof(WCHAR))-1] = L'\0';
+        szBuffer[_countof(szBuffer)-1] = L'\0';
         _InsertMenuItemW(hMenu, indexMenu++, TRUE, idCmdFirst + Count++, MFT_STRING, szBuffer, MFS_ENABLED);
     }
 
-    if (LoadStringW(shell32_hInstance, IDS_DELETE, szBuffer, sizeof(szBuffer) / sizeof(WCHAR)))
+    if (LoadStringW(shell32_hInstance, IDS_DELETE, szBuffer, _countof(szBuffer)))
     {
-        szBuffer[(sizeof(szBuffer)/sizeof(WCHAR))-1] = L'\0';
+        szBuffer[_countof(szBuffer)-1] = L'\0';
         _InsertMenuItemW(hMenu, indexMenu++, TRUE, idCmdFirst + Count++, MFT_SEPARATOR, NULL, MFS_ENABLED);
         _InsertMenuItemW(hMenu, indexMenu++, TRUE, idCmdFirst + Count++, MFT_STRING, szBuffer, MFS_ENABLED);
     }
 
-    if (LoadStringW(shell32_hInstance, IDS_PROPERTIES, szBuffer, sizeof(szBuffer) / sizeof(WCHAR)))
+    if (LoadStringW(shell32_hInstance, IDS_PROPERTIES, szBuffer, _countof(szBuffer)))
     {
-        szBuffer[(sizeof(szBuffer)/sizeof(WCHAR))-1] = L'\0';
+        szBuffer[_countof(szBuffer)-1] = L'\0';
         _InsertMenuItemW(hMenu, indexMenu++, TRUE, idCmdFirst + Count++, MFT_SEPARATOR, NULL, MFS_ENABLED);
         _InsertMenuItemW(hMenu, indexMenu++, TRUE, idCmdFirst + Count, MFT_STRING, szBuffer, MFS_DEFAULT);
     }
@@ -432,7 +432,7 @@ HRESULT WINAPI CRecycleBin::GetClassID(CLSID *pClassID)
     return S_OK;
 }
 
-HRESULT WINAPI CRecycleBin::Initialize(LPCITEMIDLIST pidl)
+HRESULT WINAPI CRecycleBin::Initialize(PCIDLIST_ABSOLUTE pidl)
 {
     TRACE("(%p, %p)\n", this, pidl);
 
@@ -443,7 +443,7 @@ HRESULT WINAPI CRecycleBin::Initialize(LPCITEMIDLIST pidl)
     return S_OK;
 }
 
-HRESULT WINAPI CRecycleBin::GetCurFolder(LPITEMIDLIST *ppidl)
+HRESULT WINAPI CRecycleBin::GetCurFolder(PIDLIST_ABSOLUTE *ppidl)
 {
     TRACE("\n");
     *ppidl = ILClone(pidl);
@@ -791,12 +791,12 @@ HRESULT WINAPI CRecycleBin::QueryContextMenu(HMENU hMenu, UINT indexMenu, UINT i
     if (!hMenu)
         return E_INVALIDARG;
 
-    memset(&mii, 0, sizeof(mii));
+    ZeroMemory(&mii, sizeof(mii));
     mii.cbSize = sizeof(mii);
     mii.fMask = MIIM_TYPE | MIIM_ID | MIIM_STATE;
     mii.fState = RecycleBinIsEmpty() ? MFS_DISABLED : MFS_ENABLED;
     szBuffer[0] = L'\0';
-    LoadStringW(shell32_hInstance, IDS_EMPTY_BITBUCKET, szBuffer, sizeof(szBuffer) / sizeof(WCHAR));
+    LoadStringW(shell32_hInstance, IDS_EMPTY_BITBUCKET, szBuffer, _countof(szBuffer));
     mii.dwTypeData = szBuffer;
     mii.cch = wcslen(mii.dwTypeData);
     mii.wID = idCmdFirst + id++;
@@ -862,7 +862,7 @@ HRESULT WINAPI CRecycleBin::ReplacePage(EXPPS uPageID, LPFNSVADDPROPSHEETPAGE pf
  * RecycleBin IShellExtInit interface
  */
 
-HRESULT WINAPI CRecycleBin::Initialize(LPCITEMIDLIST pidlFolder, IDataObject *pdtobj, HKEY hkeyProgID)
+HRESULT WINAPI CRecycleBin::Initialize(PCIDLIST_ABSOLUTE pidlFolder, IDataObject *pdtobj, HKEY hkeyProgID)
 {
     TRACE("%p %p %p %p\n", this, pidlFolder, pdtobj, hkeyProgID );
     return S_OK;
@@ -881,7 +881,7 @@ TRASH_CanTrashFile(LPCWSTR wszPath)
     DWORD FileSystemFlags, dwSize, dwDisposition;
     HKEY hKey;
     WCHAR szBuffer[10];
-    WCHAR szKey[150] = L"SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Bitbucket\\Volume\\";
+    WCHAR szKey[150] = L"SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Explorer\\BitBucket\\Volume\\";
 
     if (wszPath[1] != L':')
     {
@@ -891,7 +891,7 @@ TRASH_CanTrashFile(LPCWSTR wszPath)
 
     // Copy and retrieve the root path from get given string
     WCHAR wszRootPathName[MAX_PATH];
-    StringCbCopy(wszRootPathName, sizeof(wszRootPathName), wszPath);
+    StringCbCopyW(wszRootPathName, sizeof(wszRootPathName), wszPath);
     PathStripToRootW(wszRootPathName);
 
     // Test to see if the drive is fixed (non removable)
@@ -1116,7 +1116,7 @@ HRESULT WINAPI SHEmptyRecycleBinW(HWND hwnd, LPCWSTR pszRootPath, DWORD dwFlags)
         if (dwType != REG_EXPAND_SZ) /* type dismatch */
             return S_OK;
 
-        szPath[(sizeof(szPath)/sizeof(WCHAR))-1] = L'\0';
+        szPath[_countof(szPath)-1] = L'\0';
         PlaySoundW(szPath, NULL, SND_FILENAME);
     }
     return S_OK;

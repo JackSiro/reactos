@@ -20,7 +20,7 @@
 #define NDEBUG
 #include <debug.h>
 
-#include "font.h"
+#include "concfg/font.h"
 #include "guiterm.h"
 #include "resource.h"
 
@@ -149,7 +149,7 @@ RegisterConWndClass(IN HINSTANCE hInstance)
     WndClass.hIcon = ghDefaultIcon;
     WndClass.hIconSm = ghDefaultIconSm;
     WndClass.hCursor = ghDefaultCursor;
-    WndClass.hbrBackground = (HBRUSH)GetStockObject(BLACK_BRUSH); // The color of a terminal when it is switched off.
+    WndClass.hbrBackground = NULL;
     WndClass.lpszMenuName = NULL;
     WndClass.cbClsExtra = 0;
     WndClass.cbWndExtra = GWLP_CONWND_ALLOC;
@@ -231,30 +231,32 @@ VOID
 CreateSysMenu(HWND hWnd)
 {
     MENUITEMINFOW mii;
+    HMENU hMenu;
+    PWCHAR ptrTab;
     WCHAR szMenuStringBack[255];
-    WCHAR *ptrTab;
-    HMENU hMenu = GetSystemMenu(hWnd, FALSE);
-    if (hMenu != NULL)
+
+    hMenu = GetSystemMenu(hWnd, FALSE);
+    if (hMenu == NULL)
+        return;
+
+    mii.cbSize = sizeof(mii);
+    mii.fMask = MIIM_STRING;
+    mii.dwTypeData = szMenuStringBack;
+    mii.cch = ARRAYSIZE(szMenuStringBack);
+
+    GetMenuItemInfoW(hMenu, SC_CLOSE, FALSE, &mii);
+
+    ptrTab = wcschr(szMenuStringBack, L'\t');
+    if (ptrTab)
     {
-        mii.cbSize = sizeof(mii);
-        mii.fMask = MIIM_STRING;
-        mii.dwTypeData = szMenuStringBack;
-        mii.cch = sizeof(szMenuStringBack)/sizeof(WCHAR);
+        *ptrTab = L'\0';
+        mii.cch = (UINT)wcslen(szMenuStringBack);
 
-        GetMenuItemInfoW(hMenu, SC_CLOSE, FALSE, &mii);
-
-        ptrTab = wcschr(szMenuStringBack, '\t');
-        if (ptrTab)
-        {
-           *ptrTab = '\0';
-           mii.cch = wcslen(szMenuStringBack);
-
-           SetMenuItemInfoW(hMenu, SC_CLOSE, FALSE, &mii);
-        }
-
-        AppendMenuItems(hMenu, GuiConsoleMainMenuItems);
-        DrawMenuBar(hWnd);
+        SetMenuItemInfoW(hMenu, SC_CLOSE, FALSE, &mii);
     }
+
+    AppendMenuItems(hMenu, GuiConsoleMainMenuItems);
+    DrawMenuBar(hWnd);
 }
 
 static VOID
@@ -597,6 +599,7 @@ OnNcCreate(HWND hWnd, LPCREATESTRUCTW Create)
     Console = GuiData->Console;
 
     GuiData->hWindow = hWnd;
+    GuiData->hSysMenu = GetSystemMenu(hWnd, FALSE);
 
     /* Initialize the fonts */
     if (!InitFonts(GuiData,
@@ -1014,6 +1017,8 @@ OnPaint(PGUI_CONSOLE_DATA GuiData)
             PaintSelectionRect(GuiData, &ps);
         }
 
+        // TODO: Move cursor display here!
+
         LeaveCriticalSection(&GuiData->Lock);
     }
     EndPaint(GuiData->hWindow, &ps);
@@ -1250,6 +1255,7 @@ OnTimer(PGUI_CONSOLE_DATA GuiData)
 
     if (GetType(Buff) == TEXTMODE_BUFFER)
     {
+        /* Repaint the caret */
         InvalidateCell(GuiData, Buff->CursorPosition.X, Buff->CursorPosition.Y);
         Buff->CursorBlinkOn = !Buff->CursorBlinkOn;
 
@@ -1370,6 +1376,7 @@ OnNcDestroy(HWND hWnd)
     /* Free the GuiData registration */
     SetWindowLongPtrW(hWnd, GWLP_USERDATA, (DWORD_PTR)NULL);
 
+    /* Reset the system menu back to default and destroy the previous menu */
     GetSystemMenu(hWnd, TRUE);
 
     if (GuiData)
@@ -1704,7 +1711,7 @@ OnMouse(PGUI_CONSOLE_DATA GuiData, UINT msg, WPARAM wParam, LPARAM lParam)
                 break;
         }
     }
-    else if (Console->InputBuffer.Mode & ENABLE_MOUSE_INPUT)
+    else if (GetConsoleInputBufferMode(Console) & ENABLE_MOUSE_INPUT)
     {
         INPUT_RECORD er;
         WORD  wKeyState         = GET_KEYSTATE_WPARAM(wParam);
@@ -2031,7 +2038,7 @@ OnSize(PGUI_CONSOLE_DATA GuiData, WPARAM wParam, LPARAM lParam)
     PCONSRV_CONSOLE Console = GuiData->Console;
 
     /* Do nothing if the window is hidden */
-    if (!GuiData->IsWindowVisible) return;
+    if (!GuiData->IsWindowVisible || IsIconic(GuiData->hWindow)) return;
 
     if (!ConDrvValidateConsoleUnsafe((PCONSOLE)Console, CONSOLE_RUNNING, TRUE)) return;
 
@@ -2061,8 +2068,8 @@ OnSize(PGUI_CONSOLE_DATA GuiData, WPARAM wParam, LPARAM lParam)
         if ((windy % HeightUnit) >= (HeightUnit / 2)) ++chary;
 
         /* Compensate for added scroll bars in window */
-        if (charx < (DWORD)Buff->ScreenBufferSize.X) windy -= GetSystemMetrics(SM_CYHSCROLL); // Window will have a horizontal scroll bar
-        if (chary < (DWORD)Buff->ScreenBufferSize.Y) windx -= GetSystemMetrics(SM_CXVSCROLL); // Window will have a vertical scroll bar
+        if (Buff->ViewSize.X < Buff->ScreenBufferSize.X) windy -= GetSystemMetrics(SM_CYHSCROLL); // Window will have a horizontal scroll bar
+        if (Buff->ViewSize.Y < Buff->ScreenBufferSize.Y) windx -= GetSystemMetrics(SM_CXVSCROLL); // Window will have a vertical scroll bar
 
         charx = windx / (int)WidthUnit ;
         chary = windy / (int)HeightUnit;
@@ -2157,6 +2164,20 @@ GuiConsoleHandleScrollbarMenu(VOID)
 }
 */
 
+HBITMAP
+CreateFrameBufferBitmap(HDC hDC, int width, int height)
+{
+    BITMAPINFO bmi;
+    ZeroMemory(&bmi, sizeof(BITMAPINFO));
+    bmi.bmiHeader.biSize = sizeof(BITMAPINFOHEADER);
+    bmi.bmiHeader.biWidth = width;
+    bmi.bmiHeader.biHeight = height;
+    bmi.bmiHeader.biPlanes = 1;
+    bmi.bmiHeader.biBitCount = GetDeviceCaps(hDC, BITSPIXEL);
+    bmi.bmiHeader.biCompression = BI_RGB;
+    return CreateDIBSection(NULL, &bmi, DIB_RGB_COLORS, NULL, NULL, 0);
+}
+
 static LRESULT CALLBACK
 ConWndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
 {
@@ -2207,6 +2228,9 @@ ConWndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
         case WM_CLOSE:
             if (OnClose(GuiData)) goto Default;
             break;
+
+        case WM_ERASEBKGND:
+            return TRUE;
 
         case WM_PAINT:
             OnPaint(GuiData);
@@ -2495,7 +2519,7 @@ ConWndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
 
             /* Recreate the framebuffer */
             hDC  = GetDC(GuiData->hWindow);
-            hnew = CreateCompatibleBitmap(hDC, Width, Height);
+            hnew = CreateFrameBufferBitmap(hDC, Width, Height);
             ReleaseDC(GuiData->hWindow, hDC);
             hold = SelectObject(GuiData->hMemDC, hnew);
             if (GuiData->hBitmap)

@@ -210,9 +210,7 @@ UserSendMouseInput(MOUSEINPUT *pmi, BOOL bInjected)
     Msg.time = pmi->time;
     if (!Msg.time)
     {
-        LARGE_INTEGER LargeTickCount;
-        KeQueryTickCount(&LargeTickCount);
-        Msg.time = MsqCalculateMessageTime(&LargeTickCount);
+        Msg.time = EngGetTickCount32();
     }
 
     /* Do GetMouseMovePointsEx FIFO. */
@@ -228,6 +226,16 @@ UserSendMouseInput(MOUSEINPUT *pmi, BOOL bInjected)
     {
         UserSetCursorPos(ptCursor.x, ptCursor.y, bInjected, pmi->dwExtraInfo, TRUE);
     }
+
+    if (IS_KEY_DOWN(gafAsyncKeyState, VK_SHIFT))
+        pCurInfo->ButtonsDown |= MK_SHIFT;
+    else
+        pCurInfo->ButtonsDown &= ~MK_SHIFT;
+
+    if (IS_KEY_DOWN(gafAsyncKeyState, VK_CONTROL))
+        pCurInfo->ButtonsDown |= MK_CONTROL;
+    else
+        pCurInfo->ButtonsDown &= ~MK_CONTROL;
 
     /* Left button */
     if (dwFlags & MOUSEEVENTF_LEFTDOWN)

@@ -36,18 +36,20 @@ tagMsgList msglist;
 /* the expected message-list */
 const tagMsgList t1msgList =
 {
-    9,
+    11,
     {
         // DlgProc, msg,              wParam,   lParam, result, cmpflag
         {  FALSE,  WM_NCCREATE,            0,         0,     1, MSGLST_CMP_WP | MSGLST_CMP_RES },
         {  FALSE,  WM_NCCALCSIZE,          0,         0,     0, MSGLST_CMP_WP | MSGLST_CMP_RES },
         {  FALSE,  WM_CREATE,              0,         0,     0, MSGLST_CMP_WP | MSGLST_CMP_RES },
         {  FALSE,  WM_SIZE,                0, 0x145012c,     0, MSGLST_CMP_ALL }, // FIXME: size is 400x400 on Win7?
-        {  FALSE,  WM_MOVE,                0, 0x0160003,     0, MSGLST_CMP_ALL },
+        {  FALSE,  WM_MOVE,                0, 0x0160003,     0,  MSGLST_CMP_WP | MSGLST_CMP_RES }, // FIXME: LPARAM doesn't match on win 10
         {  TRUE,   WM_SETFONT,             0,         0,     0, MSGLST_CMP_LP | MSGLST_CMP_RES },
         {  FALSE,  WM_SETFONT,             0,         0,     0, MSGLST_CMP_LP | MSGLST_CMP_RES },
         {  TRUE,   WM_INITDIALOG,          0,         0,     0, MSGLST_CMP_LP | MSGLST_CMP_RES },
         {  FALSE,  WM_INITDIALOG,          0,         0,     0, MSGLST_CMP_LP | MSGLST_CMP_RES },
+        {  TRUE,   WM_CHANGEUISTATE,       3,         0,     0, MSGLST_CMP_LP | MSGLST_CMP_RES },
+        {  FALSE,  WM_CHANGEUISTATE,       3,         0,     0, MSGLST_CMP_LP | MSGLST_CMP_RES },
     }
 };
 
@@ -60,7 +62,7 @@ void DumpMsgList(const char* lstName, const tagMsgList *ml)
     for (i1 = 0; i1 < ml->msgCount; i1++)
     {
         dlgProcName = (ml->msgList[i1].DlgProc)  ? "DlgProc" : "WndProc";
-        printf("#%.3d %s, msg 0x%x, wParam 0x%x, lParam 0x%Ix, result %d\n",
+        printf("#%.3d %s, msg 0x%x, wParam 0x%Ix, lParam 0x%Ix, result %d\n",
                i1,
                dlgProcName,
                ml->msgList[i1].msg,

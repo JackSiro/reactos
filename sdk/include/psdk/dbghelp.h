@@ -99,7 +99,11 @@ typedef struct _LOADED_IMAGE
     PSTR                        ModuleName;
     HANDLE                      hFile;
     PUCHAR                      MappedAddress;
-    PIMAGE_NT_HEADERS           FileHeader;
+#ifdef _IMAGEHLP64
+    PIMAGE_NT_HEADERS64         FileHeader;
+#else
+    PIMAGE_NT_HEADERS32         FileHeader;
+#endif
     PIMAGE_SECTION_HEADER       LastRvaSection;
     ULONG                       NumberOfSections;
     PIMAGE_SECTION_HEADER       Sections;
@@ -1106,6 +1110,13 @@ BOOL WINAPI SymUnloadModule64(_In_ HANDLE, _In_ DWORD64);
 #define SYMFLAG_THUNK            0x00002000
 #define SYMFLAG_TLSREL           0x00004000
 #define SYMFLAG_SLOT             0x00008000
+#define SYMFLAG_ILREL            0x00010000
+#define SYMFLAG_METADATA         0x00020000
+#define SYMFLAG_CLR_TOKEN        0x00040000
+#define SYMFLAG_NULL             0x00080000
+#define SYMFLAG_FUNC_NO_RETURN   0x00100000
+#define SYMFLAG_SYNTHETIC_ZEROBASE 0x00200000
+#define SYMFLAG_PUBLIC_CODE      0x00400000
 
 #define MAX_SYM_NAME    2000
 

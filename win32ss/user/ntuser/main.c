@@ -26,7 +26,7 @@ NTSTATUS GdiThreadDestroy(PETHREAD Thread);
 
 PSERVERINFO gpsi = NULL; // Global User Server Information.
 
-SHORT gusLanguageID;
+USHORT gusLanguageID;
 PPROCESSINFO ppiScrnSaver;
 PPROCESSINFO gppiList = NULL;
 
@@ -88,13 +88,6 @@ AllocW32Process(IN  PEPROCESS Process,
     *W32Process = ppiCurrent;
     return STATUS_SUCCESS;
 }
-
-#define FreeW32Process(/*Process*/ W32Process) \
-do { \
-    /*PPROCESSINFO W32Process = PsGetProcessWin32Process(Process);*/ \
-    /*ASSERT(W32Process);*/ \
-    IntDereferenceProcessInfo(W32Process); \
-} while(0)
 
 /*
  * Called from IntDereferenceProcessInfo
@@ -332,7 +325,7 @@ ExitProcessCallback(PEPROCESS Process)
     ppiCurrent->peProcess = NULL;
 
     /* Finally, dereference */
-    FreeW32Process(/*Process*/ ppiCurrent); // IntDereferenceProcessInfo(ppiCurrent);
+    IntDereferenceProcessInfo(ppiCurrent);
 
     return STATUS_SUCCESS;
 }
@@ -397,18 +390,12 @@ AllocW32Thread(IN  PETHREAD Thread,
     RtlZeroMemory(ptiCurrent, sizeof(*ptiCurrent));
 
     PsSetThreadWin32Thread(Thread, ptiCurrent, NULL);
+    ObReferenceObject(Thread);
     IntReferenceThreadInfo(ptiCurrent);
 
     *W32Thread = ptiCurrent;
     return STATUS_SUCCESS;
 }
-
-#define FreeW32Thread(/*Thread*/ W32Thread) \
-do { \
-    /*PTHREADINFO W32Thread = PsGetThreadWin32Thread(Thread);*/ \
-    /*ASSERT(W32Thread);*/ \
-    IntDereferenceThreadInfo(W32Thread); \
-} while(0)
 
 /*
  * Called from IntDereferenceThreadInfo
@@ -428,9 +415,21 @@ UserDeleteW32Thread(PTHREADINFO pti)
 
    MsqCleanupThreadMsgs(pti);
 
+   ObDereferenceObject(pti->pEThread);
+
    ExFreePoolWithTag(pti, USERTAG_THREADINFO);
 
    IntDereferenceProcessInfo(ppi);
+
+   {
+      // Find another queue for mouse cursor.
+      MSG msg;
+      msg.message = WM_MOUSEMOVE;
+      msg.wParam = UserGetMouseButtonsState();
+      msg.lParam = MAKELPARAM(gpsi->ptCursor.x, gpsi->ptCursor.y);
+      msg.pt = gpsi->ptCursor;
+      co_MsqInsertMouseMessage(&msg, 0, 0, TRUE);
+   }
 }
 
 NTSTATUS
@@ -454,7 +453,6 @@ InitThreadCallback(PETHREAD Thread)
     int i;
     NTSTATUS Status = STATUS_SUCCESS;
     PTEB pTeb;
-    LARGE_INTEGER LargeTickCount;
     PRTL_USER_PROCESS_PARAMETERS ProcessParams;
 
     Process = Thread->ThreadsProcess;
@@ -479,6 +477,7 @@ InitThreadCallback(PETHREAD Thread)
     IntReferenceProcessInfo(ptiCurrent->ppi);
     pTeb->Win32ThreadInfo = ptiCurrent;
     ptiCurrent->pClientInfo = (PCLIENTINFO)pTeb->Win32ClientInfo;
+    ptiCurrent->pcti = &ptiCurrent->cti;
 
     /* Mark the process as having threads */
     ptiCurrent->ppi->W32PF_flags |= W32PF_THREADCONNECTED;
@@ -515,8 +514,7 @@ InitThreadCallback(PETHREAD Thread)
         goto error;
     }
 
-    KeQueryTickCount(&LargeTickCount);
-    ptiCurrent->timeLast = LargeTickCount.u.LowPart;
+    ptiCurrent->pcti->timeLastRead = EngGetTickCount32();
 
     ptiCurrent->MessageQueue = MsqCreateMessageQueue(ptiCurrent);
     if (ptiCurrent->MessageQueue == NULL)
@@ -537,8 +535,6 @@ InitThreadCallback(PETHREAD Thread)
     /* CSRSS threads have some special features */
     if (Process == gpepCSRSS || !gpepCSRSS)
         ptiCurrent->TIF_flags = TIF_CSRSSTHREAD | TIF_DONTATTACHQUEUE;
-
-    ptiCurrent->pcti = &ptiCurrent->cti;
 
     /* Initialize the CLIENTINFO */
     pci = (PCLIENTINFO)pTeb->Win32ClientInfo;
@@ -845,10 +841,9 @@ ExitThreadCallback(PETHREAD Thread)
 
     /* The thread is dying */
     PsSetThreadWin32Thread(Thread /*ptiCurrent->pEThread*/, NULL, ptiCurrent);
-    ptiCurrent->pEThread = NULL;
 
-    /* Free the THREADINFO */
-    FreeW32Thread(/*Thread*/ ptiCurrent); // IntDereferenceThreadInfo(ptiCurrent);
+    /* Dereference the THREADINFO */
+    IntDereferenceThreadInfo(ptiCurrent);
 
     return STATUS_SUCCESS;
 }

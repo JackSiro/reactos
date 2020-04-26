@@ -8,30 +8,10 @@
 #include <atlimage.h>
 #include "resource.h"
 
-#ifdef __REACTOS__
+#ifdef HAVE_APITEST
     #include <apitest.h>
 #else
-    #include <stdlib.h>
-    #include <stdio.h>
-    #include <stdarg.h>
-    int g_tests_executed = 0;
-    int g_tests_failed = 0;
-    void ok_func(const char *file, int line, BOOL value, const char *fmt, ...)
-    {
-        va_list va;
-        va_start(va, fmt);
-        if (!value)
-        {
-            printf("%s (%d): ", file, line);
-            vprintf(fmt, va);
-            g_tests_failed++;
-        }
-        g_tests_executed++;
-        va_end(va);
-    }
-    #undef ok
-    #define ok(value, ...)  ok_func(__FILE__, __LINE__, value, __VA_ARGS__)
-    #define START_TEST(x)   int main(void)
+    #include "atltest.h"
 #endif
 
 const TCHAR* szFiles[] = {
@@ -224,11 +204,11 @@ START_TEST(CImage)
     ok(bOK, "Expected bOK to be TRUE, was: %d\n", bOK);
 
     width = image2.GetWidth();
-    ok(width == 48, "Expected width to be 48, was: %d\n", width);
+    ok_int(width, 48);
     height = image2.GetHeight();
-    ok(height == 48, "Expected height to be 48, was: %d\n", height);
+    ok_int(height, 48);
     bpp = image2.GetBPP();
-    ok(bpp == 8, "Expected bpp to be 8, was: %d\n", bpp);
+    ok_int(bpp, 32);
 
     for (n = 0; n < _countof(szFiles); ++n)
     {
@@ -254,12 +234,12 @@ START_TEST(CImage)
         bpp = image2.GetBPP();
         if (n == 3)
         {
-            ok(bpp == 24, "Expected bpp to be 24, was: %d (for %i)\n", bpp, n);
+            ok(bpp == 32, "Expected bpp to be 32, was: %d (for %i)\n", bpp, n);
             determine_file_bpp(file, PixelFormat24bppRGB);
         }
         else
         {
-            ok(bpp == 8, "Expected bpp to be 8, was: %d (for %i)\n", bpp, n);
+            ok(bpp == 32, "Expected bpp to be 32, was: %d (for %i)\n", bpp, n);
             determine_file_bpp(file, PixelFormat8bppIndexed);
         }
         color = image1.GetPixel(5, 5);
@@ -330,10 +310,5 @@ START_TEST(CImage)
 #else
     ok(lstrcmpA(psz, "All Image Files|*.BMP;*.DIB;*.RLE;*.JPG;*.JPEG;*.JPE;*.JFIF;*.GIF;*.EMF;*.WMF;*.TIF;*.TIFF;*.PNG;*.ICO|BMP (*.BMP;*.DIB;*.RLE)|*.BMP;*.DIB;*.RLE|JPEG (*.JPG;*.JPEG;*.JPE;*.JFIF)|*.JPG;*.JPEG;*.JPE;*.JFIF|GIF (*.GIF)|*.GIF|EMF (*.EMF)|*.EMF|WMF (*.WMF)|*.WMF|TIFF (*.TIF;*.TIFF)|*.TIF;*.TIFF|PNG (*.PNG)|*.PNG|ICO (*.ICO)|*.ICO||") == 0,
        "The exporter filter string is bad, was: %s\n", psz);
-#endif
-
-#ifndef __REACTOS__
-    printf("CImage: %i tests executed (0 marked as todo, %i failures), 0 skipped.\n", g_tests_executed, g_tests_failed);
-    return g_tests_failed;
 #endif
 }

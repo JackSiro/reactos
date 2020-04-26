@@ -161,7 +161,7 @@ SIZE_T MmSystemViewSize;
 // map paged pool PDEs into external processes when they fault on a paged pool
 // address.
 //
-PFN_NUMBER MmSystemPageDirectory[PD_COUNT];
+PFN_NUMBER MmSystemPageDirectory[PPE_PER_PAGE];
 PMMPDE MmSystemPagePtes;
 #endif
 
@@ -242,7 +242,7 @@ PMMPTE MiHighestUserPxe;
 /* These variables define the system cache address space */
 PVOID MmSystemCacheStart = (PVOID)MI_SYSTEM_CACHE_START;
 PVOID MmSystemCacheEnd;
-ULONG MmSizeOfSystemCacheInPages;
+ULONG_PTR MmSizeOfSystemCacheInPages;
 MMSUPPORT MmSystemCacheWs;
 
 //
@@ -779,7 +779,7 @@ MiBuildPfnDatabaseFromPages(IN PLOADER_PARAMETER_BLOCK LoaderBlock)
 
     /* Start with the first PDE and scan them all */
     PointerPde = MiAddressToPde(NULL);
-    Count = PD_COUNT * PDE_COUNT;
+    Count = PPE_PER_PAGE * PDE_PER_PAGE;
     for (i = 0; i < Count; i++)
     {
         /* Check for valid PDE */
@@ -812,7 +812,7 @@ MiBuildPfnDatabaseFromPages(IN PLOADER_PARAMETER_BLOCK LoaderBlock)
 
             /* Now get the PTE and scan the pages */
             PointerPte = MiAddressToPte(BaseAddress);
-            for (j = 0; j < PTE_COUNT; j++)
+            for (j = 0; j < PTE_PER_PAGE; j++)
             {
                 /* Check for a valid PTE */
                 if (PointerPte->u.Hard.Valid == 1)
@@ -1439,7 +1439,7 @@ MiAddHalIoMappings(VOID)
         {
             /* Get the PTE for it and scan each page */
             PointerPte = MiAddressToPte(BaseAddress);
-            for (j = 0 ; j < PTE_COUNT; j++)
+            for (j = 0; j < PTE_PER_PAGE; j++)
             {
                 /* Does the HAL own this page? */
                 if (PointerPte->u.Hard.Valid == 1)
@@ -1557,7 +1557,7 @@ MmDumpArmPfnDatabase(IN BOOLEAN StatusOnly)
         // Pretty-print the page
         //
         if (!StatusOnly)
-        DbgPrint("0x%08p:\t%20s\t(%04d.%04d)\t[%16s - %16s])\n",
+        DbgPrint("0x%08p:\t%20s\t(%04d.%04d)\t[%16s - %16s]\n",
                  i << PAGE_SHIFT,
                  Consumer,
                  Pfn1->u3.e2.ReferenceCount,
@@ -1767,7 +1767,7 @@ MiBuildPagedPool(VOID)
     // Get the page frame number for the system page directory
     //
     PointerPte = MiAddressToPte(PDE_BASE);
-    ASSERT(PD_COUNT == 1);
+    ASSERT(PPE_PER_PAGE == 1);
     MmSystemPageDirectory[0] = PFN_FROM_PTE(PointerPte);
 
     //
@@ -1785,7 +1785,7 @@ MiBuildPagedPool(VOID)
     // way).
     //
     TempPte = ValidKernelPte;
-    ASSERT(PD_COUNT == 1);
+    ASSERT(PPE_PER_PAGE == 1);
     TempPte.u.Hard.PageFrameNumber = MmSystemPageDirectory[0];
     MI_WRITE_VALID_PTE(PointerPte, TempPte);
 #endif
@@ -1894,12 +1894,12 @@ MiBuildPagedPool(VOID)
                                    PFN_FROM_PTE(MiAddressToPpe(MmPagedPoolStart)));
 #else
     /* Do it this way */
-//    Bla = MmSystemPageDirectory[(PointerPde - (PMMPTE)PDE_BASE) / PDE_COUNT]
+//    Bla = MmSystemPageDirectory[(PointerPde - (PMMPTE)PDE_BASE) / PDE_PER_PAGE]
 
     /* Initialize the PFN entry for it */
     MiInitializePfnForOtherProcess(PageFrameIndex,
                                    (PMMPTE)PointerPde,
-                                   MmSystemPageDirectory[(PointerPde - (PMMPDE)PDE_BASE) / PDE_COUNT]);
+                                   MmSystemPageDirectory[(PointerPde - (PMMPDE)PDE_BASE) / PDE_PER_PAGE]);
 #endif
 
     //
@@ -2123,40 +2123,6 @@ MmArmInitSystem(IN ULONG Phase,
         /* Set the based section highest address */
         MmHighSectionBase = (PVOID)((ULONG_PTR)MmHighestUserAddress - 0x800000);
 
-#if DBG
-        /* The subection PTE format depends on things being 8-byte aligned */
-        ASSERT((sizeof(CONTROL_AREA) % 8) == 0);
-        ASSERT((sizeof(SUBSECTION) % 8) == 0);
-
-        /* Prototype PTEs are assumed to be in paged pool, so check if the math works */
-        PointerPte = (PMMPTE)MmPagedPoolStart;
-        MI_MAKE_PROTOTYPE_PTE(&TempPte, PointerPte);
-        TestPte = MiProtoPteToPte(&TempPte);
-        ASSERT(PointerPte == TestPte);
-
-        /* Try the last nonpaged pool address */
-        PointerPte = (PMMPTE)MI_NONPAGED_POOL_END;
-        MI_MAKE_PROTOTYPE_PTE(&TempPte, PointerPte);
-        TestPte = MiProtoPteToPte(&TempPte);
-        ASSERT(PointerPte == TestPte);
-
-        /* Try a bunch of random addresses near the end of the address space */
-        PointerPte = (PMMPTE)((ULONG_PTR)MI_HIGHEST_SYSTEM_ADDRESS - 0x37FFF);
-        for (j = 0; j < 20; j += 1)
-        {
-            MI_MAKE_PROTOTYPE_PTE(&TempPte, PointerPte);
-            TestPte = MiProtoPteToPte(&TempPte);
-            ASSERT(PointerPte == TestPte);
-            PointerPte++;
-        }
-
-        /* Subsection PTEs are always in nonpaged pool, pick a random address to try */
-        PointerPte = (PMMPTE)((ULONG_PTR)MmNonPagedPoolStart + (MmSizeOfNonPagedPoolInBytes / 2));
-        MI_MAKE_SUBSECTION_PTE(&TempPte, PointerPte);
-        TestPte = MiSubsectionPteToSubsection(&TempPte);
-        ASSERT(PointerPte == TestPte);
-#endif
-
         /* Loop all 8 standby lists */
         for (i = 0; i < 8; i++)
         {
@@ -2181,9 +2147,8 @@ MmArmInitSystem(IN ULONG Phase,
         /* Initialize the Loader Lock */
         KeInitializeMutant(&MmSystemLoadLock, FALSE);
 
-        /* Set the zero page event */
-        KeInitializeEvent(&MmZeroingPageEvent, SynchronizationEvent, FALSE);
-        MmZeroingPageThreadActive = FALSE;
+        /* Set up the zero page event */
+        KeInitializeEvent(&MmZeroingPageEvent, NotificationEvent, FALSE);
 
         /* Initialize the dead stack S-LIST */
         InitializeSListHead(&MmDeadStackSListHead);
@@ -2331,6 +2296,36 @@ MmArmInitSystem(IN ULONG Phase,
 
         /* Initialize the platform-specific parts */
         MiInitMachineDependent(LoaderBlock);
+
+#if DBG
+        /* Prototype PTEs are assumed to be in paged pool, so check if the math works */
+        PointerPte = (PMMPTE)MmPagedPoolStart;
+        MI_MAKE_PROTOTYPE_PTE(&TempPte, PointerPte);
+        TestPte = MiProtoPteToPte(&TempPte);
+        ASSERT(PointerPte == TestPte);
+
+        /* Try the last nonpaged pool address */
+        PointerPte = (PMMPTE)MI_NONPAGED_POOL_END;
+        MI_MAKE_PROTOTYPE_PTE(&TempPte, PointerPte);
+        TestPte = MiProtoPteToPte(&TempPte);
+        ASSERT(PointerPte == TestPte);
+
+        /* Try a bunch of random addresses near the end of the address space */
+        PointerPte = (PMMPTE)((ULONG_PTR)MI_HIGHEST_SYSTEM_ADDRESS - 0x37FFF);
+        for (j = 0; j < 20; j += 1)
+        {
+            MI_MAKE_PROTOTYPE_PTE(&TempPte, PointerPte);
+            TestPte = MiProtoPteToPte(&TempPte);
+            ASSERT(PointerPte == TestPte);
+            PointerPte++;
+        }
+
+        /* Subsection PTEs are always in nonpaged pool, pick a random address to try */
+        PointerPte = (PMMPTE)((ULONG_PTR)MmNonPagedPoolStart + (MmSizeOfNonPagedPoolInBytes / 2));
+        MI_MAKE_SUBSECTION_PTE(&TempPte, PointerPte);
+        TestPte = MiSubsectionPteToSubsection(&TempPte);
+        ASSERT(PointerPte == TestPte);
+#endif
 
         //
         // Build the physical memory block
@@ -2521,11 +2516,16 @@ MmArmInitSystem(IN ULONG Phase,
 
         /* Define limits for system cache */
 #ifdef _M_AMD64
-        MmSizeOfSystemCacheInPages = (MI_SYSTEM_CACHE_END - MI_SYSTEM_CACHE_START) / PAGE_SIZE;
+        MmSizeOfSystemCacheInPages = ((MI_SYSTEM_CACHE_END + 1) - MI_SYSTEM_CACHE_START) / PAGE_SIZE;
 #else
         MmSizeOfSystemCacheInPages = ((ULONG_PTR)MI_PAGED_POOL_START - (ULONG_PTR)MI_SYSTEM_CACHE_START) / PAGE_SIZE;
 #endif
         MmSystemCacheEnd = (PVOID)((ULONG_PTR)MmSystemCacheStart + (MmSizeOfSystemCacheInPages * PAGE_SIZE) - 1);
+#ifdef _M_AMD64
+        ASSERT(MmSystemCacheEnd == (PVOID)MI_SYSTEM_CACHE_END);
+#else
+        ASSERT(MmSystemCacheEnd == (PVOID)((ULONG_PTR)MI_PAGED_POOL_START - 1));
+#endif
 
         /* Initialize the system cache */
         //MiInitializeSystemCache(MmSystemCacheWsMinimum, MmAvailablePages);

@@ -4,6 +4,7 @@
 #define _INC_WINDOWS
 #define COM_NO_WINDOWS_H
 #define COBJMACROS
+#define _DEBUG
 #include <tchar.h>
 #include <stdarg.h>
 
@@ -49,6 +50,7 @@ enum AppsCategories
     ENUM_CAT_TOOLS,
     ENUM_CAT_DRIVERS,
     ENUM_CAT_LIBS,
+    ENUM_CAT_THEMES,
     ENUM_CAT_OTHER,
     ENUM_CAT_SELECTED,
     ENUM_ALL_INSTALLED,

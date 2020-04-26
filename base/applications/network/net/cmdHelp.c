@@ -11,20 +11,20 @@
 
 INT cmdHelp(INT argc, WCHAR **argv)
 {
-    ConResPuts(StdOut, IDS_GENERIC_SYNTAX);
+    PrintMessageString(4381);
+    ConPuts(StdOut, L"\n");
 
-/*
     if (argc != 3)
     {
-        ConResPuts(StdOut, IDS_HELP_SYNTAX);
+        PrintNetMessage(MSG_HELP_SYNTAX);
+        PrintNetMessage(MSG_HELP_HELP);
         return 0;
     }
-*/
+
     if (_wcsicmp(argv[2], L"ACCOUNTS") == 0)
     {
         PrintNetMessage(MSG_ACCOUNTS_SYNTAX);
         PrintNetMessage(MSG_ACCOUNTS_HELP);
-        ConResPuts(StdOut, IDS_GENERIC_PAGE);
         return 0;
     }
 
@@ -41,14 +41,12 @@ INT cmdHelp(INT argc, WCHAR **argv)
         {
             PrintNetMessage(MSG_CONFIG_SERVER_SYNTAX);
             PrintNetMessage(MSG_CONFIG_SERVER_HELP);
-            ConResPuts(StdOut, IDS_GENERIC_PAGE);
             return 0;
         }
         else
         {
             PrintNetMessage(MSG_CONFIG_SYNTAX);
             PrintNetMessage(MSG_CONFIG_HELP);
-            ConResPuts(StdOut, IDS_GENERIC_PAGE);
             return 0;
         }
     }
@@ -71,7 +69,6 @@ INT cmdHelp(INT argc, WCHAR **argv)
     {
         PrintNetMessage(MSG_GROUP_SYNTAX);
         PrintNetMessage(MSG_GROUP_HELP);
-        ConResPuts(StdOut, IDS_GENERIC_PAGE);
         return 0;
     }
 
@@ -86,7 +83,6 @@ INT cmdHelp(INT argc, WCHAR **argv)
     {
         PrintNetMessage(MSG_LOCALGROUP_SYNTAX);
         PrintNetMessage(MSG_LOCALGROUP_HELP);
-        ConResPuts(StdOut, IDS_GENERIC_PAGE);
         return 0;
     }
 
@@ -186,12 +182,13 @@ INT cmdHelp(INT argc, WCHAR **argv)
     {
         return 0;
     }
+#endif
 
     if (_wcsicmp(argv[2], L"SYNTAX") == 0)
     {
+        PrintNetMessage(MSG_SYNTAX_HELP);
         return 0;
     }
-#endif
 
     PrintNetMessage(MSG_HELP_SYNTAX);
     PrintNetMessage(MSG_HELP_HELP);
@@ -199,3 +196,12 @@ INT cmdHelp(INT argc, WCHAR **argv)
     return 0;
 }
 
+
+INT
+cmdSyntax(INT argc, WCHAR **argv)
+{
+    PrintMessageString(4381);
+    ConPuts(StdOut, L"\n");
+    PrintNetMessage(MSG_SYNTAX_HELP);
+    return 0;
+}

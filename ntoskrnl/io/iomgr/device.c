@@ -914,9 +914,9 @@ IoAttachDevice(PDEVICE_OBJECT SourceDevice,
                PUNICODE_STRING TargetDeviceName,
                PDEVICE_OBJECT *AttachedDevice)
 {
-   NTSTATUS Status;
-   PFILE_OBJECT FileObject = NULL;
-   PDEVICE_OBJECT TargetDevice = NULL;
+    NTSTATUS Status;
+    PFILE_OBJECT FileObject = NULL;
+    PDEVICE_OBJECT TargetDevice = NULL;
 
     /* Call the helper routine for an attach operation */
     Status = IopGetDeviceObjectPointer(TargetDeviceName,
@@ -1084,7 +1084,8 @@ IoCreateDevice(IN PDRIVER_OBJECT DriverObject,
     if (DeviceName) ObjectAttributes.Attributes |= OBJ_PERMANENT;
 
     /* Align the Extension Size to 8-bytes */
-    AlignedDeviceExtensionSize = (DeviceExtensionSize + 7) &~ 7;
+    AlignedDeviceExtensionSize = ALIGN_UP_BY(DeviceExtensionSize,
+                                             MEMORY_ALLOCATION_ALIGNMENT);
 
     /* Total Size */
     TotalSize = AlignedDeviceExtensionSize +

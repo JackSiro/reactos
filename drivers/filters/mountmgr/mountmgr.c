@@ -42,6 +42,7 @@ KEVENT UnloadEvent;
 LONG Unloading;
 
 static const WCHAR Cunc[] = L"\\??\\C:";
+#define Cunc_LETTER_POSITION 4
 
 /*
  * @implemented
@@ -89,28 +90,18 @@ HasDriveLetter(IN PDEVICE_INFORMATION DeviceInformation)
     PLIST_ENTRY NextEntry;
     PSYMLINK_INFORMATION SymlinkInfo;
 
-    /* To have a drive letter, a device must have symbolic links */
-    if (IsListEmpty(&(DeviceInformation->SymbolicLinksListHead)))
-    {
-        return FALSE;
-    }
-
-    /* Browse all the links untill a drive letter is found */
-    NextEntry = &(DeviceInformation->SymbolicLinksListHead);
-    do
+    /* Browse all the symlinks to check if there is at least a drive letter */
+    for (NextEntry = DeviceInformation->SymbolicLinksListHead.Flink;
+         NextEntry != &DeviceInformation->SymbolicLinksListHead;
+         NextEntry = NextEntry->Flink)
     {
         SymlinkInfo = CONTAINING_RECORD(NextEntry, SYMLINK_INFORMATION, SymbolicLinksListEntry);
 
-        if (SymlinkInfo->Online)
+        if (IsDriveLetter(&SymlinkInfo->Name) && SymlinkInfo->Online)
         {
-            if (IsDriveLetter(&(SymlinkInfo->Name)))
-            {
-                return TRUE;
-            }
+            return TRUE;
         }
-
-        NextEntry = NextEntry->Flink;
-    } while (NextEntry != &(DeviceInformation->SymbolicLinksListHead));
+    }
 
     return FALSE;
 }
@@ -832,7 +823,7 @@ MountMgrUnload(IN struct _DRIVER_OBJECT *DriverObject)
     KeInitializeEvent(&UnloadEvent, NotificationEvent, FALSE);
 
     /* Wait for workers to finish */
-    if (InterlockedIncrement(&DeviceExtension->WorkerReferences))
+    if (InterlockedIncrement(&DeviceExtension->WorkerReferences) > 0)
     {
         KeReleaseSemaphore(&(DeviceExtension->WorkerSemaphore),
                            IO_NO_INCREMENT, 1, FALSE);
@@ -1116,7 +1107,7 @@ MountMgrMountedDeviceArrival(IN PDEVICE_EXTENSION DeviceExtension,
         /* Start checking all letters that could have been associated */
         for (Letter = L'D'; Letter <= L'Z'; Letter++)
         {
-            CSymLink.Buffer[LETTER_POSITION] = Letter;
+            CSymLink.Buffer[Cunc_LETTER_POSITION] = Letter;
 
             InitializeObjectAttributes(&ObjectAttributes,
                                        &CSymLink,
@@ -1736,7 +1727,7 @@ MountMgrCleanup(IN PDEVICE_OBJECT DeviceObject,
     }
 
     /* Otherwise, cancel all the IRPs */
-    NextEntry = &(DeviceExtension->IrpListHead);
+    NextEntry = DeviceExtension->IrpListHead.Flink;
     do
     {
         ListIrp = CONTAINING_RECORD(NextEntry, IRP, Tail.Overlay.ListEntry);
@@ -1780,7 +1771,7 @@ MountMgrShutdown(IN PDEVICE_OBJECT DeviceObject,
     KeInitializeEvent(&UnloadEvent, NotificationEvent, FALSE);
 
     /* Wait for workers */
-    if (InterlockedIncrement(&(DeviceExtension->WorkerReferences)))
+    if (InterlockedIncrement(&(DeviceExtension->WorkerReferences)) > 0)
     {
         KeReleaseSemaphore(&(DeviceExtension->WorkerSemaphore),
                            IO_NO_INCREMENT,
